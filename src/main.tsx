@@ -1,0 +1,29 @@
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import App from "./App";
+import { getAppName } from "@/lib/env";
+import { ToastProvider } from "@/providers/ToastProvider";
+import "./index.css";
+
+const rootElement = document.getElementById("root");
+
+if (!rootElement) {
+  throw new Error("Root element not found");
+}
+
+const appName = getAppName();
+document.title = appName;
+void getCurrentWindow()
+  .setTitle(appName)
+  .catch(() => {
+    // 브라우저에서 vite만 실행할 때는 Tauri window API가 없을 수 있음
+  });
+
+createRoot(rootElement).render(
+  <StrictMode>
+    <ToastProvider>
+      <App />
+    </ToastProvider>
+  </StrictMode>,
+);
