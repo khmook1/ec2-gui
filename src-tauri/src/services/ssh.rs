@@ -526,6 +526,19 @@ impl Ec2ConnectionManager {
 
         super::remote_docker::container_logs(&connection.session, container_id, tail, since)
     }
+
+    pub fn get_disk_overview(&self) -> Result<super::remote_disk::DiskOverview, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_disk::get_disk_overview(&connection.session)
+    }
 }
 
 fn connect_tcp(host: &str, port: u16) -> Result<TcpStream, String> {

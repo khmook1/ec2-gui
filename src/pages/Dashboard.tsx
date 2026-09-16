@@ -1,130 +1,98 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent } from "react";
-import { InfoPanel } from "@/components/dashboard/InfoPanel";
+import { useCallback, useEffect, useState } from "react";
+import { IconButton } from "@/components/common/IconButton";
+import { PageToolbar } from "@/components/common/PageToolbar";
+import {
+  DashboardSummary,
+  formatAppLabels,
+} from "@/components/dashboard/DashboardSummary";
+import { DiskCapacitySection } from "@/components/dashboard/DiskCapacitySection";
+import { LargeDirectoriesSection } from "@/components/dashboard/LargeDirectoriesSection";
+import { RefreshIcon } from "@/components/icons/ToolbarIcons";
+import { getRemoteDiskOverview } from "@/services/tauri";
 import { useAppStore } from "@/stores/appStore";
-import { formatLabel } from "@/utils/format";
-
-const PANEL_MIN_WIDTH = 220;
-const PANEL_MIN_HEIGHT = 120;
-const PANEL_DEFAULT_WIDTH = 320;
-const PANEL_DEFAULT_HEIGHT = 160;
-
-function clampPanelWidth(width: number) {
-  return Math.max(PANEL_MIN_WIDTH, Math.min(width, window.innerWidth - 48));
-}
-
-function clampPanelHeight(height: number) {
-  return Math.max(PANEL_MIN_HEIGHT, Math.min(height, window.innerHeight - 48));
-}
+import type { DiskOverview } from "@/types/disk";
 
 export function DashboardPage() {
   const status = useAppStore((state) => state.status);
   const appInfo = useAppStore((state) => state.appInfo);
   const appReady = status === "ready";
+  const { appName, appVersion } = formatAppLabels(
+    appInfo?.name,
+    appInfo?.version,
+  );
 
-  const [panelWidth, setPanelWidth] = useState(PANEL_DEFAULT_WIDTH);
-  const [panelHeight, setPanelHeight] = useState(PANEL_DEFAULT_HEIGHT);
-  const dragStartX = useRef(0);
-  const dragStartY = useRef(0);
-  const dragStartWidth = useRef(panelWidth);
-  const dragStartHeight = useRef(panelHeight);
-  const resizingRef = useRef(false);
+  const [diskOverview, setDiskOverview] = useState<DiskOverview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const stopResize = useCallback(() => {
-    if (!resizingRef.current) {
-      return;
+  const loadDiskOverview = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const overview = await getRemoteDiskOverview();
+      setDiskOverview(overview);
+    } catch (err) {
+      setDiskOverview(null);
+      setError(
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : "디스크 정보를 불러오지 못했습니다.",
+      );
+    } finally {
+      setLoading(false);
     }
-    resizingRef.current = false;
-    document.body.classList.remove("info-panel-resizing");
   }, []);
-
-  const handleResizePointerDown = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      if (event.button !== 0) {
-        return;
-      }
-      event.preventDefault();
-      event.stopPropagation();
-
-      resizingRef.current = true;
-      dragStartX.current = event.clientX;
-      dragStartY.current = event.clientY;
-      dragStartWidth.current = panelWidth;
-      dragStartHeight.current = panelHeight;
-      document.body.classList.add("info-panel-resizing");
-      event.currentTarget.setPointerCapture(event.pointerId);
-    },
-    [panelHeight, panelWidth],
-  );
-
-  const handleResizePointerMove = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      if (!resizingRef.current) {
-        return;
-      }
-      event.preventDefault();
-      const deltaX = event.clientX - dragStartX.current;
-      const deltaY = event.clientY - dragStartY.current;
-      setPanelWidth(clampPanelWidth(dragStartWidth.current + deltaX));
-      setPanelHeight(clampPanelHeight(dragStartHeight.current + deltaY));
-    },
-    [],
-  );
-
-  const handleResizePointerUp = useCallback(
-    (event: PointerEvent<HTMLDivElement>) => {
-      if (!resizingRef.current) {
-        return;
-      }
-      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-        event.currentTarget.releasePointerCapture(event.pointerId);
-      }
-      stopResize();
-    },
-    [stopResize],
-  );
 
   useEffect(() => {
-    return () => {
-      document.body.classList.remove("info-panel-resizing");
-    };
-  }, []);
+    void loadDiskOverview();
+  }, [loadDiskOverview]);
+
+  const filesystems = diskOverview?.filesystems ?? [];
+  const directories = diskOverview?.largeDirectories ?? [];
 
   return (
     <section className="explorer dashboard-page">
+      <PageToolbar
+        actions={
+          <IconButton
+            tone="neutral"
+            tooltip="새로고침"
+            disabled={loading}
+            onClick={() => void loadDiskOverview()}
+            aria-label="디스크 정보 새로고침"
+          >
+            <RefreshIcon />
+          </IconButton>
+        }
+      >
+        <p className="page-toolbar__hint">
+          EC2 디스크 용량과 사용량이 큰 경로를 확인합니다.
+        </p>
+      </PageToolbar>
+
       <div className="dashboard-page__content">
-        <div
-          className="dashboard-page__grid"
-          style={{
-            gridTemplateColumns: `${panelWidth}px`,
-            gridTemplateRows: `${panelHeight}px`,
-          }}
-        >
-          <div className="dashboard-page__panel">
-            <InfoPanel
-              tone="neutral"
-              title="앱 정보"
-              value={formatLabel(appInfo?.name)}
-              description={
-                <>
-                  버전 {formatLabel(appInfo?.version)} · Tauri{" "}
-                  {appReady ? "정상" : "확인 중"}
-                </>
-              }
-            />
-            <div
-              className="info-panel__resize"
-              onPointerDown={handleResizePointerDown}
-              onPointerMove={handleResizePointerMove}
-              onPointerUp={handleResizePointerUp}
-              onPointerCancel={handleResizePointerUp}
-              role="separator"
-              aria-orientation="horizontal"
-              aria-valuemin={PANEL_MIN_WIDTH}
-              aria-valuenow={panelWidth}
-              aria-label="앱 정보 패널 크기 조절"
-            />
-          </div>
-        </div>
+        <DashboardSummary
+          appName={appName}
+          appVersion={appVersion}
+          appReady={appReady}
+          filesystems={filesystems}
+          loading={loading}
+        />
+
+        <section className="dashboard-main" aria-label="상세">
+          <DiskCapacitySection
+            filesystems={filesystems}
+            loading={loading}
+            error={error}
+          />
+          <LargeDirectoriesSection
+            directories={directories}
+            loading={loading}
+            error={error}
+          />
+        </section>
       </div>
     </section>
   );

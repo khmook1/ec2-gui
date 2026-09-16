@@ -6,6 +6,7 @@ export {
   getRemoteDockerContainerDetails,
   getRemoteDockerContainerLogs,
 } from "./docker";
+export { getRemoteDiskOverview } from "./disk";
 export { connectEc2, disconnectEc2 } from "./ec2";
 export {
   getRemoteHome,

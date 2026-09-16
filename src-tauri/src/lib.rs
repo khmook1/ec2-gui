@@ -26,6 +26,7 @@ pub fn run() {
             commands::fs::create_remote_file,
             commands::fs::delete_remote_path,
             commands::fs::read_remote_file,
+            commands::disk::get_remote_disk_overview,
             commands::docker::check_remote_docker,
             commands::docker::list_remote_docker_containers,
             commands::docker::run_remote_docker_container_action,

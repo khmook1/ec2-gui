@@ -17,3 +17,9 @@
 
 - Form 상태는 **react-hook-form**으로 관리한다.
 - `useState`로 각 필드를 개별 관리하지 않는다.
+
+
+## GIt
+- git commit message는 한글로 작성한다.
+- git commit message는 최대 50자 이내로 작성한다.
+- feat, fix, chore, docs, refactor, test, style, perf, build, ci, revert, merge 등의 태그를 사용한다.
