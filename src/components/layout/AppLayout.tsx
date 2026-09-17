@@ -4,7 +4,6 @@ import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TerminalPanel } from "@/components/terminal/Panel";
 import { useAppInfo } from "@/hooks/useAppInfo";
-import { useDockerCacheSession } from "@/hooks/useDockerCacheSession";
 import { useTerminalShortcut } from "@/hooks/useTerminalShortcut";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import "./css/app-layout.css";
@@ -16,7 +15,6 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { status } = useAppInfo();
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
-  useDockerCacheSession();
   useTerminalShortcut();
 
   return (

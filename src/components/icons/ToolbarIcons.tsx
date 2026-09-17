@@ -105,3 +105,25 @@ export function PruneIcon(props: ToolbarIconProps) {
     </ToolbarSvg>
   );
 }
+
+/** 비밀번호 표시 */
+export function EyeIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+      <circle cx="12" cy="12" r="3" />
+    </ToolbarSvg>
+  );
+}
+
+/** 비밀번호 숨기기 */
+export function EyeOffIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <path d="M10.6 10.6a2 2 0 0 0 2.8 2.8" />
+      <path d="M16.7 16.7A9.8 9.8 0 0 1 12 19c-6.5 0-10-7-10-7a18.4 18.4 0 0 1 5.1-5.6" />
+      <path d="M9.9 4.2A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a18.5 18.5 0 0 1-2.2 3.1" />
+      <path d="M1 1l22 22" />
+    </ToolbarSvg>
+  );
+}

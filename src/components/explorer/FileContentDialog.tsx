@@ -2,8 +2,7 @@ import { useMemo } from "react";
 import { AppDialog } from "@/components/common/AppDialog";
 import { CodeBlock } from "@/components/common/CodeBlock";
 import { LoadingIndicator } from "@/components/common/LoadingIndicator";
-import { useDeferredAsyncResource } from "@/hooks/useDeferredAsyncResource";
-import { readRemoteFile } from "@/services/tauri/filesystem";
+import { useRemoteFileQuery } from "@/hooks/query";
 import {
   getHighlightLanguage,
   getHighlightLanguageLabel,
@@ -16,16 +15,15 @@ interface FileContentDialogProps {
 }
 
 export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
-  const {
-    data: file,
-    isLoading,
-    errorMessage,
-    isOpen,
-  } = useDeferredAsyncResource({
-    key: path,
-    load: readRemoteFile,
-    fallbackErrorMessage: "파일 내용을 불러오지 못했습니다.",
-  });
+  const fileQuery = useRemoteFileQuery(path);
+  const file = fileQuery.data ?? null;
+  const isLoading = fileQuery.isPending || fileQuery.isFetching;
+  const isOpen = path != null;
+  const errorMessage = fileQuery.isError
+    ? fileQuery.error instanceof Error
+      ? fileQuery.error.message
+      : "파일 내용을 불러오지 못했습니다."
+    : null;
 
   const title = useMemo(
     () => file?.name ?? path?.split("/").pop() ?? path ?? "",

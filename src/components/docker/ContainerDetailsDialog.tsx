@@ -7,9 +7,8 @@ import { DetailsSummary } from "@/components/docker/atoms/DetailsSummary";
 import { LogsPanel } from "@/components/docker/atoms/LogsPanel";
 import { DockerProcessCards } from "@/components/docker/ProcessCards";
 import { DockerStatsCards } from "@/components/docker/StatsCards";
+import { useDockerContainerDetailsQuery } from "@/hooks/query";
 import type { DockerDestructiveAction } from "@/lib/dockerDestructiveConfirm";
-import { useDeferredAsyncResource } from "@/hooks/useDeferredAsyncResource";
-import { getRemoteDockerContainerDetails } from "@/services/tauri/docker";
 import {
   getDockerContainerState,
   isDockerContainerActive,
@@ -54,17 +53,15 @@ export function DockerContainerDetailsDialog({
   onRequestDestructive,
 }: DockerContainerDetailsDialogProps) {
   const [activeTab, setActiveTab] = useState<DetailTab>("summary");
-  const {
-    data: details,
-    isLoading,
-    errorMessage,
-    isOpen,
-    reload,
-  } = useDeferredAsyncResource({
-    key: containerId,
-    load: getRemoteDockerContainerDetails,
-    fallbackErrorMessage: "컨테이너 상세 정보를 불러오지 못했습니다.",
-  });
+  const detailsQuery = useDockerContainerDetailsQuery(containerId);
+  const details = detailsQuery.data ?? null;
+  const isLoading = detailsQuery.isPending || detailsQuery.isFetching;
+  const errorMessage = detailsQuery.isError
+    ? detailsQuery.error instanceof Error
+      ? detailsQuery.error.message
+      : "컨테이너 상세 정보를 불러오지 못했습니다."
+    : null;
+  const isOpen = containerId != null;
 
   useEffect(() => {
     setActiveTab("summary");
@@ -97,7 +94,7 @@ export function DockerContainerDetailsDialog({
     }
     try {
       await onAction(openId, action);
-      reload();
+      void detailsQuery.refetch();
     } catch {
       // useRemoteDocker.runAction에서 토스트로 표시
     }

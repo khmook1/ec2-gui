@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import {
-  createRemoteDirectory,
-  createRemoteFile,
-  deleteRemotePath,
-  getRemoteHome,
-  listRemoteDirectory,
-} from "@/services/tauri/filesystem";
+  useCreateRemoteDirectoryMutation,
+  useCreateRemoteFileMutation,
+  useDeleteRemotePathMutation,
+  useRemoteDirectoryQuery,
+  useRemoteHomeQuery,
+} from "@/hooks/query";
 import type { RemoteEntry } from "@/types/filesystem";
 import {
   buildPathFromSegments,
@@ -41,89 +41,96 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function useRemoteFileSystem(): UseRemoteFileSystemResult {
-  const [currentPath, setCurrentPath] = useState("/");
-  const [entries, setEntries] = useState<RemoteEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [currentPath, setCurrentPath] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  const loadDirectory = useCallback(async (path: string) => {
-    setIsLoading(true);
-    setErrorMessage(null);
+  const homeQuery = useRemoteHomeQuery({ enabled: currentPath == null });
+  const directoryQuery = useRemoteDirectoryQuery(currentPath, {
+    enabled: currentPath != null,
+  });
 
-    try {
-      const listing = await listRemoteDirectory(path);
-      setCurrentPath(listing.path);
-      setEntries(listing.entries);
-      setSelectedPath(null);
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const createDirMutation = useCreateRemoteDirectoryMutation();
+  const createFileMutation = useCreateRemoteFileMutation();
+  const deleteMutation = useDeleteRemotePathMutation();
 
   useEffect(() => {
-    if (isInitialized) {
+    if (currentPath != null) {
       return;
     }
-
-    let cancelled = false;
-
-    async function bootstrap() {
-      setIsLoading(true);
-      try {
-        const home = await getRemoteHome();
-        if (!cancelled) {
-          setIsInitialized(true);
-          await loadDirectory(home);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMessage(getErrorMessage(error));
-          setIsLoading(false);
-        }
-      }
+    if (homeQuery.isSuccess && homeQuery.data) {
+      setCurrentPath(homeQuery.data);
     }
+  }, [currentPath, homeQuery.data, homeQuery.isSuccess]);
 
-    void bootstrap();
+  useEffect(() => {
+    if (directoryQuery.data) {
+      setCurrentPath(directoryQuery.data.path);
+      setSelectedPath(null);
+      setLocalError(null);
+    }
+  }, [directoryQuery.data]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [isInitialized, loadDirectory]);
+  const resolvedPath = directoryQuery.data?.path ?? currentPath ?? "/";
+  const entries = directoryQuery.data?.entries ?? [];
 
-  const openDirectory = useCallback(
-    async (path: string) => {
-      await loadDirectory(path);
-    },
-    [loadDirectory],
-  );
+  const isMutating =
+    createDirMutation.isPending ||
+    createFileMutation.isPending ||
+    deleteMutation.isPending;
+
+  const isLoading =
+    (currentPath == null && homeQuery.isPending) ||
+    (currentPath != null && directoryQuery.isPending) ||
+    directoryQuery.isFetching ||
+    isMutating;
+
+  const errorMessage =
+    localError ??
+    (homeQuery.isError && currentPath == null
+      ? getErrorMessage(homeQuery.error)
+      : null) ??
+    (directoryQuery.isError
+      ? getErrorMessage(directoryQuery.error)
+      : null) ??
+    (createDirMutation.error
+      ? getErrorMessage(createDirMutation.error)
+      : null) ??
+    (createFileMutation.error
+      ? getErrorMessage(createFileMutation.error)
+      : null) ??
+    (deleteMutation.error ? getErrorMessage(deleteMutation.error) : null);
+
+  const openDirectory = useCallback(async (path: string) => {
+    setLocalError(null);
+    setSelectedPath(null);
+    setCurrentPath(path);
+  }, []);
 
   const openEntry = useCallback(
     async (entry: RemoteEntry) => {
       if (entry.isDirectory) {
-        await loadDirectory(entry.path);
+        await openDirectory(entry.path);
         return;
       }
       setSelectedPath(entry.path);
     },
-    [loadDirectory],
+    [openDirectory],
   );
 
   const goUp = useCallback(async () => {
-    const segments = splitPathSegments(currentPath);
+    const segments = splitPathSegments(resolvedPath);
     if (segments.length === 0) {
       return;
     }
     segments.pop();
-    await loadDirectory(buildPathFromSegments(segments));
-  }, [currentPath, loadDirectory]);
+    await openDirectory(buildPathFromSegments(segments));
+  }, [openDirectory, resolvedPath]);
 
   const refresh = useCallback(async () => {
-    await loadDirectory(currentPath);
-  }, [currentPath, loadDirectory]);
+    setLocalError(null);
+    await directoryQuery.refetch();
+  }, [directoryQuery]);
 
   const selectEntry = useCallback((path: string | null) => {
     setSelectedPath(path);
@@ -132,60 +139,56 @@ export function useRemoteFileSystem(): UseRemoteFileSystemResult {
   const createDirectory = useCallback(
     async (name: string) => {
       if (!isValidRemoteEntryName(name)) {
-        setErrorMessage("올바른 폴더 이름을 입력하세요.");
+        setLocalError("올바른 폴더 이름을 입력하세요.");
         return;
       }
-
-      setIsLoading(true);
-      setErrorMessage(null);
+      setLocalError(null);
       try {
-        await createRemoteDirectory(joinRemotePath(currentPath, name));
-        await loadDirectory(currentPath);
+        await createDirMutation.mutateAsync(
+          joinRemotePath(resolvedPath, name),
+        );
+        await directoryQuery.refetch();
       } catch (error) {
-        setErrorMessage(getErrorMessage(error));
-        setIsLoading(false);
+        setLocalError(getErrorMessage(error));
       }
     },
-    [currentPath, loadDirectory],
+    [createDirMutation, directoryQuery, resolvedPath],
   );
 
   const createFile = useCallback(
     async (name: string) => {
       if (!isValidRemoteEntryName(name)) {
-        setErrorMessage("올바른 파일 이름을 입력하세요.");
+        setLocalError("올바른 파일 이름을 입력하세요.");
         return;
       }
-
-      setIsLoading(true);
-      setErrorMessage(null);
+      setLocalError(null);
       try {
-        await createRemoteFile(joinRemotePath(currentPath, name));
-        await loadDirectory(currentPath);
+        await createFileMutation.mutateAsync(
+          joinRemotePath(resolvedPath, name),
+        );
+        await directoryQuery.refetch();
       } catch (error) {
-        setErrorMessage(getErrorMessage(error));
-        setIsLoading(false);
+        setLocalError(getErrorMessage(error));
       }
     },
-    [currentPath, loadDirectory],
+    [createFileMutation, directoryQuery, resolvedPath],
   );
 
   const deleteEntry = useCallback(
     async (path: string) => {
-      setIsLoading(true);
-      setErrorMessage(null);
+      setLocalError(null);
       try {
-        await deleteRemotePath(path);
-        await loadDirectory(currentPath);
+        await deleteMutation.mutateAsync(path);
+        await directoryQuery.refetch();
       } catch (error) {
-        setErrorMessage(getErrorMessage(error));
-        setIsLoading(false);
+        setLocalError(getErrorMessage(error));
       }
     },
-    [currentPath, loadDirectory],
+    [deleteMutation, directoryQuery],
   );
 
   return {
-    currentPath,
+    currentPath: resolvedPath,
     entries,
     isLoading,
     errorMessage,

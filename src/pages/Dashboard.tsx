@@ -19,34 +19,33 @@ import {
 } from "@/components/dashboard/Summary";
 import { SystemResourcesSection } from "@/components/dashboard/SystemResourcesSection";
 import {
+  useDiskOverviewQuery,
+  useDockerContainersQuery,
+  useDockerImagesQuery,
+  useDockerNetworksQuery,
+  useDockerVolumesQuery,
+  usePermissionOverviewQuery,
+  useSshSessionsQuery,
+  useSystemResourcesQuery,
+} from "@/hooks/query";
+import { useAppInfo } from "@/hooks/useAppInfo";
+import {
   diskHistoryHostKey,
   loadDiskUsageHistory,
   pushDiskUsageSample,
   type DiskUsageSample,
 } from "@/lib/diskUsageHistory";
 import { loadAutoLoginCache } from "@/lib/loginCache";
-import {
-  getRemoteDiskOverview,
-  getRemotePermissionOverview,
-  getRemoteSystemResources,
-  listRemoteDockerContainers,
-  listRemoteDockerImages,
-  listRemoteDockerNetworks,
-  listRemoteDockerVolumes,
-  listRemoteSshSessions,
-} from "@/services/tauri";
-import { useAppStore } from "@/stores/appStore";
 import { useTerminalStore } from "@/stores/terminalStore";
-import type { DiskOverview } from "@/types/disk";
-import type { DockerContainer } from "@/types/docker";
 import type { RemotePermissionOverview } from "@/types/permissions";
-import type { RemoteSshSession } from "@/types/sshSession";
-import type { SystemResources } from "@/types/system";
 import { formatFileSize } from "@/utils/file";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "../components/dashboard/css/dashboard.css";
 
-function errorMessage(error: unknown, fallback: string): string {
+function errorMessage(error: unknown, fallback: string): string | null {
+  if (!error) {
+    return null;
+  }
   if (error instanceof Error) {
     return error.message;
   }
@@ -54,14 +53,6 @@ function errorMessage(error: unknown, fallback: string): string {
     return error;
   }
   return fallback;
-}
-
-function collectRejectedMessages(
-  results: Array<{ result: PromiseSettledResult<unknown>; fallback: string }>,
-): string[] {
-  return results.flatMap(({ result, fallback }) =>
-    result.status === "rejected" ? [errorMessage(result.reason, fallback)] : [],
-  );
 }
 
 function permissionBadge(
@@ -83,9 +74,7 @@ function permissionBadge(
 }
 
 export function DashboardPage() {
-  const status = useAppStore((state) => state.status);
-  const appInfo = useAppStore((state) => state.appInfo);
-  const appReady = status === "ready";
+  const { isReady: appReady, appInfo } = useAppInfo();
   const { appName } = formatAppLabels(appInfo?.name, appInfo?.version);
 
   const setTerminalOpen = useTerminalStore((state) => state.setOpen);
@@ -95,153 +84,127 @@ export function DashboardPage() {
     return diskHistoryHostKey(cache?.host, cache?.port, cache?.username);
   }, []);
 
-  const [diskOverview, setDiskOverview] = useState<DiskOverview | null>(null);
   const [diskHistory, setDiskHistory] = useState<DiskUsageSample[]>(() =>
     loadDiskUsageHistory(hostKey),
   );
-  const [systemResources, setSystemResources] =
-    useState<SystemResources | null>(null);
-  const [sshSessions, setSshSessions] = useState<RemoteSshSession[]>([]);
-  const [permissions, setPermissions] =
-    useState<RemotePermissionOverview | null>(null);
-  const [dockerCounts, setDockerCounts] = useState<DockerOverviewCounts | null>(
-    null,
-  );
-  const [recentContainers, setRecentContainers] = useState<DockerContainer[]>(
-    [],
-  );
-  const [loading, setLoading] = useState(true);
-  const [diskError, setDiskError] = useState<string | null>(null);
-  const [systemError, setSystemError] = useState<string | null>(null);
-  const [sshError, setSshError] = useState<string | null>(null);
-  const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [dockerError, setDockerError] = useState<string | null>(null);
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
-    setDiskError(null);
-    setSystemError(null);
-    setSshError(null);
-    setPermissionError(null);
-    setDockerError(null);
+  const diskQuery = useDiskOverviewQuery();
+  const systemQuery = useSystemResourcesQuery();
+  const sshQuery = useSshSessionsQuery();
+  const permissionQuery = usePermissionOverviewQuery();
+  const containersQuery = useDockerContainersQuery();
+  const imagesQuery = useDockerImagesQuery();
+  const volumesQuery = useDockerVolumesQuery();
+  const networksQuery = useDockerNetworksQuery();
 
-    const [
-      diskResult,
-      systemResult,
-      sshResult,
-      permissionResult,
-      containersResult,
-      imagesResult,
-      volumesResult,
-      networksResult,
-    ] = await Promise.allSettled([
-      getRemoteDiskOverview(),
-      getRemoteSystemResources(),
-      listRemoteSshSessions(),
-      getRemotePermissionOverview(),
-      listRemoteDockerContainers(),
-      listRemoteDockerImages(),
-      listRemoteDockerVolumes(),
-      listRemoteDockerNetworks(),
-    ]);
-
-    if (diskResult.status === "fulfilled") {
-      setDiskOverview(diskResult.value);
-      const primary = pickPrimaryFilesystem(diskResult.value.filesystems);
-      if (primary) {
-        setDiskHistory(
-          pushDiskUsageSample(hostKey, {
-            usePercent: primary.usePercent,
-            usedBytes: primary.usedBytes,
-            mountedOn: primary.mountedOn,
-          }),
-        );
-      }
-    } else {
-      setDiskOverview(null);
-      setDiskError(
-        errorMessage(diskResult.reason, "디스크 정보를 불러오지 못했습니다."),
+  useEffect(() => {
+    if (!diskQuery.data) {
+      return;
+    }
+    const primary = pickPrimaryFilesystem(diskQuery.data.filesystems);
+    if (primary) {
+      setDiskHistory(
+        pushDiskUsageSample(hostKey, {
+          usePercent: primary.usePercent,
+          usedBytes: primary.usedBytes,
+          mountedOn: primary.mountedOn,
+        }),
       );
     }
+  }, [diskQuery.data, hostKey]);
 
-    if (systemResult.status === "fulfilled") {
-      setSystemResources(systemResult.value);
-    } else {
-      setSystemResources(null);
-      setSystemError(
-        errorMessage(
-          systemResult.reason,
-          "시스템 리소스를 불러오지 못했습니다.",
-        ),
-      );
-    }
+  const diskOverview = diskQuery.data ?? null;
+  const systemResources = systemQuery.data ?? null;
+  const sshSessions = sshQuery.data ?? [];
+  const permissions = permissionQuery.data ?? null;
 
-    if (sshResult.status === "fulfilled") {
-      setSshSessions(sshResult.value);
-    } else {
-      setSshSessions([]);
-      setSshError(
-        errorMessage(sshResult.reason, "SSH 세션을 불러오지 못했습니다."),
-      );
-    }
+  const diskError = diskQuery.isError
+    ? errorMessage(diskQuery.error, "디스크 정보를 불러오지 못했습니다.")
+    : null;
+  const systemError = systemQuery.isError
+    ? errorMessage(systemQuery.error, "시스템 리소스를 불러오지 못했습니다.")
+    : null;
+  const sshError = sshQuery.isError
+    ? errorMessage(sshQuery.error, "SSH 세션을 불러오지 못했습니다.")
+    : null;
+  const permissionError = permissionQuery.isError
+    ? errorMessage(permissionQuery.error, "권한 정보를 불러오지 못했습니다.")
+    : null;
 
-    if (permissionResult.status === "fulfilled") {
-      setPermissions(permissionResult.value);
-    } else {
-      setPermissions(null);
-      setPermissionError(
-        errorMessage(
-          permissionResult.reason,
-          "권한 정보를 불러오지 못했습니다.",
-        ),
-      );
-    }
+  const dockerFailures = [
+    containersQuery.isError
+      ? errorMessage(
+          containersQuery.error,
+          "컨테이너 목록을 불러오지 못했습니다.",
+        )
+      : null,
+    imagesQuery.isError
+      ? errorMessage(imagesQuery.error, "이미지 목록을 불러오지 못했습니다.")
+      : null,
+    volumesQuery.isError
+      ? errorMessage(volumesQuery.error, "볼륨 목록을 불러오지 못했습니다.")
+      : null,
+    networksQuery.isError
+      ? errorMessage(
+          networksQuery.error,
+          "네트워크 목록을 불러오지 못했습니다.",
+        )
+      : null,
+  ].filter((message): message is string => Boolean(message));
 
-    const dockerFailures = collectRejectedMessages([
-      {
-        result: containersResult,
-        fallback: "컨테이너 목록을 불러오지 못했습니다.",
-      },
-      { result: imagesResult, fallback: "이미지 목록을 불러오지 못했습니다." },
-      { result: volumesResult, fallback: "볼륨 목록을 불러오지 못했습니다." },
-      {
-        result: networksResult,
-        fallback: "네트워크 목록을 불러오지 못했습니다.",
-      },
-    ]);
+  const containers = containersQuery.data ?? [];
+  const images = imagesQuery.data ?? [];
+  const volumes = volumesQuery.data ?? [];
+  const networks = networksQuery.data ?? [];
 
-    const containers =
-      containersResult.status === "fulfilled" ? containersResult.value : [];
-    const images =
-      imagesResult.status === "fulfilled" ? imagesResult.value : [];
-    const volumes =
-      volumesResult.status === "fulfilled" ? volumesResult.value : [];
-    const networks =
-      networksResult.status === "fulfilled" ? networksResult.value : [];
-
-    if (dockerFailures.length === 4) {
-      setDockerCounts(null);
-      setRecentContainers([]);
-      setDockerError(dockerFailures[0] ?? "Docker 정보를 불러오지 못했습니다.");
-    } else {
-      setDockerCounts({
+  const allDockerFailed = dockerFailures.length === 4;
+  const dockerCounts: DockerOverviewCounts | null = allDockerFailed
+    ? null
+    : {
         containers: summarizeDockerContainers(containers),
         images: images.length,
         volumes: volumes.length,
         networks: networks.length,
-      });
-      setRecentContainers(pickRecentDockerContainers(containers));
-      setDockerError(
-        dockerFailures.length > 0 ? dockerFailures.join(" · ") : null,
-      );
-    }
+      };
+  const recentContainers = allDockerFailed
+    ? []
+    : pickRecentDockerContainers(containers);
+  const dockerError = allDockerFailed
+    ? (dockerFailures[0] ?? "Docker 정보를 불러오지 못했습니다.")
+    : dockerFailures.length > 0
+      ? dockerFailures.join(" · ")
+      : null;
 
-    setLoading(false);
-  }, [hostKey]);
+  const loading =
+    diskQuery.isPending ||
+    systemQuery.isPending ||
+    sshQuery.isPending ||
+    permissionQuery.isPending ||
+    containersQuery.isPending ||
+    imagesQuery.isPending ||
+    volumesQuery.isPending ||
+    networksQuery.isPending;
 
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+  const refreshing =
+    diskQuery.isFetching ||
+    systemQuery.isFetching ||
+    sshQuery.isFetching ||
+    permissionQuery.isFetching ||
+    containersQuery.isFetching ||
+    imagesQuery.isFetching ||
+    volumesQuery.isFetching ||
+    networksQuery.isFetching;
+
+  const refreshAll = () => {
+    void diskQuery.refetch();
+    void systemQuery.refetch();
+    void sshQuery.refetch();
+    void permissionQuery.refetch();
+    void containersQuery.refetch();
+    void imagesQuery.refetch();
+    void volumesQuery.refetch();
+    void networksQuery.refetch();
+  };
 
   const filesystems = diskOverview?.filesystems ?? [];
   const directories = diskOverview?.largeDirectories ?? [];
@@ -274,8 +237,8 @@ export function DashboardPage() {
               tone="success"
               tooltip="새로고침"
               aria-label="새로고침"
-              disabled={loading}
-              onClick={() => void loadDashboard()}
+              disabled={refreshing}
+              onClick={() => void refreshAll()}
             >
               <RefreshIcon />
             </IconButton>
@@ -307,7 +270,7 @@ export function DashboardPage() {
             >
               <SystemResourcesSection
                 resources={systemResources}
-                loading={loading}
+                loading={systemQuery.isPending}
                 error={systemError}
               />
             </SectionCard>
@@ -320,7 +283,12 @@ export function DashboardPage() {
               <DockerOverviewSection
                 counts={dockerCounts}
                 recentContainers={recentContainers}
-                loading={loading}
+                loading={
+                  containersQuery.isPending ||
+                  imagesQuery.isPending ||
+                  volumesQuery.isPending ||
+                  networksQuery.isPending
+                }
                 error={dockerError}
               />
             </SectionCard>
@@ -329,14 +297,14 @@ export function DashboardPage() {
               title="용량이 큰 디렉터리"
               subtitle="루트 1depth"
               badge={
-                !loading && !diskError && directories.length > 0
+                !diskQuery.isPending && !diskError && directories.length > 0
                   ? directories.length
                   : null
               }
             >
               <LargeDirectoriesSection
                 directories={directories}
-                loading={loading}
+                loading={diskQuery.isPending}
                 error={diskError}
               />
             </SectionCard>
@@ -350,7 +318,7 @@ export function DashboardPage() {
             >
               <PermissionsSection
                 permissions={permissions}
-                loading={loading}
+                loading={permissionQuery.isPending}
                 error={permissionError}
               />
             </SectionCard>
@@ -363,7 +331,7 @@ export function DashboardPage() {
               <DiskCapacitySection
                 filesystems={filesystems}
                 history={diskHistory}
-                loading={loading}
+                loading={diskQuery.isPending}
                 error={diskError}
               />
             </SectionCard>
@@ -372,14 +340,14 @@ export function DashboardPage() {
               title="SSH 세션"
               subtitle="원격 로그인"
               badge={
-                !loading && !sshError
+                !sshQuery.isPending && !sshError
                   ? `${sshSessions.length}개 활성`
                   : "준비 중"
               }
             >
               <SshSessionsSection
                 sessions={sshSessions}
-                loading={loading}
+                loading={sshQuery.isPending}
                 error={sshError}
               />
             </SectionCard>

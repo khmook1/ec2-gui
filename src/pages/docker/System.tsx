@@ -1,7 +1,8 @@
-import { useCallback, useState, type MouseEvent } from "react";
+import { useCallback, type MouseEvent } from "react";
 import { Button } from "@/components/common/Button";
 import { DangerButton } from "@/components/common/DangerButton";
 import { PageToolbar } from "@/components/common/PageToolbar";
+import { useDockerSystemActionMutation } from "@/hooks/query";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
 import {
   getDockerActionErrorMessage,
@@ -16,7 +17,6 @@ import {
   type ContextMenuItem,
 } from "@/providers/ContextMenuProvider";
 import { useToast } from "@/providers/ToastProvider";
-import { runRemoteDockerSystemAction } from "@/services/tauri";
 import type { DockerSystemAction } from "@/types/docker";
 import "@/components/docker/css/docker-placeholder.css";
 
@@ -82,14 +82,13 @@ export function DockerSystemPage() {
   const { openContextMenu } = useContextMenu();
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
-  const [isActing, setIsActing] = useState(false);
-  const busy = isActing || isConfirming;
+  const systemAction = useDockerSystemActionMutation();
+  const busy = systemAction.isPending || isConfirming;
 
   const runSystemAction = useCallback(
     async (action: DockerSystemAction) => {
-      setIsActing(true);
       try {
-        const output = await runRemoteDockerSystemAction(action);
+        const output = await systemAction.mutateAsync(action);
         const trimmed = truncateDockerOutput(output);
         const item = SYSTEM_COMMANDS.find((command) => command.id === action);
         if (trimmed) {
@@ -106,11 +105,9 @@ export function DockerSystemPage() {
           ),
         );
         throw error;
-      } finally {
-        setIsActing(false);
       }
     },
-    [toast],
+    [systemAction, toast],
   );
 
   const requestOrRun = useCallback(

@@ -1,12 +1,15 @@
-import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useMemo, type MouseEvent } from "react";
 import { NetworkGrid } from "@/components/docker/atoms/NetworkGrid";
 import { NetworkList } from "@/components/docker/atoms/NetworkList";
 import {
   DockerListPageShell,
   useDockerListSelection,
 } from "@/components/docker/ListPageShell";
+import {
+  useDockerNetworkActionMutation,
+  useDockerNetworksQuery,
+} from "@/hooks/query";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
-import { useDockerResourceList } from "@/hooks/useDockerResourceList";
 import {
   getDockerActionErrorMessage,
   truncateDockerOutput,
@@ -21,14 +24,12 @@ import {
 } from "@/providers/ContextMenuProvider";
 import { useToast } from "@/providers/ToastProvider";
 import {
-  listRemoteDockerNetworks,
-  runRemoteDockerNetworkAction,
-} from "@/services/tauri";
-import {
   isBuiltinDockerNetwork,
   type DockerNetwork,
   type DockerNetworkAction,
 } from "@/types/docker";
+
+const EMPTY_NETWORKS: DockerNetwork[] = [];
 
 export function DockerNetworksPage() {
   const toast = useToast();
@@ -36,12 +37,23 @@ export function DockerNetworksPage() {
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
   const [selectedId, setSelectedId] = useDockerListSelection();
-  const [isActing, setIsActing] = useState(false);
-  const { items, hasCache, isFetching, errorMessage, refresh } =
-    useDockerResourceList({
-      fetcher: listRemoteDockerNetworks,
-      errorFallback: "Docker 네트워크 목록을 불러오지 못했습니다.",
-    });
+  const networksQuery = useDockerNetworksQuery();
+  const networkAction = useDockerNetworkActionMutation();
+  const items = networksQuery.data ?? EMPTY_NETWORKS;
+  const hasCache =
+    networksQuery.isSuccess ||
+    (networksQuery.isFetching && networksQuery.data != null);
+  const isFetching = networksQuery.isFetching;
+  const isActing = networkAction.isPending;
+  const errorMessage =
+    networksQuery.error instanceof Error
+      ? networksQuery.error.message
+      : networksQuery.isError
+        ? "Docker 네트워크 목록을 불러오지 못했습니다."
+        : null;
+  const refresh = useCallback(() => {
+    void networksQuery.refetch();
+  }, [networksQuery]);
 
   const busy = isFetching || isActing || isConfirming;
 
@@ -52,17 +64,13 @@ export function DockerNetworksPage() {
 
   const runNetworkAction = useCallback(
     async (networkRef: string, action: DockerNetworkAction) => {
-      setIsActing(true);
       try {
-        const output = await runRemoteDockerNetworkAction(networkRef, action);
+        const output = await networkAction.mutateAsync({ networkRef, action });
         const trimmed = truncateDockerOutput(output);
         if (trimmed) {
           toast.success(trimmed, { mono: action === "inspect" });
         } else {
           toast.success("명령을 실행했습니다.");
-        }
-        if (action !== "inspect") {
-          await refresh();
         }
         return output;
       } catch (error) {
@@ -73,11 +81,9 @@ export function DockerNetworksPage() {
           ),
         );
         throw error;
-      } finally {
-        setIsActing(false);
       }
     },
-    [refresh, toast],
+    [networkAction, toast],
   );
 
   const requestDestructiveNetworkAction = useCallback(

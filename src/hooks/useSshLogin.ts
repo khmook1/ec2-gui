@@ -2,10 +2,12 @@ import {
   markSkipAutoLogin,
   saveLoginCache,
 } from "@/lib/loginCache";
+import {
+  useConnectSshMutation,
+  useDisconnectSshMutation,
+} from "@/hooks/query";
 import { useToast } from "@/providers/ToastProvider";
-import { closeAllSshShells, connectSsh, disconnectSsh } from "@/services/tauri";
 import { useConnectionStore } from "@/stores/connectionStore";
-import { useDockerCacheStore } from "@/stores/dockerCacheStore";
 import { useNavStore } from "@/stores/navStore";
 import { useTerminalStore } from "@/stores/terminalStore";
 import type { SshCredentials } from "@/types/connection";
@@ -41,18 +43,23 @@ export function useSshLogin() {
   const setError = useConnectionStore((state) => state.setError);
   const reset = useConnectionStore((state) => state.reset);
 
-  async function login(credentials: SshCredentials, options?: { memo?: string }) {
+  const connectMutation = useConnectSshMutation();
+  const disconnectMutation = useDisconnectSshMutation();
+
+  async function login(
+    credentials: SshCredentials,
+    options?: { memo?: string },
+  ) {
     setConnecting();
 
     try {
-      const result = await connectSsh(credentials);
+      const result = await connectMutation.mutateAsync(credentials);
       setConnected({
         host: result.host,
         username: result.username,
         port: result.port,
         authMethod: result.authMethod,
       });
-      // 접속 기록 + 자동 접속 캐시 저장, skip 플래그 해제
       saveLoginCache(credentials, options?.memo);
       toast.success(`${result.username}@${result.host}에 연결되었습니다.`);
       return true;
@@ -65,22 +72,12 @@ export function useSshLogin() {
   }
 
   async function logout() {
-    // 자동 접속 캐시만 지우고 접속 기록은 유지
     markSkipAutoLogin();
 
     try {
-      await closeAllSshShells();
-    } catch {
-      // Best-effort cleanup before disconnect.
-    }
-
-    try {
-      await disconnectSsh();
-    } catch {
-      // Local session should reset even if remote disconnect fails.
+      await disconnectMutation.mutateAsync();
     } finally {
       useNavStore.getState().reset();
-      useDockerCacheStore.getState().reset();
       useTerminalStore.getState().reset();
       reset();
       toast.info("연결을 해제했습니다.");
@@ -92,7 +89,7 @@ export function useSshLogin() {
     connection,
     errorMessage,
     isConnected: status === "connected",
-    isConnecting: status === "connecting",
+    isConnecting: status === "connecting" || connectMutation.isPending,
     login,
     logout,
   };

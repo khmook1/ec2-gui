@@ -5,44 +5,45 @@ import {
   isDockerRouteId,
   isRouteEnabled,
 } from "@/config/routeUtils";
-import { checkRemoteDocker } from "@/services/tauri";
+import {
+  useDockerInstalledQuery,
+  usePrefetchDockerContainers,
+} from "@/hooks/query";
 import { useConnectionStore } from "@/stores/connectionStore";
-import { prefetchDockerContainers } from "@/stores/dockerCacheStore";
 import { useNavStore } from "@/stores/navStore";
 
 export function useSidebarNav() {
-  const isConnected = useConnectionStore((state) => state.status === "connected");
+  const isConnected = useConnectionStore(
+    (state) => state.status === "connected",
+  );
   const activeId = useNavStore((state) => state.activeId);
   const dockerInstalled = useNavStore((state) => state.dockerInstalled);
   const setActiveId = useNavStore((state) => state.setActiveId);
   const setDockerInstalled = useNavStore((state) => state.setDockerInstalled);
 
+  const installedQuery = useDockerInstalledQuery();
+  const prefetchContainers = usePrefetchDockerContainers();
+
   useEffect(() => {
     if (!isConnected) {
       return;
     }
-
-    let cancelled = false;
-
-    void checkRemoteDocker()
-      .then((installed) => {
-        if (!cancelled) {
-          setDockerInstalled(installed);
-          if (installed) {
-            prefetchDockerContainers();
-          }
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setDockerInstalled(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isConnected, setDockerInstalled]);
+    if (installedQuery.isSuccess) {
+      setDockerInstalled(installedQuery.data);
+      if (installedQuery.data) {
+        prefetchContainers();
+      }
+    } else if (installedQuery.isError) {
+      setDockerInstalled(false);
+    }
+  }, [
+    installedQuery.data,
+    installedQuery.isError,
+    installedQuery.isSuccess,
+    isConnected,
+    prefetchContainers,
+    setDockerInstalled,
+  ]);
 
   useEffect(() => {
     if (dockerInstalled === false && isDockerRouteId(activeId)) {

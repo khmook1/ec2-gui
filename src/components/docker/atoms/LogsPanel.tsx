@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common/Button";
 import { LoadingIndicator } from "@/components/common/LoadingIndicator";
-import { getRemoteDockerContainerLogs } from "@/services/tauri/docker";
+import { useDockerContainerLogsQuery } from "@/hooks/query";
 import "../css/docker-details.css";
 
 interface DockerLogEntry {
@@ -72,9 +72,7 @@ interface LogsPanelProps {
 export function LogsPanel({ containerId }: LogsPanelProps) {
   const endRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const [raw, setRaw] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
   const [query, setQuery] = useState<LogQuery>({
     tail: 200,
     since: "",
@@ -88,48 +86,26 @@ export function LogsPanel({ containerId }: LogsPanelProps) {
   const tailValue = watch("tail");
   const sinceLocalValue = watch("sinceLocal");
 
+  const logsQuery = useDockerContainerLogsQuery(containerId, {
+    tail: query.tail,
+    since: query.since,
+  });
+
+  const raw = logsQuery.data ?? null;
+  const isLoading = logsQuery.isPending || logsQuery.isFetching;
+  const errorMessage =
+    localError ??
+    (logsQuery.isError
+      ? logsQuery.error instanceof Error
+        ? logsQuery.error.message
+        : "로그를 불러오지 못했습니다."
+      : null);
+
   useEffect(() => {
     reset({ tail: 200, sinceLocal: "" });
     setQuery({ tail: 200, since: "" });
+    setLocalError(null);
   }, [containerId, reset]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    setErrorMessage(null);
-
-    void (async () => {
-      try {
-        const next = await getRemoteDockerContainerLogs(containerId, {
-          tail: query.tail,
-          since: query.since,
-        });
-        if (!cancelled) {
-          setRaw(next);
-          setErrorMessage(null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setRaw(null);
-          setErrorMessage(
-            error instanceof Error
-              ? error.message
-              : typeof error === "string"
-                ? error
-                : "로그를 불러오지 못했습니다.",
-          );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [containerId, query]);
 
   useLayoutEffect(() => {
     if (isLoading || errorMessage || raw == null) {
@@ -147,16 +123,17 @@ export function LogsPanel({ containerId }: LogsPanelProps) {
 
   function applyQuery(tail: number, sinceLocal: string) {
     if (!Number.isFinite(tail) || tail < 1 || tail > 5000) {
-      setErrorMessage("로그 개수는 1~5000 사이여야 합니다.");
+      setLocalError("로그 개수는 1~5000 사이여야 합니다.");
       return;
     }
 
     const since = localDatetimeToDockerSince(sinceLocal);
     if (since == null) {
-      setErrorMessage("시작 시각 형식이 올바르지 않습니다.");
+      setLocalError("시작 시각 형식이 올바르지 않습니다.");
       return;
     }
 
+    setLocalError(null);
     setQuery({
       tail: Math.floor(tail),
       since,

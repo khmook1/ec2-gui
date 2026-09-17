@@ -131,8 +131,8 @@ export function DiskCapacitySection({
         })}
       </div>
       <div className="dashboard-resource__footer">
-        <span>로컬 샘플 {history.length}개</span>
-        <span>새로고침 시 기록 · 최대 24</span>
+        <span>샘플 {history.length}개</span>
+        <span>최대 24</span>
       </div>
 
       {others.length > 0 ? (

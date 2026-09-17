@@ -1,12 +1,15 @@
-import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useMemo, type MouseEvent } from "react";
 import { VolumeGrid } from "@/components/docker/atoms/VolumeGrid";
 import { VolumeList } from "@/components/docker/atoms/VolumeList";
 import {
   DockerListPageShell,
   useDockerListSelection,
 } from "@/components/docker/ListPageShell";
+import {
+  useDockerVolumeActionMutation,
+  useDockerVolumesQuery,
+} from "@/hooks/query";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
-import { useDockerResourceList } from "@/hooks/useDockerResourceList";
 import {
   getDockerActionErrorMessage,
   truncateDockerOutput,
@@ -20,11 +23,9 @@ import {
   type ContextMenuItem,
 } from "@/providers/ContextMenuProvider";
 import { useToast } from "@/providers/ToastProvider";
-import {
-  listRemoteDockerVolumes,
-  runRemoteDockerVolumeAction,
-} from "@/services/tauri";
 import type { DockerVolume, DockerVolumeAction } from "@/types/docker";
+
+const EMPTY_VOLUMES: DockerVolume[] = [];
 
 export function DockerVolumesPage() {
   const toast = useToast();
@@ -32,12 +33,23 @@ export function DockerVolumesPage() {
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
   const [selectedId, setSelectedId] = useDockerListSelection();
-  const [isActing, setIsActing] = useState(false);
-  const { items, hasCache, isFetching, errorMessage, refresh } =
-    useDockerResourceList({
-      fetcher: listRemoteDockerVolumes,
-      errorFallback: "Docker 볼륨 목록을 불러오지 못했습니다.",
-    });
+  const volumesQuery = useDockerVolumesQuery();
+  const volumeAction = useDockerVolumeActionMutation();
+  const items = volumesQuery.data ?? EMPTY_VOLUMES;
+  const hasCache =
+    volumesQuery.isSuccess ||
+    (volumesQuery.isFetching && volumesQuery.data != null);
+  const isFetching = volumesQuery.isFetching;
+  const isActing = volumeAction.isPending;
+  const errorMessage =
+    volumesQuery.error instanceof Error
+      ? volumesQuery.error.message
+      : volumesQuery.isError
+        ? "Docker 볼륨 목록을 불러오지 못했습니다."
+        : null;
+  const refresh = useCallback(() => {
+    void volumesQuery.refetch();
+  }, [volumesQuery]);
 
   const busy = isFetching || isActing || isConfirming;
 
@@ -48,17 +60,13 @@ export function DockerVolumesPage() {
 
   const runVolumeAction = useCallback(
     async (volumeName: string, action: DockerVolumeAction) => {
-      setIsActing(true);
       try {
-        const output = await runRemoteDockerVolumeAction(volumeName, action);
+        const output = await volumeAction.mutateAsync({ volumeName, action });
         const trimmed = truncateDockerOutput(output);
         if (trimmed) {
           toast.success(trimmed, { mono: action === "inspect" });
         } else {
           toast.success("명령을 실행했습니다.");
-        }
-        if (action !== "inspect") {
-          await refresh();
         }
         return output;
       } catch (error) {
@@ -69,11 +77,9 @@ export function DockerVolumesPage() {
           ),
         );
         throw error;
-      } finally {
-        setIsActing(false);
       }
     },
-    [refresh, toast],
+    [toast, volumeAction],
   );
 
   const requestDestructiveVolumeAction = useCallback(

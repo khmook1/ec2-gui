@@ -1,12 +1,15 @@
-import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useMemo, type MouseEvent } from "react";
 import { ImageGrid } from "@/components/docker/atoms/ImageGrid";
 import { ImageList } from "@/components/docker/atoms/ImageList";
 import {
   DockerListPageShell,
   useDockerListSelection,
 } from "@/components/docker/ListPageShell";
+import {
+  useDockerImageActionMutation,
+  useDockerImagesQuery,
+} from "@/hooks/query";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
-import { useDockerResourceList } from "@/hooks/useDockerResourceList";
 import {
   getDockerImageDestructiveConfirmMeta,
   type DockerImageDestructiveAction,
@@ -17,10 +20,6 @@ import {
 } from "@/providers/ContextMenuProvider";
 import { useToast } from "@/providers/ToastProvider";
 import {
-  listRemoteDockerImages,
-  runRemoteDockerImageAction,
-} from "@/services/tauri";
-import {
   canPullDockerImage,
   getDockerImageRef,
   type DockerImage,
@@ -28,6 +27,7 @@ import {
 } from "@/types/docker";
 
 const TOAST_OUTPUT_LIMIT = 4000;
+const EMPTY_IMAGES: DockerImage[] = [];
 
 function imageKey(image: DockerImage): string {
   return `${image.id}:${image.repository}:${image.tag}`;
@@ -61,12 +61,22 @@ export function DockerImagesPage() {
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
   const [selectedId, setSelectedId] = useDockerListSelection();
-  const [isActing, setIsActing] = useState(false);
-  const { items, hasCache, isFetching, errorMessage, refresh } =
-    useDockerResourceList({
-      fetcher: listRemoteDockerImages,
-      errorFallback: "Docker 이미지 목록을 불러오지 못했습니다.",
-    });
+  const imagesQuery = useDockerImagesQuery();
+  const imageAction = useDockerImageActionMutation();
+  const items = imagesQuery.data ?? EMPTY_IMAGES;
+  const hasCache =
+    imagesQuery.isSuccess || (imagesQuery.isFetching && imagesQuery.data != null);
+  const isFetching = imagesQuery.isFetching;
+  const isActing = imageAction.isPending;
+  const errorMessage =
+    imagesQuery.error instanceof Error
+      ? imagesQuery.error.message
+      : imagesQuery.isError
+        ? "Docker 이미지 목록을 불러오지 못했습니다."
+        : null;
+  const refresh = useCallback(() => {
+    void imagesQuery.refetch();
+  }, [imagesQuery]);
 
   const busy = isFetching || isActing || isConfirming;
 
@@ -77,9 +87,8 @@ export function DockerImagesPage() {
 
   const runImageAction = useCallback(
     async (imageRef: string, action: DockerImageAction) => {
-      setIsActing(true);
       try {
-        const output = await runRemoteDockerImageAction(imageRef, action);
+        const output = await imageAction.mutateAsync({ imageRef, action });
         const trimmed = truncateOutput(output);
         if (trimmed) {
           toast.success(trimmed, {
@@ -89,18 +98,13 @@ export function DockerImagesPage() {
         } else {
           toast.success("명령을 실행했습니다.");
         }
-        if (action !== "inspect" && action !== "history") {
-          await refresh();
-        }
         return output;
       } catch (error) {
         toast.error(getErrorMessage(error));
         throw error;
-      } finally {
-        setIsActing(false);
       }
     },
-    [refresh, toast],
+    [imageAction, toast],
   );
 
   const requestDestructiveImageAction = useCallback(

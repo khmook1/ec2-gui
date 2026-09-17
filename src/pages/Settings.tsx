@@ -6,12 +6,11 @@ import { Button } from "@/components/common/Button";
 import { FormField, FormSection } from "@/components/common/FormField";
 import { PageToolbar } from "@/components/common/PageToolbar";
 import {
-  clearAppCache,
-  clearWallpaperImage,
-  getStoragePaths,
-  setWallpaperImage,
-  type AppStoragePaths,
-} from "@/services/tauri/settings";
+  useClearAppCacheMutation,
+  useClearWallpaperImageMutation,
+  useSetWallpaperImageMutation,
+  useStoragePathsQuery,
+} from "@/hooks/query";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
   WALLPAPER_PRESET_OPTIONS,
@@ -45,10 +44,21 @@ export function SettingsPage() {
     (state) => state.clearCustomWallpaper,
   );
 
-  const [paths, setPaths] = useState<AppStoragePaths | null>(null);
+  const pathsQuery = useStoragePathsQuery();
+  const clearCacheMutation = useClearAppCacheMutation();
+  const setWallpaperMutation = useSetWallpaperImageMutation();
+  const clearWallpaperMutation = useClearWallpaperImageMutation();
+
+  const paths = pathsQuery.data ?? null;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const mutationBusy =
+    busy ||
+    clearCacheMutation.isPending ||
+    setWallpaperMutation.isPending ||
+    clearWallpaperMutation.isPending;
 
   const { watch, setValue } = useForm<SettingsFormValues>({
     defaultValues: {
@@ -65,20 +75,6 @@ export function SettingsPage() {
     setValue("wallpaperPreset", wallpaper.preset);
   }, [setValue, theme, wallpaper.preset]);
 
-  useEffect(() => {
-    let cancelled = false;
-    void getStoragePaths()
-      .then((next) => {
-        if (!cancelled) setPaths(next);
-      })
-      .catch(() => {
-        if (!cancelled) setPaths(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   async function handleThemeChange(next: ThemeMode) {
     setValue("theme", next);
     setError(null);
@@ -93,7 +89,7 @@ export function SettingsPage() {
     setMessage(null);
     try {
       if (wallpaper.preset === "custom") {
-        await clearWallpaperImage().catch(() => undefined);
+        await clearWallpaperMutation.mutateAsync().catch(() => undefined);
       }
       setValue("wallpaperPreset", next);
       await setWallpaperPreset(next);
@@ -120,7 +116,7 @@ export function SettingsPage() {
       if (typeof selected !== "string") {
         return;
       }
-      const dataUrl = await setWallpaperImage(selected);
+      const dataUrl = await setWallpaperMutation.mutateAsync(selected);
       setValue("wallpaperPreset", "custom");
       await setCustomWallpaper(dataUrl);
       setMessage("사용자 배경 이미지를 적용했습니다.");
@@ -140,7 +136,7 @@ export function SettingsPage() {
     setError(null);
     setMessage(null);
     try {
-      await clearWallpaperImage().catch(() => undefined);
+      await clearWallpaperMutation.mutateAsync().catch(() => undefined);
       setValue("wallpaperPreset", "none");
       await clearCustomWallpaper();
       setMessage("배경 이미지를 제거했습니다.");
@@ -158,7 +154,7 @@ export function SettingsPage() {
     setError(null);
     setMessage(null);
     try {
-      await clearAppCache();
+      await clearCacheMutation.mutateAsync();
       setMessage("캐시를 비웠습니다. 설정값은 유지됩니다.");
     } catch (err) {
       setError(
@@ -199,7 +195,7 @@ export function SettingsPage() {
                     ]
                       .filter(Boolean)
                       .join(" ")}
-                    disabled={busy}
+                    disabled={mutationBusy}
                     onClick={() => void handleThemeChange(option.value)}
                   >
                     {option.label}
@@ -230,7 +226,7 @@ export function SettingsPage() {
                     ]
                       .filter(Boolean)
                       .join(" ")}
-                    disabled={busy}
+                    disabled={mutationBusy}
                     onClick={() => void handleWallpaperPreset(option.id)}
                   >
                     <span
@@ -250,7 +246,7 @@ export function SettingsPage() {
             <div className="settings-wallpaper-actions">
               <Button
                 variant="ghost"
-                disabled={busy}
+                disabled={mutationBusy}
                 onClick={() => void handlePickWallpaper()}
               >
                 이미지 선택…
@@ -258,7 +254,7 @@ export function SettingsPage() {
               {wallpaper.preset === "custom" ? (
                 <Button
                   variant="ghost"
-                  disabled={busy}
+                  disabled={mutationBusy}
                   onClick={() => void handleClearCustomWallpaper()}
                 >
                   사용자 배경 제거
@@ -281,7 +277,7 @@ export function SettingsPage() {
           <div className="settings-storage-actions">
             <Button
               variant="ghost"
-              disabled={busy}
+              disabled={mutationBusy}
               onClick={() => void handleClearCache()}
             >
               캐시 비우기

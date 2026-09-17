@@ -87,3 +87,20 @@
   flex-shrink: 0;
   white-space: nowrap;
 }
+
+.form-field__password {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.form-field__password input {
+  padding-right: 40px;
+}
+
+.form-field__password .icon-btn {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+}

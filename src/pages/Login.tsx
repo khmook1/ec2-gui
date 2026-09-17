@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Button } from "@/components/common/Button";
+import { IconButton } from "@/components/common/IconButton";
 import { AppIntro } from "@/components/common/AppIntro";
 import { AuthMethodToggle } from "@/components/login/AuthMethodToggle";
 import { LoginHistoryPanel } from "@/components/login/LoginHistoryPanel";
 import { FormField, FormSection } from "@/components/common/FormField";
+import { EyeIcon, EyeOffIcon } from "@/components/icons/ToolbarIcons";
 import { useSshLogin } from "@/hooks/useSshLogin";
 import {
   cachedFormToCredentials,
@@ -28,6 +30,7 @@ export function LoginPage() {
   const [history, setHistory] = useState<CachedLoginHistoryEntry[]>(() =>
     loadLoginHistory(),
   );
+  const [showPassword, setShowPassword] = useState(false);
   const {
     register,
     handleSubmit,
@@ -41,6 +44,17 @@ export function LoginPage() {
   });
 
   const authMethod = watch("authMethod");
+  const hostField = register("host", {
+    required: true,
+    validate: (value) =>
+      value.trim().length > 0 || "IP 주소를 입력해 주세요.",
+  });
+  const passwordField = register("password", {
+    validate: (value) =>
+      authMethod !== "password" ||
+      value.length > 0 ||
+      "비밀번호를 입력해 주세요.",
+  });
 
   useEffect(() => {
     void trigger(["password", "privateKeyPath"]);
@@ -129,14 +143,18 @@ export function LoginPage() {
                 <FormField label="IP 주소" width="wide">
                   <input
                     type="text"
+                    inputMode="decimal"
                     autoComplete="off"
                     placeholder="13.124.12.34"
                     disabled={isConnecting}
-                    {...register("host", {
-                      required: true,
-                      validate: (value) =>
-                        value.trim().length > 0 || "IP 주소를 입력해 주세요.",
-                    })}
+                    {...hostField}
+                    onChange={(event) => {
+                      event.target.value = event.target.value.replace(
+                        /[^0-9.]/g,
+                        "",
+                      );
+                      void hostField.onChange(event);
+                    }}
                   />
                 </FormField>
                 <FormField label="포트" width="narrow">
@@ -231,19 +249,26 @@ export function LoginPage() {
                     </FormField>
                   </>
                 ) : (
-                  <FormField label="비밀번호">
-                    <input
-                      type="password"
-                      autoComplete="current-password"
-                      placeholder="SSH 비밀번호"
-                      disabled={isConnecting}
-                      {...register("password", {
-                        validate: (value) =>
-                          authMethod !== "password" ||
-                          value.length > 0 ||
-                          "비밀번호를 입력해 주세요.",
-                      })}
-                    />
+                  <FormField label="비밀번호" as="div">
+                    <div className="form-field__password">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        placeholder="SSH 비밀번호"
+                        disabled={isConnecting}
+                        {...passwordField}
+                      />
+                      <IconButton
+                        type="button"
+                        tooltip={
+                          showPassword ? "비밀번호 숨기기" : "비밀번호 표시"
+                        }
+                        disabled={isConnecting}
+                        onClick={() => setShowPassword((prev) => !prev)}
+                      >
+                        {showPassword ? <EyeOffIcon /> : <EyeIcon />}
+                      </IconButton>
+                    </div>
                   </FormField>
                 )}
               </div>
