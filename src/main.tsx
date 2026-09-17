@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import { repairDocumentUrl } from "@/config/routeUtils";
 import { getAppName } from "@/lib/env";
+import { AiChatbotProvider } from "@/providers/AiChatbotProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
 import "./index.css";
@@ -28,7 +29,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryProvider>
       <ToastProvider>
-        <App />
+        <AiChatbotProvider>
+          <App />
+        </AiChatbotProvider>
       </ToastProvider>
     </QueryProvider>
   </StrictMode>,
