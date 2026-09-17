@@ -26,7 +26,7 @@
     color-mix(in srgb, var(--chip-fill) 70%, var(--chip-mix-light)) 0%,
     var(--chip-fill) 100%
   );
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 540;
   letter-spacing: -0.01em;
   padding: 4px 10px;

@@ -18,6 +18,8 @@ export interface CachedLoginForm {
   privateKeyPath: string;
   keyPassphrase: string;
   password: string;
+  /** 이전 접속 목록에 타이틀로 표시되는 메모 */
+  memo: string;
 }
 
 export interface CachedLoginHistoryEntry extends CachedLoginForm {
@@ -34,6 +36,7 @@ interface LoginCachePayload {
   privateKeyPath?: string;
   keyPassphrase?: string;
   password?: string;
+  memo?: string;
 }
 
 /** 연결 해제 후 자동 로그인을 막을 때 사용. 다음 수동/성공 로그인까지 유지 */
@@ -59,6 +62,9 @@ function parseCachePayload(value: unknown): LoginCachePayload | null {
     return null;
   }
 
+  const memo =
+    typeof parsed.memo === "string" ? parsed.memo.trim() : undefined;
+
   return {
     savedAt: parsed.savedAt,
     host: parsed.host,
@@ -68,6 +74,7 @@ function parseCachePayload(value: unknown): LoginCachePayload | null {
     privateKeyPath: parsed.privateKeyPath,
     keyPassphrase: parsed.keyPassphrase,
     password: parsed.password,
+    memo: memo || undefined,
   };
 }
 
@@ -80,7 +87,13 @@ function payloadToForm(payload: LoginCachePayload): CachedLoginForm {
     privateKeyPath: payload.privateKeyPath ?? "",
     keyPassphrase: payload.keyPassphrase ?? "",
     password: payload.password ?? "",
+    memo: payload.memo ?? "",
   };
+}
+
+function normalizeMemo(memo: string | undefined): string | undefined {
+  const trimmed = memo?.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 function payloadToHistoryEntry(
@@ -212,7 +225,10 @@ export function loadLoginCache(): CachedLoginForm | null {
   return loadAutoLoginCache();
 }
 
-function credentialsToPayload(credentials: SshCredentials): LoginCachePayload {
+function credentialsToPayload(
+  credentials: SshCredentials,
+  memo?: string,
+): LoginCachePayload {
   return {
     savedAt: Date.now(),
     host: credentials.host,
@@ -222,13 +238,23 @@ function credentialsToPayload(credentials: SshCredentials): LoginCachePayload {
     privateKeyPath: credentials.privateKeyPath,
     keyPassphrase: credentials.keyPassphrase,
     password: credentials.password,
+    memo: normalizeMemo(memo),
   };
 }
 
-export function saveLoginHistory(credentials: SshCredentials): void {
+export function saveLoginHistory(
+  credentials: SshCredentials,
+  memo?: string,
+): void {
   migrateLegacyCacheIfNeeded();
-  const nextPayload = credentialsToPayload(credentials);
-  const nextId = makeHistoryId(nextPayload);
+  const nextId = makeHistoryId(credentials);
+  const existing = readPayloadList(HISTORY_STORAGE_KEY).find(
+    (item) => makeHistoryId(item) === nextId,
+  );
+  const nextPayload = credentialsToPayload(
+    credentials,
+    memo !== undefined ? memo : existing?.memo,
+  );
   const rest = readPayloadList(HISTORY_STORAGE_KEY).filter(
     (item) => isFresh(item.savedAt) && makeHistoryId(item) !== nextId,
   );
@@ -240,10 +266,29 @@ export function saveAutoLoginCache(credentials: SshCredentials): void {
 }
 
 /** 접속 성공 시: 기록 유지 + 자동 접속 캐시 갱신 */
-export function saveLoginCache(credentials: SshCredentials): void {
-  saveLoginHistory(credentials);
+export function saveLoginCache(
+  credentials: SshCredentials,
+  memo?: string,
+): void {
+  saveLoginHistory(credentials, memo);
   saveAutoLoginCache(credentials);
   clearSkipAutoLogin();
+}
+
+/** 이전 접속 기록의 메모만 갱신 */
+export function updateLoginHistoryMemo(
+  id: string,
+  memo: string,
+): CachedLoginHistoryEntry[] {
+  migrateLegacyCacheIfNeeded();
+  const normalized = normalizeMemo(memo);
+  const next = readPayloadList(HISTORY_STORAGE_KEY)
+    .filter((item) => isFresh(item.savedAt))
+    .map((item) =>
+      makeHistoryId(item) === id ? { ...item, memo: normalized } : item,
+    );
+  writeHistoryPayloads(next);
+  return next.map(payloadToHistoryEntry);
 }
 
 export function clearAutoLoginCache(): void {
@@ -319,5 +364,6 @@ export function getDefaultLoginFormValues(): CachedLoginForm {
     privateKeyPath: "",
     keyPassphrase: "",
     password: "",
+    memo: "",
   };
 }

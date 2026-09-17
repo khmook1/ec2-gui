@@ -41,7 +41,7 @@ export function useSshLogin() {
   const setError = useConnectionStore((state) => state.setError);
   const reset = useConnectionStore((state) => state.reset);
 
-  async function login(credentials: SshCredentials) {
+  async function login(credentials: SshCredentials, options?: { memo?: string }) {
     setConnecting();
 
     try {
@@ -53,7 +53,7 @@ export function useSshLogin() {
         authMethod: result.authMethod,
       });
       // 접속 기록 + 자동 접속 캐시 저장, skip 플래그 해제
-      saveLoginCache(credentials);
+      saveLoginCache(credentials, options?.memo);
       toast.success(`${result.username}@${result.host}에 연결되었습니다.`);
       return true;
     } catch (error) {

@@ -13,7 +13,12 @@ export {
   getRemoteDockerContainerDetails,
   getRemoteDockerContainerLogs,
 } from "./docker";
-export { getRemoteDiskOverview } from "./disk";
+export {
+  getRemoteDiskOverview,
+  getRemoteSystemResources,
+  listRemoteSshSessions,
+  getRemotePermissionOverview,
+} from "./disk";
 export { connectSsh, disconnectSsh } from "./ssh";
 export {
   getRemoteHome,

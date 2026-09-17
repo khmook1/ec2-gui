@@ -32,7 +32,7 @@
   margin: 0;
   max-width: 28rem;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 560;
   line-height: 1.45;
 }

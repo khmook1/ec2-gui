@@ -32,7 +32,7 @@
   border: 1px solid var(--tooltip-border);
   background: var(--tooltip-bg);
   color: var(--tooltip-fg);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 560;
   line-height: 1.25;
   letter-spacing: -0.01em;
@@ -63,7 +63,7 @@
 
 .icon-btn-tooltip--command {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0;
   max-width: min(90vw, 560px);
@@ -185,7 +185,7 @@
 }
 
 .btn.icon-btn--close .icon-btn__glyph {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 500;
   line-height: 1;
 }

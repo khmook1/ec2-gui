@@ -20,7 +20,7 @@
   background: color-mix(in srgb, var(--table-header-to) 55%, transparent);
   backdrop-filter: blur(10px);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
@@ -50,7 +50,7 @@
 
 .explorer-list__cell {
   min-width: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .explorer-list__cell--name {
@@ -178,5 +178,5 @@
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 0.875rem;
 }

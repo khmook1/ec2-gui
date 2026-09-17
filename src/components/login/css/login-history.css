@@ -1,13 +1,16 @@
 .login-history {
-  width: 100%;
-  max-width: 280px;
+  position: absolute;
+  top: 0;
+  left: calc(100% + 16px);
+  width: 280px;
+  max-width: min(280px, calc(50vw - 40px));
   padding-top: 8px;
 }
 
 .login-history__title {
   margin: 0 0 10px 4px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 650;
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -33,7 +36,7 @@
   align-items: flex-start;
   gap: 4px;
   width: 100%;
-  padding: 12px 36px 12px 14px;
+  padding: 12px 72px 12px 14px;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--surface);
@@ -63,22 +66,116 @@
 
 .login-history__host {
   color: var(--text);
-  font-size: 14px;
-  font-weight: 650;
+  font-size: 0.9375rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  line-height: 1.3;
 }
 
-.login-history__meta {
+.login-history__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.login-history__chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 7px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.login-history__chip--host {
+  border-color: rgba(0, 113, 227, 0.18);
+  background: rgba(0, 113, 227, 0.08);
+  color: #0062c4;
+}
+
+.login-history__chip--user {
+  border-color: rgba(60, 60, 67, 0.12);
+  background: rgba(60, 60, 67, 0.06);
   color: var(--text-secondary);
-  font-size: 12px;
-  line-height: 1.35;
+}
+
+.login-history__chip--port {
+  border-color: rgba(60, 60, 67, 0.1);
+  background: rgba(60, 60, 67, 0.04);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.login-history__chip--auth {
+  border-color: rgba(48, 160, 110, 0.2);
+  background: rgba(48, 160, 110, 0.1);
+  color: #1f7a52;
 }
 
 .login-history__time {
-  margin-top: 2px;
+  margin-top: 4px;
   color: var(--accent);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 560;
+}
+
+.login-history__card--editing {
+  gap: 6px;
+  cursor: default;
+}
+
+.login-history__memo-input {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  outline: none;
+}
+
+.login-history__memo-input::placeholder {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.login-history__memo-edit {
+  position: absolute;
+  top: 8px;
+  right: 34px;
+  height: 24px;
+  padding: 0 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.login-history__memo-edit:hover:not(:disabled) {
+  background: #f0f0f3;
+  color: var(--text);
+}
+
+.login-history__memo-edit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .login-history__dismiss {
@@ -91,7 +188,7 @@
   border-radius: 8px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 16px;
+  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
 }
@@ -119,7 +216,10 @@
 
 @media (max-width: 720px) {
   .login-history {
-    max-width: 440px;
+    top: calc(100% + 16px);
+    left: 0;
+    width: 100%;
+    max-width: none;
     padding-top: 0;
   }
 }
@@ -129,4 +229,28 @@ html[data-theme="dark"] .login-history__card {
   box-shadow:
     0 1px 2px rgba(0, 0, 0, 0.35),
     0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="dark"] .login-history__memo-edit:hover:not(:disabled),
+html[data-theme="dark"] .login-history__dismiss:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="dark"] .login-history__chip--host {
+  border-color: rgba(90, 168, 255, 0.28);
+  background: rgba(90, 168, 255, 0.12);
+  color: #7cbcff;
+}
+
+html[data-theme="dark"] .login-history__chip--user,
+html[data-theme="dark"] .login-history__chip--port {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+}
+
+html[data-theme="dark"] .login-history__chip--auth {
+  border-color: rgba(72, 187, 140, 0.28);
+  background: rgba(72, 187, 140, 0.12);
+  color: #6fd4a4;
 }

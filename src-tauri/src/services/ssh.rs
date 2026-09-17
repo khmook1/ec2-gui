@@ -642,6 +642,47 @@ impl SshConnectionManager {
 
         super::remote_disk::get_disk_overview(&connection.session)
     }
+
+    pub fn get_system_resources(&self) -> Result<super::remote_system::SystemResources, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_system::get_system_resources(&connection.session)
+    }
+
+    pub fn list_ssh_sessions(&self) -> Result<Vec<super::remote_ssh_sessions::RemoteSshSession>, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_ssh_sessions::list_ssh_sessions(&connection.session)
+    }
+
+    pub fn get_permission_overview(
+        &self,
+    ) -> Result<super::remote_permissions::RemotePermissionOverview, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_permissions::get_permission_overview(&connection.session)
+    }
 }
 
 fn connect_tcp(host: &str, port: u16) -> Result<TcpStream, String> {

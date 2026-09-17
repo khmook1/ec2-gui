@@ -14,7 +14,7 @@
   border-radius: 4px;
   background: #009639;
   color: #fff;
-  font-size: 9px;
+  font-size: 0.5625rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1.2;
@@ -29,7 +29,7 @@
 
 .docker-list__cell--id {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .docker-list__cell--status,

@@ -19,7 +19,7 @@
   border-radius: 8px;
   background: rgba(255, 59, 48, 0.08);
   color: #d70015;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .explorer-statusbar {
@@ -31,7 +31,7 @@
   background: color-mix(in srgb, var(--toolbar-bg) 55%, transparent);
   backdrop-filter: blur(10px);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .explorer-statusbar span:last-child {

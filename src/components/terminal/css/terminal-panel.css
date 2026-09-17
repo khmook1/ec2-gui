@@ -84,5 +84,5 @@ body.terminal-panel-resizing * {
   place-items: center;
   height: 100%;
   color: #9d9d9d;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }

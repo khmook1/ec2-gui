@@ -1,12 +1,12 @@
 .toast-viewport {
   position: fixed;
-  top: 12px;
+  top: 16px;
   left: 50%;
   z-index: 2500;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  width: min(520px, calc(100vw - 24px));
+  gap: 10px;
+  width: min(420px, calc(100vw - 24px));
   transform: translateX(-50%);
   pointer-events: none;
 }
@@ -15,69 +15,114 @@
   --toast-ink: var(--text);
   --toast-edge: var(--border);
   --toast-fill: var(--surface);
+  --toast-glow: transparent;
+  position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 12px 12px 12px 14px;
-  border: 1px solid color-mix(in srgb, var(--toast-edge) 35%, var(--border));
-  border-left: 3px solid var(--toast-edge);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--toast-fill) 94%, transparent);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(16px);
+  gap: 12px;
+  overflow: hidden;
+  padding: 14px 14px 14px 14px;
+  border: 1px solid color-mix(in srgb, var(--toast-edge) 42%, var(--border));
+  border-radius: 16px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--toast-fill) 100%, transparent) 0%,
+      color-mix(in srgb, var(--toast-fill) 92%, transparent) 100%
+    );
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--toast-glow) 18%, transparent),
+    0 10px 28px color-mix(in srgb, #000 12%, transparent),
+    0 2px 6px color-mix(in srgb, #000 6%, transparent);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
   pointer-events: auto;
-  animation: toast-in 0.22s ease-out;
+  will-change: transform, opacity;
+  transform-origin: top center;
+}
+
+.toast--enter {
+  animation: toast-drop-in 0.55s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+.toast--exit {
+  animation: toast-lift-out 0.36s cubic-bezier(0.4, 0, 0.7, 0.2) both;
+  pointer-events: none;
 }
 
 .toast--success {
-  --toast-edge: color-mix(in srgb, var(--success) 78%, #0a6b2e);
-  --toast-fill: color-mix(in srgb, var(--success) 10%, var(--surface));
+  --toast-edge: var(--success);
+  --toast-fill: color-mix(in srgb, var(--success) 12%, var(--surface));
+  --toast-glow: var(--success);
 }
 
 .toast--error {
-  --toast-edge: color-mix(in srgb, var(--danger) 78%, #8b1210);
-  --toast-fill: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  --toast-edge: var(--danger);
+  --toast-fill: color-mix(in srgb, var(--danger) 12%, var(--surface));
+  --toast-glow: var(--danger);
 }
 
 .toast--info {
-  --toast-edge: color-mix(in srgb, var(--accent) 78%, #003d80);
-  --toast-fill: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  --toast-edge: var(--accent);
+  --toast-fill: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  --toast-glow: var(--accent);
 }
 
 .toast--warning {
-  --toast-edge: color-mix(in srgb, var(--warning) 78%, #8a5500);
-  --toast-fill: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  --toast-edge: var(--warning);
+  --toast-fill: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  --toast-glow: var(--warning);
+}
+
+html[data-theme="dark"] .toast {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--toast-glow) 22%, transparent),
+    0 14px 36px rgba(0, 0, 0, 0.45),
+    0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 html[data-theme="dark"] .toast--success {
-  --toast-edge: color-mix(in srgb, var(--success) 38%, #0d2818);
-  --toast-fill: color-mix(in srgb, var(--success) 7%, #1a1a1c);
+  --toast-fill: color-mix(in srgb, var(--success) 14%, #1a1a1c);
 }
 
 html[data-theme="dark"] .toast--error {
-  --toast-edge: color-mix(in srgb, var(--danger) 40%, #2a1010);
-  --toast-fill: color-mix(in srgb, var(--danger) 7%, #1a1a1c);
+  --toast-fill: color-mix(in srgb, var(--danger) 14%, #1a1a1c);
 }
 
 html[data-theme="dark"] .toast--info {
-  --toast-edge: color-mix(in srgb, var(--accent) 42%, #0a1f3a);
-  --toast-fill: color-mix(in srgb, var(--accent) 6%, #1a1a1c);
+  --toast-fill: color-mix(in srgb, var(--accent) 12%, #1a1a1c);
 }
 
 html[data-theme="dark"] .toast--warning {
-  --toast-edge: color-mix(in srgb, var(--warning) 36%, #2a1c00);
-  --toast-fill: color-mix(in srgb, var(--warning) 7%, #1a1a1c);
+  --toast-fill: color-mix(in srgb, var(--warning) 14%, #1a1a1c);
+}
+
+.toast__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  margin-top: 1px;
+  border-radius: 999px;
+  color: var(--toast-edge);
+  background: color-mix(in srgb, var(--toast-edge) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--toast-edge) 28%, transparent);
 }
 
 .toast__body {
   flex: 1;
   min-width: 0;
+  padding-top: 3px;
+  padding-right: 4px;
 }
 
 .toast__message {
   margin: 0;
   color: var(--toast-ink);
-  font-size: 13px;
+  font-size: 0.8438rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   line-height: 1.45;
   word-break: break-word;
 }
@@ -86,23 +131,28 @@ html[data-theme="dark"] .toast--warning {
   margin: 0;
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
 .toast__dismiss {
+  display: grid;
+  place-items: center;
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
+  margin-top: 0;
   border: none;
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
 }
 
 .toast__dismiss:hover {
@@ -110,13 +160,83 @@ html[data-theme="dark"] .toast--warning {
   color: var(--text);
 }
 
-@keyframes toast-in {
-  from {
+.toast__dismiss:active {
+  transform: scale(0.92);
+}
+
+.toast__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  transform-origin: left center;
+  transform: scaleX(1);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--toast-edge) 70%, transparent),
+    var(--toast-edge)
+  );
+  opacity: 0.85;
+}
+
+.toast__progress--running {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes toast-drop-in {
+  0% {
     opacity: 0;
-    transform: translateY(-8px);
+    transform: translateY(-64px) scale(0.92);
+    filter: blur(2px);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(6px) scale(1.02);
+    filter: blur(0);
+  }
+  75% {
+    transform: translateY(-3px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes toast-lift-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-28px) scale(0.94);
+    filter: blur(1.5px);
+  }
+}
+
+@keyframes toast-progress {
+  from {
+    transform: scaleX(1);
   }
   to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: scaleX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast--enter,
+  .toast--exit,
+  .toast__progress--running {
+    animation: none;
+  }
+
+  .toast--exit {
+    opacity: 0;
   }
 }

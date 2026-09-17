@@ -26,10 +26,16 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
       return;
     }
 
+    const rootFontPx = Number.parseFloat(
+      getComputedStyle(document.documentElement).fontSize,
+    );
+    // 기본 13px @ 16px root → 0.8125rem
+    const termFontSize = Math.round(0.8125 * rootFontPx);
+
     const term = new Terminal({
       cursorBlink: true,
       fontFamily: "Menlo, Monaco, 'Courier New', monospace",
-      fontSize: 13,
+      fontSize: termFontSize,
       theme: {
         background: "#1e1e1e",
         foreground: "#d4d4d4",

@@ -38,7 +38,7 @@ export function CodeBlock({ code, filename, className }: CodeBlockProps) {
           margin: 0,
           padding: "16px 18px 20px",
           background: "transparent",
-          fontSize: "12.5px",
+          fontSize: "0.78125rem",
           lineHeight: 1.55,
         }}
         codeTagProps={{

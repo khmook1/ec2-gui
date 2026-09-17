@@ -52,13 +52,13 @@
 }
 
 .sidebar__brand-name {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 650;
   letter-spacing: -0.02em;
 }
 
 .sidebar__brand-sub {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
@@ -173,7 +173,7 @@
 
 .sidebar__nav-item--child {
   padding: 8px 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .sidebar__nav-item--group {

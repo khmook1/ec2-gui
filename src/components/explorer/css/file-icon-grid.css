@@ -23,7 +23,7 @@ html[data-theme="dark"] .explorer-icon-grid__item--nginx {
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .explorer-icon-grid__item {
@@ -63,7 +63,7 @@ html[data-theme="dark"] .explorer-icon-grid__item--nginx {
   width: 100%;
   max-width: 92px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.35;
   text-align: center;
   word-break: break-word;

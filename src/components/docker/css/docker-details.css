@@ -18,7 +18,7 @@
   border-radius: 8px 8px 0 0;
   background: transparent;
   color: var(--text-secondary);
-  font-size: 12.5px;
+  font-size: 0.7813rem;
   font-weight: 600;
   cursor: pointer;
 }
@@ -81,7 +81,7 @@
 .docker-details__logs-filter-label {
   flex-shrink: 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   white-space: nowrap;
@@ -101,7 +101,7 @@
   border-radius: 8px;
   background: var(--surface);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
@@ -125,7 +125,7 @@
   border-radius: 8px;
   background: var(--surface);
   color: var(--text);
-  font-size: 12.5px;
+  font-size: 0.7813rem;
   white-space: nowrap;
 }
 
@@ -152,7 +152,7 @@
 .docker-details__actions-status {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 .docker-details__actions-status strong {
@@ -179,14 +179,14 @@
 .docker-details__action-title {
   margin: 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 650;
 }
 
 .docker-details__action-desc {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.45;
 }
 
@@ -217,14 +217,14 @@
 
 .docker-details__row dt {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 650;
 }
 
 .docker-details__row dd {
   margin: 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.45;
   white-space: pre-wrap;
   word-break: break-word;
@@ -258,7 +258,7 @@
   margin: 0;
   padding: 16px 18px 20px;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
@@ -283,14 +283,14 @@
 
 .docker-details__process-pid {
   color: var(--accent);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
 
 .docker-details__process-index {
   color: var(--text-secondary);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
 }
 
@@ -298,7 +298,7 @@
   margin: 0;
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12.5px;
+  font-size: 0.7813rem;
   line-height: 1.45;
   word-break: break-word;
 }
@@ -320,14 +320,14 @@
 
 .docker-details__process-meta-item dt {
   color: var(--text-secondary);
-  font-size: 10.5px;
+  font-size: 0.6563rem;
   font-weight: 650;
 }
 
 .docker-details__process-meta-item dd {
   margin: 0;
   color: var(--text);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 550;
   word-break: break-word;
 }

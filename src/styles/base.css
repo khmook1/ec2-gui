@@ -1,5 +1,8 @@
 :root {
   color-scheme: light;
+  /* 앱 전체 글자 크기 스케일. rem 기준(1rem = 이 값). 예: 14px / 18px */
+  --font-size-root: 16px;
+  font-size: var(--font-size-root);
   --bg: #f5f5f7;
   --surface: #ffffff;
   --border: #d2d2d7;
@@ -9,7 +12,7 @@
   --success: #34c759;
   --warning: #ff9f0a;
   --danger: #ff3b30;
-  --sidebar-width: 220px;
+  --sidebar-width: 280px;
   --header-height: 52px;
   --z-tooltip: 2147483647;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.04);

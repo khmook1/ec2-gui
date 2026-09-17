@@ -38,7 +38,7 @@
 
 .file-dialog__title {
   margin: 0;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 650;
   letter-spacing: -0.02em;
 }
@@ -46,7 +46,7 @@
 .file-dialog__path {
   margin: 4px 0 0;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
   word-break: break-all;
 }
 
@@ -57,7 +57,7 @@
   min-height: 18px;
   padding: 8px 18px;
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -68,7 +68,7 @@
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   background: color-mix(in srgb, var(--accent) 8%, var(--surface));
   color: color-mix(in srgb, var(--accent) 70%, var(--text));
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -86,12 +86,12 @@
   margin: 0;
   padding: 28px 20px;
   text-align: center;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
 
 .file-dialog__meta-loading {
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .file-dialog__status {
@@ -107,7 +107,7 @@
   padding: 16px 18px 20px;
   color: var(--text);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 12.5px;
+  font-size: 0.7813rem;
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
@@ -133,7 +133,7 @@
 .file-dialog__confirm-message {
   margin: 0;
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 0.8125rem;
   line-height: 1.5;
 }
 
@@ -147,7 +147,7 @@
   border-radius: 6px;
   background: var(--toolbar-muted);
   color: var(--danger);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 
 .file-dialog__confirm-actions {

@@ -14,6 +14,7 @@ import {
   loadLoginHistory,
   removeLoginHistoryEntry,
   shouldSkipAutoLogin,
+  updateLoginHistoryMemo,
   type CachedLoginForm,
   type CachedLoginHistoryEntry,
 } from "@/lib/loginCache";
@@ -78,7 +79,7 @@ export function LoginPage() {
   }
 
   async function onSubmit(data: LoginFormValues) {
-    const ok = await login(cachedFormToCredentials(data));
+    const ok = await login(cachedFormToCredentials(data), { memo: data.memo });
     if (ok) {
       setHistory(loadLoginHistory());
     }
@@ -92,8 +93,9 @@ export function LoginPage() {
     setValue("privateKeyPath", entry.privateKeyPath, { shouldValidate: true });
     setValue("keyPassphrase", entry.keyPassphrase, { shouldValidate: true });
     setValue("password", entry.password, { shouldValidate: true });
+    setValue("memo", entry.memo, { shouldValidate: true });
 
-    const ok = await login(cachedFormToCredentials(entry));
+    const ok = await login(cachedFormToCredentials(entry), { memo: entry.memo });
     if (ok) {
       setHistory(loadLoginHistory());
     }
@@ -101,6 +103,10 @@ export function LoginPage() {
 
   function handleRemoveHistory(id: string) {
     setHistory(removeLoginHistoryEntry(id));
+  }
+
+  function handleUpdateMemo(id: string, memo: string) {
+    setHistory(updateLoginHistoryMemo(id, memo));
   }
 
   const canSubmit = isValid && !isConnecting;
@@ -159,6 +165,16 @@ export function LoginPage() {
                     validate: (value) =>
                       value.trim().length > 0 || "아이디를 입력해 주세요.",
                   })}
+                />
+              </FormField>
+              <FormField label="메모 (선택)">
+                <input
+                  type="text"
+                  autoComplete="off"
+                  placeholder="예: 운영 서버, 테스트 EC2"
+                  maxLength={40}
+                  disabled={isConnecting}
+                  {...register("memo")}
                 />
               </FormField>
             </FormSection>
@@ -256,6 +272,7 @@ export function LoginPage() {
           disabled={isConnecting}
           onSelect={(entry) => void loginFromHistory(entry)}
           onRemove={handleRemoveHistory}
+          onUpdateMemo={handleUpdateMemo}
         />
       </div>
     </div>
