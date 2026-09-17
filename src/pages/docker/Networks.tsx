@@ -1,4 +1,5 @@
-import { useCallback, useMemo, type MouseEvent } from "react";
+import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { NetworkDetailsDialog } from "@/components/docker/dialogs/NetworkDetailsDialog";
 import { NetworkGrid } from "@/components/docker/atoms/NetworkGrid";
 import { NetworkList } from "@/components/docker/atoms/NetworkList";
 import {
@@ -37,6 +38,9 @@ export function DockerNetworksPage() {
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
   const [selectedId, setSelectedId] = useDockerListSelection();
+  const [detailsNetwork, setDetailsNetwork] = useState<DockerNetwork | null>(
+    null,
+  );
   const networksQuery = useDockerNetworksQuery();
   const networkAction = useDockerNetworkActionMutation();
   const items = networksQuery.data ?? EMPTY_NETWORKS;
@@ -62,13 +66,24 @@ export function DockerNetworksPage() {
     [items, selectedId],
   );
 
+  const openNetworkDetails = useCallback(
+    (network: DockerNetwork) => {
+      setSelectedId(network.id);
+      setDetailsNetwork(network);
+    },
+    [setSelectedId],
+  );
+
   const runNetworkAction = useCallback(
     async (networkRef: string, action: DockerNetworkAction) => {
       try {
         const output = await networkAction.mutateAsync({ networkRef, action });
+        if (action === "inspect") {
+          return output;
+        }
         const trimmed = truncateDockerOutput(output);
         if (trimmed) {
-          toast.success(trimmed, { mono: action === "inspect" });
+          toast.success(trimmed);
         } else {
           toast.success("명령을 실행했습니다.");
         }
@@ -101,6 +116,9 @@ export function DockerNetworksPage() {
           if (action === "remove" || action === "force-remove") {
             setSelectedId((current) =>
               current === target.id ? null : current,
+            );
+            setDetailsNetwork((current) =>
+              current?.id === target.id ? null : current,
             );
           }
         },
@@ -142,12 +160,11 @@ export function DockerNetworksPage() {
 
       items.push(
         {
-          id: "inspect",
-          label: "상세 정보 (inspect)",
+          id: "details",
+          label: "상세 정보",
           separatorBefore: true,
-          disabled: busy,
           onSelect: () => {
-            void runNetworkAction(networkRef, "inspect");
+            openNetworkDetails(network);
           },
         },
         {
@@ -187,7 +204,7 @@ export function DockerNetworksPage() {
 
       return items;
     },
-    [busy, refresh, requestDestructiveNetworkAction, runNetworkAction],
+    [busy, openNetworkDetails, refresh, requestDestructiveNetworkAction],
   );
 
   const openContext = useCallback(
@@ -227,16 +244,25 @@ export function DockerNetworksPage() {
       tableList={
         <NetworkList
           networks={items}
+          onOpenNetwork={openNetworkDetails}
           onNetworkContextMenu={openContext}
         />
       }
       gui={
         <NetworkGrid
           networks={items}
+          onOpenNetwork={openNetworkDetails}
           onNetworkContextMenu={openContext}
         />
       }
     >
+      <NetworkDetailsDialog
+        key={detailsNetwork?.id ?? "network-details-closed"}
+        network={detailsNetwork}
+        isActing={busy}
+        onClose={() => setDetailsNetwork(null)}
+        onRequestDestructive={requestDestructiveNetworkAction}
+      />
       {confirmDialog}
     </DockerListPageShell>
   );

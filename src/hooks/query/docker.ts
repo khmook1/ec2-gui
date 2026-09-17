@@ -10,7 +10,12 @@ import {
   listRemoteDockerImages,
   listRemoteDockerNetworks,
   listRemoteDockerVolumes,
+  runRemoteDockerImageAction,
+  runRemoteDockerNetworkAction,
+  runRemoteDockerSystemAction,
+  runRemoteDockerVolumeAction,
 } from "@/services/tauri";
+import type { DockerSystemAction } from "@/types/docker";
 
 export function useDockerInstalledQuery() {
   const sessionKey = useSessionKey();
@@ -73,6 +78,69 @@ export function useDockerContainerDetailsQuery(containerId: string | null) {
     ),
     queryFn: () => getRemoteDockerContainerDetails(containerId!),
     enabled: Boolean(sessionKey && containerId),
+  });
+}
+
+export function useDockerImageInspectQuery(imageRef: string | null) {
+  const sessionKey = useSessionKey();
+
+  return useQuery({
+    queryKey: queryKeys.dockerImageInspect(sessionKey ?? "", imageRef ?? ""),
+    queryFn: () => runRemoteDockerImageAction(imageRef!, "inspect"),
+    enabled: Boolean(sessionKey && imageRef),
+  });
+}
+
+export function useDockerImageHistoryQuery(
+  imageRef: string | null,
+  options?: { enabled?: boolean },
+) {
+  const sessionKey = useSessionKey();
+  const enabled =
+    Boolean(sessionKey && imageRef) && (options?.enabled ?? true);
+
+  return useQuery({
+    queryKey: queryKeys.dockerImageHistory(sessionKey ?? "", imageRef ?? ""),
+    queryFn: () => runRemoteDockerImageAction(imageRef!, "history"),
+    enabled,
+  });
+}
+
+export function useDockerVolumeInspectQuery(volumeName: string | null) {
+  const sessionKey = useSessionKey();
+
+  return useQuery({
+    queryKey: queryKeys.dockerVolumeInspect(
+      sessionKey ?? "",
+      volumeName ?? "",
+    ),
+    queryFn: () => runRemoteDockerVolumeAction(volumeName!, "inspect"),
+    enabled: Boolean(sessionKey && volumeName),
+  });
+}
+
+export function useDockerNetworkInspectQuery(networkRef: string | null) {
+  const sessionKey = useSessionKey();
+
+  return useQuery({
+    queryKey: queryKeys.dockerNetworkInspect(
+      sessionKey ?? "",
+      networkRef ?? "",
+    ),
+    queryFn: () => runRemoteDockerNetworkAction(networkRef!, "inspect"),
+    enabled: Boolean(sessionKey && networkRef),
+  });
+}
+
+export function useDockerSystemOutputQuery(
+  action: Extract<DockerSystemAction, "df" | "info"> | null,
+) {
+  const sessionKey = useSessionKey();
+
+  return useQuery({
+    queryKey: queryKeys.dockerSystemOutput(sessionKey ?? "", action ?? ""),
+    queryFn: () => runRemoteDockerSystemAction(action!),
+    enabled: Boolean(sessionKey && action),
   });
 }
 

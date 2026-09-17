@@ -11,6 +11,7 @@ import "../css/docker-grid.css";
 
 interface NetworkGridProps {
   networks: DockerNetwork[];
+  onOpenNetwork?: (network: DockerNetwork) => void;
   onNetworkContextMenu?: (
     event: MouseEvent,
     network: DockerNetwork | null,
@@ -19,6 +20,7 @@ interface NetworkGridProps {
 
 export function NetworkGrid({
   networks,
+  onOpenNetwork,
   onNetworkContextMenu,
 }: NetworkGridProps) {
   const { selectedKey, select, clearSelection } = useListSelection();
@@ -69,6 +71,10 @@ export function NetworkGrid({
             onClick={(event) => {
               event.stopPropagation();
               select(network.id);
+            }}
+            onDoubleClick={(event) => {
+              event.stopPropagation();
+              onOpenNetwork?.(network);
             }}
             onContextMenu={(event) => onNetworkContextMenu?.(event, network)}
           >

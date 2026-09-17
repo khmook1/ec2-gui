@@ -14,6 +14,7 @@ import "../css/docker-list.css";
 
 interface NetworkListProps {
   networks: DockerNetwork[];
+  onOpenNetwork?: (network: DockerNetwork) => void;
   onNetworkContextMenu?: (
     event: MouseEvent,
     network: DockerNetwork | null,
@@ -22,6 +23,7 @@ interface NetworkListProps {
 
 export function NetworkList({
   networks,
+  onOpenNetwork,
   onNetworkContextMenu,
 }: NetworkListProps) {
   const { selectedKey, select, clearSelection } = useListSelection();
@@ -73,6 +75,7 @@ export function NetworkList({
       emptyMessage={emptyMessage}
       onBackgroundClick={clearSelection}
       onRowClick={(network) => select(network.id)}
+      onRowDoubleClick={(network) => onOpenNetwork?.(network)}
       onRowContextMenu={(network, _index, event) =>
         onNetworkContextMenu?.(event, network)
       }

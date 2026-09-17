@@ -11,6 +11,7 @@ import "../css/docker-grid.css";
 
 interface ImageGridProps {
   images: DockerImage[];
+  onOpenImage?: (image: DockerImage) => void;
   onImageContextMenu?: (event: MouseEvent, image: DockerImage | null) => void;
 }
 
@@ -20,6 +21,7 @@ function imageKey(image: DockerImage): string {
 
 export function ImageGrid({
   images,
+  onOpenImage,
   onImageContextMenu,
 }: ImageGridProps) {
   const { selectedKey, select, clearSelection } = useListSelection();
@@ -71,6 +73,10 @@ export function ImageGrid({
             onClick={(event) => {
               event.stopPropagation();
               select(key);
+            }}
+            onDoubleClick={(event) => {
+              event.stopPropagation();
+              onOpenImage?.(image);
             }}
             onContextMenu={(event) => onImageContextMenu?.(event, image)}
           >

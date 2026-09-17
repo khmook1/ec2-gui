@@ -17,6 +17,16 @@ export const queryKeys = {
     tail: number,
     since: string,
   ) => ["docker", "containerLogs", session, containerId, tail, since] as const,
+  dockerImageInspect: (session: string, imageRef: string) =>
+    ["docker", "imageInspect", session, imageRef] as const,
+  dockerImageHistory: (session: string, imageRef: string) =>
+    ["docker", "imageHistory", session, imageRef] as const,
+  dockerVolumeInspect: (session: string, volumeName: string) =>
+    ["docker", "volumeInspect", session, volumeName] as const,
+  dockerNetworkInspect: (session: string, networkRef: string) =>
+    ["docker", "networkInspect", session, networkRef] as const,
+  dockerSystemOutput: (session: string, action: string) =>
+    ["docker", "systemOutput", session, action] as const,
 
   diskOverview: (session: string) => ["dashboard", "disk", session] as const,
   systemResources: (session: string) =>

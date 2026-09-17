@@ -139,7 +139,10 @@ export function Sidebar() {
                           ? "원격 서버에 Docker가 없습니다"
                           : undefined
                       }
-                      onClick={() => handleNavigate(item.id)}
+                      onClick={() => {
+                        toggleExpanded(item.id);
+                        handleNavigate(item.id);
+                      }}
                     >
                       <Icon className="sidebar__nav-icon" />
                       <span className="sidebar__nav-label">{item.label}</span>

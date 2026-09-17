@@ -10,7 +10,7 @@ import {
   getDockerDestructiveConfirmMeta,
   type DockerDestructiveAction,
 } from "@/lib/dockerDestructiveConfirm";
-import { DockerContainerDetailsDialog } from "@/components/docker/ContainerDetailsDialog";
+import { DockerContainerDetailsDialog } from "@/components/docker/dialogs/ContainerDetailsDialog";
 import { ContainerGrid } from "@/components/docker/atoms/ContainerGrid";
 import { ContainerList } from "@/components/docker/atoms/ContainerList";
 import { RefreshIcon } from "@/components/icons/ToolbarIcons";

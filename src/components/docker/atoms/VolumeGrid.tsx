@@ -8,6 +8,7 @@ import "../css/docker-grid.css";
 
 interface VolumeGridProps {
   volumes: DockerVolume[];
+  onOpenVolume?: (volume: DockerVolume) => void;
   onVolumeContextMenu?: (
     event: MouseEvent,
     volume: DockerVolume | null,
@@ -16,6 +17,7 @@ interface VolumeGridProps {
 
 export function VolumeGrid({
   volumes,
+  onOpenVolume,
   onVolumeContextMenu,
 }: VolumeGridProps) {
   const { selectedKey, select, clearSelection } = useListSelection();
@@ -66,6 +68,10 @@ export function VolumeGrid({
             onClick={(event) => {
               event.stopPropagation();
               select(volume.name);
+            }}
+            onDoubleClick={(event) => {
+              event.stopPropagation();
+              onOpenVolume?.(volume);
             }}
             onContextMenu={(event) => onVolumeContextMenu?.(event, volume)}
           >

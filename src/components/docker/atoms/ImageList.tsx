@@ -14,11 +14,13 @@ import "../css/docker-list.css";
 
 interface ImageListProps {
   images: DockerImage[];
+  onOpenImage?: (image: DockerImage) => void;
   onImageContextMenu?: (event: MouseEvent, image: DockerImage | null) => void;
 }
 
 export function ImageList({
   images,
+  onOpenImage,
   onImageContextMenu,
 }: ImageListProps) {
   const { selectedKey, select, clearSelection } = useListSelection();
@@ -79,6 +81,7 @@ export function ImageList({
       onRowClick={(image) =>
         select(`${image.id}:${image.repository}:${image.tag}`)
       }
+      onRowDoubleClick={(image) => onOpenImage?.(image)}
       onRowContextMenu={(image, _index, event) =>
         onImageContextMenu?.(event, image)
       }

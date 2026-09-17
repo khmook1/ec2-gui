@@ -1,4 +1,5 @@
-import { useCallback, useMemo, type MouseEvent } from "react";
+import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { VolumeDetailsDialog } from "@/components/docker/dialogs/VolumeDetailsDialog";
 import { VolumeGrid } from "@/components/docker/atoms/VolumeGrid";
 import { VolumeList } from "@/components/docker/atoms/VolumeList";
 import {
@@ -33,6 +34,7 @@ export function DockerVolumesPage() {
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
   const [selectedId, setSelectedId] = useDockerListSelection();
+  const [detailsVolume, setDetailsVolume] = useState<DockerVolume | null>(null);
   const volumesQuery = useDockerVolumesQuery();
   const volumeAction = useDockerVolumeActionMutation();
   const items = volumesQuery.data ?? EMPTY_VOLUMES;
@@ -58,13 +60,24 @@ export function DockerVolumesPage() {
     [items, selectedId],
   );
 
+  const openVolumeDetails = useCallback(
+    (volume: DockerVolume) => {
+      setSelectedId(volume.name);
+      setDetailsVolume(volume);
+    },
+    [setSelectedId],
+  );
+
   const runVolumeAction = useCallback(
     async (volumeName: string, action: DockerVolumeAction) => {
       try {
         const output = await volumeAction.mutateAsync({ volumeName, action });
+        if (action === "inspect") {
+          return output;
+        }
         const trimmed = truncateDockerOutput(output);
         if (trimmed) {
-          toast.success(trimmed, { mono: action === "inspect" });
+          toast.success(trimmed);
         } else {
           toast.success("명령을 실행했습니다.");
         }
@@ -97,6 +110,9 @@ export function DockerVolumesPage() {
           if (action === "remove" || action === "force-remove") {
             setSelectedId((current) =>
               current === target.id ? null : current,
+            );
+            setDetailsVolume((current) =>
+              current?.name === target.id ? null : current,
             );
           }
         },
@@ -131,12 +147,11 @@ export function DockerVolumesPage() {
 
       items.push(
         {
-          id: "inspect",
-          label: "상세 정보 (inspect)",
+          id: "details",
+          label: "상세 정보",
           separatorBefore: true,
-          disabled: busy,
           onSelect: () => {
-            void runVolumeAction(volume.name, "inspect");
+            openVolumeDetails(volume);
           },
         },
         {
@@ -168,7 +183,7 @@ export function DockerVolumesPage() {
 
       return items;
     },
-    [busy, refresh, requestDestructiveVolumeAction, runVolumeAction],
+    [busy, openVolumeDetails, refresh, requestDestructiveVolumeAction],
   );
 
   const openContext = useCallback(
@@ -206,12 +221,27 @@ export function DockerVolumesPage() {
         buildMenuItems(hasSelection ? selectedVolume : null)
       }
       tableList={
-        <VolumeList volumes={items} onVolumeContextMenu={openContext} />
+        <VolumeList
+          volumes={items}
+          onOpenVolume={openVolumeDetails}
+          onVolumeContextMenu={openContext}
+        />
       }
       gui={
-        <VolumeGrid volumes={items} onVolumeContextMenu={openContext} />
+        <VolumeGrid
+          volumes={items}
+          onOpenVolume={openVolumeDetails}
+          onVolumeContextMenu={openContext}
+        />
       }
     >
+      <VolumeDetailsDialog
+        key={detailsVolume?.name ?? "volume-details-closed"}
+        volume={detailsVolume}
+        isActing={busy}
+        onClose={() => setDetailsVolume(null)}
+        onRequestDestructive={requestDestructiveVolumeAction}
+      />
       {confirmDialog}
     </DockerListPageShell>
   );

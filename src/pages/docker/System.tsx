@@ -1,7 +1,8 @@
-import { useCallback, type MouseEvent } from "react";
+import { useCallback, useState, type MouseEvent } from "react";
 import { Button } from "@/components/common/Button";
 import { DangerButton } from "@/components/common/DangerButton";
 import { PageToolbar } from "@/components/common/PageToolbar";
+import { SystemDetailsDialog } from "@/components/docker/dialogs/SystemDetailsDialog";
 import { useDockerSystemActionMutation } from "@/hooks/query";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
 import {
@@ -29,6 +30,8 @@ interface SystemCommandItem {
   mono?: boolean;
 }
 
+type SystemViewAction = Extract<DockerSystemAction, "df" | "info">;
+
 const SYSTEM_COMMANDS: SystemCommandItem[] = [
   {
     id: "df",
@@ -48,7 +51,8 @@ const SYSTEM_COMMANDS: SystemCommandItem[] = [
     id: "prune",
     label: "미사용 리소스 정리",
     command: "docker system prune -f",
-    description: "중지된 컨테이너·미사용 네트워크·dangling 이미지·빌드 캐시를 정리합니다.",
+    description:
+      "중지된 컨테이너·미사용 네트워크·dangling 이미지·빌드 캐시를 정리합니다.",
     danger: true,
   },
   {
@@ -62,7 +66,8 @@ const SYSTEM_COMMANDS: SystemCommandItem[] = [
     id: "prune-volumes",
     label: "볼륨 포함 전체 정리",
     command: "docker system prune -a --volumes -f",
-    description: "미사용 볼륨까지 포함해 정리합니다. 데이터가 삭제될 수 있습니다.",
+    description:
+      "미사용 볼륨까지 포함해 정리합니다. 데이터가 삭제될 수 있습니다.",
     danger: true,
   },
 ];
@@ -71,10 +76,14 @@ function isDestructiveSystemAction(
   action: DockerSystemAction,
 ): action is DockerSystemDestructiveAction {
   return (
-    action === "prune" ||
-    action === "prune-all" ||
-    action === "prune-volumes"
+    action === "prune" || action === "prune-all" || action === "prune-volumes"
   );
+}
+
+function isSystemViewAction(
+  action: DockerSystemAction,
+): action is SystemViewAction {
+  return action === "df" || action === "info";
 }
 
 export function DockerSystemPage() {
@@ -82,6 +91,9 @@ export function DockerSystemPage() {
   const { openContextMenu } = useContextMenu();
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
+  const [detailsAction, setDetailsAction] = useState<SystemViewAction | null>(
+    null,
+  );
   const systemAction = useDockerSystemActionMutation();
   const busy = systemAction.isPending || isConfirming;
 
@@ -90,9 +102,8 @@ export function DockerSystemPage() {
       try {
         const output = await systemAction.mutateAsync(action);
         const trimmed = truncateDockerOutput(output);
-        const item = SYSTEM_COMMANDS.find((command) => command.id === action);
         if (trimmed) {
-          toast.success(trimmed, { mono: item?.mono ?? true });
+          toast.success(trimmed, { mono: true });
         } else {
           toast.success("명령을 실행했습니다.");
         }
@@ -112,6 +123,11 @@ export function DockerSystemPage() {
 
   const requestOrRun = useCallback(
     (action: DockerSystemAction) => {
+      if (isSystemViewAction(action)) {
+        setDetailsAction(action);
+        return;
+      }
+
       if (!isDestructiveSystemAction(action)) {
         void runSystemAction(action);
         return;
@@ -132,7 +148,6 @@ export function DockerSystemPage() {
   );
 
   const menuItems = useCallback((): ContextMenuItem[] => {
-    // prune은 페이지 버튼으로만 제공 (일괄 정리)
     return SYSTEM_COMMANDS.filter((item) => !item.danger).map((item) => ({
       id: item.id,
       label: `${item.label} (${item.command})`,
@@ -169,8 +184,8 @@ export function DockerSystemPage() {
       <div className="docker-placeholder docker-placeholder--system">
         <h2 className="docker-placeholder__title">시스템</h2>
         <p className="docker-placeholder__desc">
-          정리(prune)는 아래 버튼으로 실행하고, 조회 명령은 우클릭 메뉴에서도
-          실행할 수 있습니다.
+          조회 결과는 상세 다이얼로그에서 확인하고, 정리(prune)는 아래 버튼으로
+          실행합니다.
           {busy ? " 명령 실행 중…" : null}
         </p>
 
@@ -203,6 +218,12 @@ export function DockerSystemPage() {
           ))}
         </ul>
       </div>
+
+      <SystemDetailsDialog
+        key={detailsAction ?? "system-details-closed"}
+        action={detailsAction}
+        onClose={() => setDetailsAction(null)}
+      />
 
       {confirmDialog}
     </section>

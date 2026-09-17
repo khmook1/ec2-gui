@@ -15,7 +15,7 @@ import {
   isNginxContainer,
   type DockerContainerAction,
 } from "@/types/docker";
-import "./css/docker-details.css";
+import "../css/docker-details.css";
 
 type DetailTab = "summary" | "actions" | "stats" | "top" | "logs" | "inspect";
 
@@ -110,11 +110,7 @@ export function DockerContainerDetailsDialog({
     !isLoading && !errorMessage && details != null && activeTab !== "actions";
 
   const toolbar = (
-    <div
-      className="docker-details__tabs"
-      role="tablist"
-      aria-label="상세 정보"
-    >
+    <div className="docker-details__tabs" role="tablist" aria-label="상세 정보">
       {TAB_ITEMS.map((tab) => {
         const disabled =
           tab.id !== "actions" && (isLoading || Boolean(errorMessage));

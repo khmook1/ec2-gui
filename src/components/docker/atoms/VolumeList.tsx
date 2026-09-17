@@ -11,6 +11,7 @@ import "../css/docker-list.css";
 
 interface VolumeListProps {
   volumes: DockerVolume[];
+  onOpenVolume?: (volume: DockerVolume) => void;
   onVolumeContextMenu?: (
     event: MouseEvent,
     volume: DockerVolume | null,
@@ -19,6 +20,7 @@ interface VolumeListProps {
 
 export function VolumeList({
   volumes,
+  onOpenVolume,
   onVolumeContextMenu,
 }: VolumeListProps) {
   const { selectedKey, select, clearSelection } = useListSelection();
@@ -67,6 +69,7 @@ export function VolumeList({
       emptyMessage={emptyMessage}
       onBackgroundClick={clearSelection}
       onRowClick={(volume) => select(volume.name)}
+      onRowDoubleClick={(volume) => onOpenVolume?.(volume)}
       onRowContextMenu={(volume, _index, event) =>
         onVolumeContextMenu?.(event, volume)
       }

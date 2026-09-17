@@ -1,4 +1,5 @@
-import { useCallback, useMemo, type MouseEvent } from "react";
+import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { ImageDetailsDialog } from "@/components/docker/dialogs/ImageDetailsDialog";
 import { ImageGrid } from "@/components/docker/atoms/ImageGrid";
 import { ImageList } from "@/components/docker/atoms/ImageList";
 import {
@@ -28,6 +29,8 @@ import {
 
 const TOAST_OUTPUT_LIMIT = 4000;
 const EMPTY_IMAGES: DockerImage[] = [];
+
+type ImageDetailsTab = "summary" | "actions" | "history" | "inspect";
 
 function imageKey(image: DockerImage): string {
   return `${image.id}:${image.repository}:${image.tag}`;
@@ -61,11 +64,16 @@ export function DockerImagesPage() {
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
   const [selectedId, setSelectedId] = useDockerListSelection();
+  const [detailsTarget, setDetailsTarget] = useState<{
+    image: DockerImage;
+    initialTab: ImageDetailsTab;
+  } | null>(null);
   const imagesQuery = useDockerImagesQuery();
   const imageAction = useDockerImageActionMutation();
   const items = imagesQuery.data ?? EMPTY_IMAGES;
   const hasCache =
-    imagesQuery.isSuccess || (imagesQuery.isFetching && imagesQuery.data != null);
+    imagesQuery.isSuccess ||
+    (imagesQuery.isFetching && imagesQuery.data != null);
   const isFetching = imagesQuery.isFetching;
   const isActing = imageAction.isPending;
   const errorMessage =
@@ -85,16 +93,24 @@ export function DockerImagesPage() {
     [items, selectedId],
   );
 
+  const openImageDetails = useCallback(
+    (image: DockerImage, initialTab: ImageDetailsTab = "summary") => {
+      setSelectedId(imageKey(image));
+      setDetailsTarget({ image, initialTab });
+    },
+    [setSelectedId],
+  );
+
   const runImageAction = useCallback(
     async (imageRef: string, action: DockerImageAction) => {
       try {
         const output = await imageAction.mutateAsync({ imageRef, action });
+        if (action === "inspect" || action === "history") {
+          return output;
+        }
         const trimmed = truncateOutput(output);
         if (trimmed) {
-          toast.success(trimmed, {
-            mono:
-              action === "inspect" || action === "history" || action === "pull",
-          });
+          toast.success(trimmed, { mono: action === "pull" });
         } else {
           toast.success("명령을 실행했습니다.");
         }
@@ -122,6 +138,9 @@ export function DockerImagesPage() {
           if (action === "remove" || action === "force-remove") {
             setSelectedId((current) =>
               current?.startsWith(`${target.id}:`) ? null : current,
+            );
+            setDetailsTarget((current) =>
+              current?.image.id === target.id ? null : current,
             );
           }
         },
@@ -159,12 +178,11 @@ export function DockerImagesPage() {
 
       items.push(
         {
-          id: "inspect",
-          label: "상세 정보 (inspect)",
+          id: "details",
+          label: "상세 정보",
           separatorBefore: true,
-          disabled: busy,
           onSelect: () => {
-            void runImageAction(image.id, "inspect");
+            openImageDetails(image);
           },
         },
         {
@@ -172,7 +190,7 @@ export function DockerImagesPage() {
           label: "히스토리 (history)",
           disabled: busy,
           onSelect: () => {
-            void runImageAction(image.id, "history");
+            openImageDetails(image, "history");
           },
         },
         {
@@ -213,7 +231,13 @@ export function DockerImagesPage() {
 
       return items;
     },
-    [busy, refresh, requestDestructiveImageAction, runImageAction],
+    [
+      busy,
+      openImageDetails,
+      refresh,
+      requestDestructiveImageAction,
+      runImageAction,
+    ],
   );
 
   const openContext = useCallback(
@@ -255,10 +279,33 @@ export function DockerImagesPage() {
         buildMenuItems(hasSelection ? selectedImage : null)
       }
       tableList={
-        <ImageList images={items} onImageContextMenu={openContext} />
+        <ImageList
+          images={items}
+          onOpenImage={openImageDetails}
+          onImageContextMenu={openContext}
+        />
       }
-      gui={<ImageGrid images={items} onImageContextMenu={openContext} />}
+      gui={
+        <ImageGrid
+          images={items}
+          onOpenImage={openImageDetails}
+          onImageContextMenu={openContext}
+        />
+      }
     >
+      <ImageDetailsDialog
+        key={
+          detailsTarget ? imageKey(detailsTarget.image) : "image-details-closed"
+        }
+        image={detailsTarget?.image ?? null}
+        initialTab={detailsTarget?.initialTab}
+        isActing={busy}
+        onClose={() => setDetailsTarget(null)}
+        onAction={runImageAction}
+        onRequestDestructive={(target, action) =>
+          requestDestructiveImageAction(target, action)
+        }
+      />
       {confirmDialog}
     </DockerListPageShell>
   );
