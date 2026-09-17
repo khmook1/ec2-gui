@@ -13,6 +13,34 @@ pub struct DockerContainer {
     pub ports: String,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerImage {
+    pub id: String,
+    pub repository: String,
+    pub tag: String,
+    pub created_since: String,
+    pub size: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerNetwork {
+    pub id: String,
+    pub name: String,
+    pub driver: String,
+    pub scope: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerVolume {
+    pub name: String,
+    pub driver: String,
+    pub mountpoint: String,
+    pub scope: String,
+}
+
 #[derive(Deserialize)]
 struct DockerPsRow {
     #[serde(rename = "ID")]
@@ -27,6 +55,44 @@ struct DockerPsRow {
     ports: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct DockerImageRow {
+    #[serde(rename = "ID")]
+    id: String,
+    #[serde(rename = "Repository")]
+    repository: Option<String>,
+    #[serde(rename = "Tag")]
+    tag: Option<String>,
+    #[serde(rename = "CreatedSince")]
+    created_since: Option<String>,
+    #[serde(rename = "Size")]
+    size: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct DockerNetworkRow {
+    #[serde(rename = "ID")]
+    id: String,
+    #[serde(rename = "Name")]
+    name: String,
+    #[serde(rename = "Driver")]
+    driver: Option<String>,
+    #[serde(rename = "Scope")]
+    scope: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct DockerVolumeRow {
+    #[serde(rename = "Name")]
+    name: String,
+    #[serde(rename = "Driver")]
+    driver: Option<String>,
+    #[serde(rename = "Mountpoint")]
+    mountpoint: Option<String>,
+    #[serde(rename = "Scope")]
+    scope: Option<String>,
+}
+
 pub fn is_docker_installed(session: &Session) -> Result<bool, String> {
     let output = exec_remote_command(session, "command -v docker 2>/dev/null")?;
     Ok(!output.trim().is_empty())
@@ -37,28 +103,7 @@ pub fn list_containers(session: &Session) -> Result<Vec<DockerContainer>, String
         session,
         "docker ps -a --format '{{json .}}' 2>&1",
     )?;
-
-    if output.contains("Cannot connect to the Docker daemon") {
-        return Err(
-            "Docker 데몬에 연결할 수 없습니다. 원격 서버에서 Docker 서비스가 실행 중인지 확인하세요."
-                .to_string(),
-        );
-    }
-
-    if output.contains("permission denied") && output.contains("docker.sock") {
-        return Err(
-            "Docker 소켓 접근 권한이 없습니다. 사용자를 docker 그룹에 추가했는지 확인하세요."
-                .to_string(),
-        );
-    }
-
-    if output.trim().is_empty() {
-        return Ok(Vec::new());
-    }
-
-    if output.starts_with("Error") || output.starts_with("error") {
-        return Err(output);
-    }
+    let output = validate_docker_list_output(&output)?;
 
     let mut containers = Vec::new();
 
@@ -82,6 +127,114 @@ pub fn list_containers(session: &Session) -> Result<Vec<DockerContainer>, String
     }
 
     Ok(containers)
+}
+
+pub fn list_images(session: &Session) -> Result<Vec<DockerImage>, String> {
+    let output = exec_remote_command(session, "docker images --format '{{json .}}' 2>&1")?;
+    let output = validate_docker_list_output(&output)?;
+
+    let mut images = Vec::new();
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let row: DockerImageRow = serde_json::from_str(trimmed).map_err(|error| {
+            format!("docker image list parsing failed: {error}\n{trimmed}")
+        })?;
+
+        images.push(DockerImage {
+            id: row.id,
+            repository: row.repository.unwrap_or_else(|| "<none>".to_string()),
+            tag: row.tag.unwrap_or_else(|| "<none>".to_string()),
+            created_since: row.created_since.unwrap_or_default(),
+            size: row.size.unwrap_or_default(),
+        });
+    }
+
+    Ok(images)
+}
+
+pub fn list_networks(session: &Session) -> Result<Vec<DockerNetwork>, String> {
+    let output = exec_remote_command(session, "docker network ls --format '{{json .}}' 2>&1")?;
+    let output = validate_docker_list_output(&output)?;
+
+    let mut networks = Vec::new();
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let row: DockerNetworkRow = serde_json::from_str(trimmed).map_err(|error| {
+            format!("docker network list parsing failed: {error}\n{trimmed}")
+        })?;
+
+        networks.push(DockerNetwork {
+            id: row.id,
+            name: row.name,
+            driver: row.driver.unwrap_or_default(),
+            scope: row.scope.unwrap_or_default(),
+        });
+    }
+
+    Ok(networks)
+}
+
+pub fn list_volumes(session: &Session) -> Result<Vec<DockerVolume>, String> {
+    let output = exec_remote_command(session, "docker volume ls --format '{{json .}}' 2>&1")?;
+    let output = validate_docker_list_output(&output)?;
+
+    let mut volumes = Vec::new();
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let row: DockerVolumeRow = serde_json::from_str(trimmed).map_err(|error| {
+            format!("docker volume list parsing failed: {error}\n{trimmed}")
+        })?;
+
+        volumes.push(DockerVolume {
+            name: row.name,
+            driver: row.driver.unwrap_or_default(),
+            mountpoint: row.mountpoint.unwrap_or_default(),
+            scope: row.scope.unwrap_or_default(),
+        });
+    }
+
+    Ok(volumes)
+}
+
+fn validate_docker_list_output(output: &str) -> Result<&str, String> {
+    if output.contains("Cannot connect to the Docker daemon") {
+        return Err(
+            "Docker 데몬에 연결할 수 없습니다. 원격 서버에서 Docker 서비스가 실행 중인지 확인하세요."
+                .to_string(),
+        );
+    }
+
+    if output.contains("permission denied") && output.contains("docker.sock") {
+        return Err(
+            "Docker 소켓 접근 권한이 없습니다. 사용자를 docker 그룹에 추가했는지 확인하세요."
+                .to_string(),
+        );
+    }
+
+    if output.trim().is_empty() {
+        return Ok("");
+    }
+
+    if output.starts_with("Error") || output.starts_with("error") {
+        return Err(output.to_string());
+    }
+
+    Ok(output)
 }
 
 fn shell_quote(value: &str) -> String {
@@ -364,6 +517,98 @@ pub fn container_action(
         "nginx-quit" => format!("docker exec -- {quoted} nginx -s quit 2>&1"),
         "nginx-version" => format!("docker exec -- {quoted} nginx -v 2>&1"),
         _ => return Err("지원하지 않는 Docker 동작입니다.".to_string()),
+    };
+
+    exec_remote_command_checked(session, &command)
+}
+
+fn validate_image_ref(image_ref: &str) -> Result<&str, String> {
+    let value = image_ref.trim();
+    if value.is_empty() || value.contains('\n') || value.contains('\r') {
+        return Err("올바르지 않은 이미지 참조입니다.".to_string());
+    }
+    Ok(value)
+}
+
+pub fn image_action(session: &Session, image_ref: &str, action: &str) -> Result<String, String> {
+    let command = match action {
+        "prune" => "docker image prune -f 2>&1".to_string(),
+        "inspect" | "history" | "remove" | "force-remove" | "pull" => {
+            let reference = validate_image_ref(image_ref)?;
+            let quoted = shell_quote(reference);
+            match action {
+                "inspect" => format!("docker image inspect -- {quoted} 2>&1"),
+                "history" => format!("docker image history -- {quoted} 2>&1"),
+                "remove" => format!("docker rmi -- {quoted} 2>&1"),
+                "force-remove" => format!("docker rmi -f -- {quoted} 2>&1"),
+                "pull" => format!("docker pull -- {quoted} 2>&1"),
+                _ => unreachable!(),
+            }
+        }
+        _ => return Err("지원하지 않는 Docker 이미지 동작입니다.".to_string()),
+    };
+
+    exec_remote_command_checked(session, &command)
+}
+
+fn validate_resource_name<'a>(name: &'a str, kind: &str) -> Result<&'a str, String> {
+    let value = name.trim();
+    if value.is_empty() || value.contains('\n') || value.contains('\r') {
+        return Err(format!("올바르지 않은 Docker {kind} 이름입니다."));
+    }
+    Ok(value)
+}
+
+pub fn volume_action(session: &Session, volume_name: &str, action: &str) -> Result<String, String> {
+    let command = match action {
+        "prune" => "docker volume prune -f 2>&1".to_string(),
+        "inspect" | "remove" | "force-remove" => {
+            let name = validate_resource_name(volume_name, "볼륨")?;
+            let quoted = shell_quote(name);
+            match action {
+                "inspect" => format!("docker volume inspect -- {quoted} 2>&1"),
+                "remove" => format!("docker volume rm -- {quoted} 2>&1"),
+                "force-remove" => format!("docker volume rm -f -- {quoted} 2>&1"),
+                _ => unreachable!(),
+            }
+        }
+        _ => return Err("지원하지 않는 Docker 볼륨 동작입니다.".to_string()),
+    };
+
+    exec_remote_command_checked(session, &command)
+}
+
+pub fn network_action(
+    session: &Session,
+    network_ref: &str,
+    action: &str,
+) -> Result<String, String> {
+    let command = match action {
+        "prune" => "docker network prune -f 2>&1".to_string(),
+        "inspect" | "remove" | "force-remove" => {
+            let reference = validate_resource_name(network_ref, "네트워크")?;
+            let quoted = shell_quote(reference);
+            match action {
+                "inspect" => format!("docker network inspect -- {quoted} 2>&1"),
+                "remove" => format!("docker network rm -- {quoted} 2>&1"),
+                "force-remove" => format!("docker network rm -f -- {quoted} 2>&1"),
+                _ => unreachable!(),
+            }
+        }
+        _ => return Err("지원하지 않는 Docker 네트워크 동작입니다.".to_string()),
+    };
+
+    exec_remote_command_checked(session, &command)
+}
+
+pub fn system_action(session: &Session, action: &str) -> Result<String, String> {
+    let command = match action {
+        "df" => "docker system df 2>&1".to_string(),
+        "info" => "docker info 2>&1".to_string(),
+        "prune" => "docker system prune -f 2>&1".to_string(),
+        "prune-all" => "docker system prune -a -f 2>&1".to_string(),
+        "prune-volumes" => "docker system prune -a --volumes -f 2>&1".to_string(),
+        _ => return Err("지원하지 않는 Docker 시스템 동작입니다.".to_string()),
     };
 
     exec_remote_command_checked(session, &command)

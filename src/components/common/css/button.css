@@ -1,0 +1,56 @@
+.btn {
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  padding: 12px 16px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #0077ed;
+}
+
+.btn--ghost,
+.ghost-button {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.btn--ghost:hover:not(:disabled),
+.ghost-button:hover {
+  background: var(--toolbar-bg);
+}
+
+.btn.btn--danger,
+button.btn--danger {
+  background: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 70%, #000);
+  color: #fff;
+}
+
+.btn.btn--danger:hover:not(:disabled),
+button.btn--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 88%, #000);
+}
+
+.btn.btn--danger:disabled,
+button.btn--danger:disabled {
+  opacity: 0.45;
+}

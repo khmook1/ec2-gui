@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { listRemoteDockerContainers } from "@/services/tauri";
-import type { Ec2ConnectionInfo } from "@/types/connection";
+import type { SshConnectionInfo } from "@/types/connection";
 import type { DockerContainer } from "@/types/docker";
 
 function getErrorMessage(error: unknown): string {
@@ -13,7 +13,7 @@ function getErrorMessage(error: unknown): string {
   return "Docker 컨테이너 목록을 불러오지 못했습니다.";
 }
 
-export function getDockerSessionKey(connection: Ec2ConnectionInfo): string {
+export function getDockerSessionKey(connection: SshConnectionInfo): string {
   return `${connection.host}:${connection.port}:${connection.username}`;
 }
 

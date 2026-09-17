@@ -2,7 +2,7 @@ pub mod app;
 pub mod cache;
 pub mod disk;
 pub mod docker;
-pub mod ec2;
+pub mod ssh;
 pub mod fs;
 pub mod settings;
 pub mod ssh_shell;

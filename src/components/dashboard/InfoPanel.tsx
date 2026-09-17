@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import "./css/info-panel.css";
 
 export type InfoPanelTone = "neutral" | "accent" | "success" | "warning";
 

@@ -6,6 +6,28 @@ export interface DockerContainer {
   ports: string;
 }
 
+export interface DockerImage {
+  id: string;
+  repository: string;
+  tag: string;
+  createdSince: string;
+  size: string;
+}
+
+export interface DockerNetwork {
+  id: string;
+  name: string;
+  driver: string;
+  scope: string;
+}
+
+export interface DockerVolume {
+  name: string;
+  driver: string;
+  mountpoint: string;
+  scope: string;
+}
+
 export interface DockerContainerDetails {
   id: string;
   name: string;
@@ -44,11 +66,69 @@ export type DockerContainerAction =
   | "nginx-quit"
   | "nginx-version";
 
+export type DockerImageAction =
+  | "inspect"
+  | "history"
+  | "pull"
+  | "remove"
+  | "force-remove"
+  | "prune";
+
+export type DockerVolumeAction =
+  | "inspect"
+  | "remove"
+  | "force-remove"
+  | "prune";
+
+export type DockerNetworkAction =
+  | "inspect"
+  | "remove"
+  | "force-remove"
+  | "prune";
+
+export type DockerSystemAction =
+  | "df"
+  | "info"
+  | "prune"
+  | "prune-all"
+  | "prune-volumes";
+
 export type DockerContainerState =
   | "running"
   | "paused"
   | "stopped"
   | "unknown";
+
+export function getDockerImageRef(image: DockerImage): string {
+  const repository = image.repository.trim();
+  const tag = image.tag.trim();
+  if (
+    repository &&
+    repository !== "<none>" &&
+    tag &&
+    tag !== "<none>"
+  ) {
+    return `${repository}:${tag}`;
+  }
+  return image.id;
+}
+
+export function canPullDockerImage(image: DockerImage): boolean {
+  const repository = image.repository.trim();
+  const tag = image.tag.trim();
+  return (
+    Boolean(repository) &&
+    repository !== "<none>" &&
+    Boolean(tag) &&
+    tag !== "<none>"
+  );
+}
+
+/** bridge / host / none 등 기본 네트워크는 삭제 불가 */
+export function isBuiltinDockerNetwork(network: Pick<DockerNetwork, "name">): boolean {
+  const name = network.name.trim().toLowerCase();
+  return name === "bridge" || name === "host" || name === "none";
+}
 
 export function getDockerContainerState(
   status: string,

@@ -18,6 +18,7 @@ import {
   type ThemeMode,
   type WallpaperPreset,
 } from "@/types/settings";
+import "./css/settings.css";
 
 interface SettingsFormValues {
   theme: ThemeMode;

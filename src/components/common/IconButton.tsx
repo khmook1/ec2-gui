@@ -9,8 +9,9 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Button, type ButtonProps } from "@/components/common/Button";
+import "./css/icon-button.css";
 
-export type IconButtonTone = "accent" | "success" | "neutral";
+export type IconButtonTone = "accent" | "success" | "neutral" | "danger";
 export type IconButtonVariant = "default" | "close";
 
 export interface IconButtonProps extends Omit<ButtonProps, "variant" | "children"> {

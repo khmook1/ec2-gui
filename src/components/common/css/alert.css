@@ -1,0 +1,93 @@
+.alert {
+  --alert-ink: var(--text);
+  --alert-title: var(--text-secondary);
+  --alert-edge: var(--border);
+  --alert-fill: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--alert-edge) 35%, var(--border));
+  border-left: 3px solid var(--alert-edge);
+  border-radius: 10px;
+  background: var(--alert-fill);
+  color: var(--alert-ink);
+}
+
+.alert--info {
+  --alert-ink: var(--text);
+  --alert-title: color-mix(in srgb, var(--accent) 72%, var(--text));
+  --alert-edge: color-mix(in srgb, var(--accent) 78%, #003d80);
+  --alert-fill: color-mix(in srgb, var(--accent) 8%, var(--surface));
+}
+
+.alert--success {
+  --alert-ink: color-mix(in srgb, var(--success) 55%, var(--text));
+  --alert-title: color-mix(in srgb, var(--success) 72%, var(--text));
+  --alert-edge: color-mix(in srgb, var(--success) 78%, #0a6b2e);
+  --alert-fill: color-mix(in srgb, var(--success) 10%, var(--surface));
+}
+
+.alert--error {
+  --alert-ink: color-mix(in srgb, var(--danger) 55%, var(--text));
+  --alert-title: color-mix(in srgb, var(--danger) 72%, var(--text));
+  --alert-edge: color-mix(in srgb, var(--danger) 78%, #8b1210);
+  --alert-fill: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}
+
+.alert--warning {
+  --alert-ink: color-mix(in srgb, var(--warning) 50%, var(--text));
+  --alert-title: color-mix(in srgb, var(--warning) 68%, var(--text));
+  --alert-edge: color-mix(in srgb, var(--warning) 78%, #8a5500);
+  --alert-fill: color-mix(in srgb, var(--warning) 10%, var(--surface));
+}
+
+.alert__title {
+  color: var(--alert-title);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.alert__body {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.alert__mono {
+  margin: 0;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  word-break: break-all;
+}
+
+html[data-theme="dark"] .alert--info {
+  --alert-title: color-mix(in srgb, var(--accent) 45%, var(--text-secondary));
+  --alert-edge: color-mix(in srgb, var(--accent) 42%, #0a1f3a);
+  --alert-fill: color-mix(in srgb, var(--accent) 6%, #1a1a1c);
+}
+
+html[data-theme="dark"] .alert--success {
+  --alert-ink: color-mix(in srgb, var(--success) 35%, var(--text));
+  --alert-title: color-mix(in srgb, var(--success) 40%, var(--text-secondary));
+  --alert-edge: color-mix(in srgb, var(--success) 38%, #0d2818);
+  --alert-fill: color-mix(in srgb, var(--success) 7%, #1a1a1c);
+}
+
+html[data-theme="dark"] .alert--error {
+  --alert-ink: color-mix(in srgb, var(--danger) 38%, var(--text));
+  --alert-title: color-mix(in srgb, var(--danger) 42%, var(--text-secondary));
+  --alert-edge: color-mix(in srgb, var(--danger) 40%, #2a1010);
+  --alert-fill: color-mix(in srgb, var(--danger) 7%, #1a1a1c);
+}
+
+html[data-theme="dark"] .alert--warning {
+  --alert-ink: color-mix(in srgb, var(--warning) 32%, var(--text));
+  --alert-title: color-mix(in srgb, var(--warning) 38%, var(--text-secondary));
+  --alert-edge: color-mix(in srgb, var(--warning) 36%, #2a1c00);
+  --alert-fill: color-mix(in srgb, var(--warning) 7%, #1a1a1c);
+}

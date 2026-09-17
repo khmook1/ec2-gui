@@ -43,11 +43,11 @@ pub struct ActiveConnection {
     cached_identity: Mutex<Option<super::remote_fs::RemoteIdentity>>,
 }
 
-pub struct Ec2ConnectionManager {
+pub struct SshConnectionManager {
     connection: Mutex<Option<ActiveConnection>>,
 }
 
-impl Ec2ConnectionManager {
+impl SshConnectionManager {
     pub fn new() -> Self {
         Self {
             connection: Mutex::new(None),
@@ -146,7 +146,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_mut()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         let cols = cols.max(1);
         let rows = rows.max(1);
@@ -180,7 +180,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_mut()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         let channel = connection
             .shells
@@ -205,7 +205,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_mut()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         let channel = connection
             .shells
@@ -230,7 +230,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_mut()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         if let Some(mut channel) = connection.shells.remove(shell_id) {
             let _ = channel.close();
@@ -363,7 +363,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_fs::resolve_home_directory(&connection.session, &connection.username)
     }
@@ -376,7 +376,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         let identity = {
             let mut cache = connection
@@ -406,7 +406,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_fs::create_directory(&connection.session, path)
     }
@@ -419,7 +419,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_fs::create_file(&connection.session, path)
     }
@@ -432,7 +432,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_fs::delete_path(&connection.session, path)
     }
@@ -445,7 +445,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_fs::read_file(&connection.session, path)
     }
@@ -458,7 +458,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_docker::is_docker_installed(&connection.session)
     }
@@ -471,9 +471,48 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_docker::list_containers(&connection.session)
+    }
+
+    pub fn list_docker_images(&self) -> Result<Vec<super::remote_docker::DockerImage>, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::list_images(&connection.session)
+    }
+
+    pub fn list_docker_networks(&self) -> Result<Vec<super::remote_docker::DockerNetwork>, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::list_networks(&connection.session)
+    }
+
+    pub fn list_docker_volumes(&self) -> Result<Vec<super::remote_docker::DockerVolume>, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::list_volumes(&connection.session)
     }
 
     pub fn docker_container_action(
@@ -488,9 +527,73 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_docker::container_action(&connection.session, container_id, action)
+    }
+
+    pub fn docker_image_action(
+        &self,
+        image_ref: &str,
+        action: &str,
+    ) -> Result<String, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::image_action(&connection.session, image_ref, action)
+    }
+
+    pub fn docker_volume_action(
+        &self,
+        volume_name: &str,
+        action: &str,
+    ) -> Result<String, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::volume_action(&connection.session, volume_name, action)
+    }
+
+    pub fn docker_network_action(
+        &self,
+        network_ref: &str,
+        action: &str,
+    ) -> Result<String, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::network_action(&connection.session, network_ref, action)
+    }
+
+    pub fn docker_system_action(&self, action: &str) -> Result<String, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::system_action(&connection.session, action)
     }
 
     pub fn docker_container_details(
@@ -504,7 +607,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_docker::container_details(&connection.session, container_id)
     }
@@ -522,7 +625,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_docker::container_logs(&connection.session, container_id, tail, since)
     }
@@ -535,7 +638,7 @@ impl Ec2ConnectionManager {
 
         let connection = guard
             .as_ref()
-            .ok_or_else(|| "EC2에 연결되어 있지 않습니다.".to_string())?;
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_disk::get_disk_overview(&connection.session)
     }
@@ -606,7 +709,7 @@ fn open_ssh_session_with_password(
     let session = handshake_session(connect_tcp(host, port)?)?;
     session.userauth_password(username, password).map_err(|error| {
         format!(
-            "비밀번호 인증에 실패했습니다: {error}\n아이디·비밀번호·포트를 확인하세요. EC2는 키(PAM)만 허용하는 경우가 많습니다."
+            "비밀번호 인증에 실패했습니다: {error}\n아이디·비밀번호·포트를 확인하세요. 키 인증만 허용하는 호스트가 많습니다."
         )
     })?;
 
@@ -633,7 +736,7 @@ fn ensure_shell_reader(app: AppHandle) {
         loop {
             std::thread::sleep(Duration::from_millis(SHELL_POLL_INTERVAL_MS));
 
-            let Some(manager) = app.try_state::<Ec2ConnectionManager>() else {
+            let Some(manager) = app.try_state::<SshConnectionManager>() else {
                 continue;
             };
 

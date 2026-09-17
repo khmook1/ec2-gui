@@ -1,13 +1,13 @@
 import { useEffect, useMemo } from "react";
-import { checkRemoteDocker } from "@/services/tauri";
-import { prefetchDockerContainers } from "@/stores/dockerCacheStore";
+import { ROUTE_ID, type AppRoute } from "@/config/Route";
 import {
-  getSidebarNavItems,
-  isSidebarNavItemEnabled,
-  NAV_VIEW,
-  type SidebarNavItem,
-} from "@/config/sidebarNav";
+  getSidebarRoutes,
+  isDockerRouteId,
+  isRouteEnabled,
+} from "@/config/routeUtils";
+import { checkRemoteDocker } from "@/services/tauri";
 import { useConnectionStore } from "@/stores/connectionStore";
+import { prefetchDockerContainers } from "@/stores/dockerCacheStore";
 import { useNavStore } from "@/stores/navStore";
 
 export function useSidebarNav() {
@@ -45,15 +45,15 @@ export function useSidebarNav() {
   }, [isConnected, setDockerInstalled]);
 
   useEffect(() => {
-    if (dockerInstalled === false && activeId === NAV_VIEW.docker) {
-      setActiveId(NAV_VIEW.fileExplorer);
+    if (dockerInstalled === false && isDockerRouteId(activeId)) {
+      setActiveId(ROUTE_ID.fileExplorer);
     }
   }, [activeId, dockerInstalled, setActiveId]);
 
-  const items: SidebarNavItem[] = useMemo(() => getSidebarNavItems(), []);
+  const items: AppRoute[] = useMemo(() => getSidebarRoutes(), []);
 
-  function isItemEnabled(item: SidebarNavItem): boolean {
-    return isSidebarNavItemEnabled(item, { dockerInstalled });
+  function isItemEnabled(item: AppRoute): boolean {
+    return isRouteEnabled(item, { dockerInstalled });
   }
 
   return {

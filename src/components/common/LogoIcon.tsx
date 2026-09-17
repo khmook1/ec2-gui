@@ -1,5 +1,6 @@
 import type { ImgHTMLAttributes, CSSProperties } from "react";
 import { getAppName } from "@/lib/env";
+import "./css/logo-icon.css";
 
 export interface LogoIconProps
   extends Omit<

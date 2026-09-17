@@ -1,0 +1,10 @@
+.search-highlight {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: rgba(255, 214, 10, 0.55);
+  color: inherit;
+}
+
+html[data-theme="dark"] .search-highlight {
+  background: rgba(255, 214, 10, 0.28);
+}

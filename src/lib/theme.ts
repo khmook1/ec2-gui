@@ -20,9 +20,11 @@ function wallpaperCssValue(
       return "radial-gradient(circle at 10% 90%, rgba(90, 200, 250, 0.16), transparent 40%), radial-gradient(circle at 90% 20%, rgba(255, 159, 10, 0.12), transparent 38%), linear-gradient(160deg, rgba(0, 0, 0, 0.03), transparent 60%)";
     case "dusk":
       return "radial-gradient(ellipse at 30% 0%, rgba(255, 149, 0, 0.2), transparent 45%), radial-gradient(ellipse at 100% 80%, rgba(255, 59, 48, 0.12), transparent 40%), linear-gradient(180deg, rgba(88, 86, 214, 0.08), transparent 55%)";
+    case "agent":
+      return 'url("/bg.png") center center / auto no-repeat';
     case "custom":
       return customDataUrl
-        ? `url("${customDataUrl}") center / cover no-repeat`
+        ? `url("${customDataUrl}") center center / auto no-repeat`
         : "none";
     case "none":
     default:

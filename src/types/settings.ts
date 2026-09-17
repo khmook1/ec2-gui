@@ -1,6 +1,12 @@
 export type ThemeMode = "light" | "dark" | "system";
 
-export type WallpaperPreset = "none" | "aurora" | "mesh" | "dusk" | "custom";
+export type WallpaperPreset =
+  | "none"
+  | "aurora"
+  | "mesh"
+  | "dusk"
+  | "agent"
+  | "custom";
 
 export interface WallpaperSettings {
   preset: WallpaperPreset;
@@ -30,4 +36,5 @@ export const WALLPAPER_PRESET_OPTIONS: {
   { id: "aurora", label: "오로라", description: "부드러운 그라데이션" },
   { id: "mesh", label: "메시", description: "은은한 레이어드 톤" },
   { id: "dusk", label: "더스크", description: "따뜻한 석양 톤" },
+  { id: "agent", label: "에이전트", description: "파일 탐색 일러스트" },
 ];

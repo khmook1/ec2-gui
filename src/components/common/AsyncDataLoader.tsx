@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { LoadingIndicator } from "@/components/common/LoadingIndicator";
+import "./css/async-data-loader.css";
 
 interface AsyncDataLoaderProps {
   /** 캐시·이전 데이터 없이 최초 로드 중일 때 */

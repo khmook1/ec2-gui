@@ -36,6 +36,7 @@ function isWallpaperPreset(value: unknown): value is WallpaperPreset {
     value === "aurora" ||
     value === "mesh" ||
     value === "dusk" ||
+    value === "agent" ||
     value === "custom"
   );
 }

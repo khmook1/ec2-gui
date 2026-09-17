@@ -7,6 +7,7 @@ import {
   resizeSshShell,
   writeSshShell,
 } from "@/services/tauri";
+import "./css/terminal-session.css";
 import "@xterm/xterm/css/xterm.css";
 
 interface TerminalSessionProps {

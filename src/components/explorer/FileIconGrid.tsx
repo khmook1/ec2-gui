@@ -4,6 +4,7 @@ import { SearchHighlight } from "@/components/common/SearchHighlight";
 import { useFilteredRemoteEntries } from "@/lib/useFilteredRemoteEntries";
 import { useListSelection } from "@/providers/ListSelectionProvider";
 import type { RemoteEntry } from "@/types/filesystem";
+import "./css/file-icon-grid.css";
 
 interface FileIconGridProps {
   entries: RemoteEntry[];

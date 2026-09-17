@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useNavStore } from "@/stores/navStore";
+import "./css/list-search-bar.css";
 
 export interface ListSearchStats {
   total: number;

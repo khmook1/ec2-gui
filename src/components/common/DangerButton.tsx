@@ -1,4 +1,5 @@
 import { Button, type ButtonProps } from "@/components/common/Button";
+import "./css/button.css";
 
 export type DangerButtonProps = ButtonProps;
 

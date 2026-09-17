@@ -1,5 +1,6 @@
 import type { LargeDirectory } from "@/types/disk";
 import { formatFileSize } from "@/utils/file";
+import "./css/dashboard.css";
 
 interface LargeDirectoriesSectionProps {
   directories: LargeDirectory[];

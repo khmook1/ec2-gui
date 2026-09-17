@@ -7,6 +7,8 @@ pub mod ssh;
 pub mod storage_service;
 
 pub use remote_disk::DiskOverview;
-pub use remote_docker::{DockerContainer, DockerContainerDetails};
+pub use remote_docker::{
+    DockerContainer, DockerContainerDetails, DockerImage, DockerNetwork, DockerVolume,
+};
 pub use remote_fs::RemoteDirectoryListing;
-pub use ssh::Ec2ConnectionManager;
+pub use ssh::SshConnectionManager;

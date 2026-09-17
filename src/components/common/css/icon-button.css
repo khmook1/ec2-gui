@@ -1,0 +1,213 @@
+.btn.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  line-height: 0;
+  font-size: 0;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.12s ease;
+}
+
+.btn.icon-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.icon-btn-wrap {
+  display: inline-flex;
+}
+
+.icon-btn-tooltip {
+  padding: 5px 9px;
+  border-radius: 7px;
+  border: 1px solid var(--tooltip-border);
+  background: var(--tooltip-bg);
+  color: var(--tooltip-fg);
+  font-size: 11px;
+  font-weight: 560;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.18),
+    0 1px 2px rgba(0, 0, 0, 0.08);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    visibility 0.16s ease;
+}
+
+.icon-btn-tooltip--fixed {
+  position: fixed;
+  z-index: var(--z-tooltip);
+  transform: translate(-50%, calc(-100% - 8px)) translateY(4px);
+}
+
+.icon-btn-tooltip--fixed.icon-btn-tooltip--visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, calc(-100% - 8px));
+}
+
+.icon-btn-tooltip--command {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  max-width: min(90vw, 560px);
+  white-space: normal;
+  word-break: break-all;
+}
+
+.icon-btn__glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn__glyph svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.btn.icon-btn--neutral {
+  color: var(--text-secondary);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--surface) 92%, #000) 0%,
+    color-mix(in srgb, var(--bg) 70%, var(--surface)) 100%
+  );
+  border-color: color-mix(in srgb, var(--border) 85%, #000);
+}
+
+.btn.icon-btn--neutral:hover:not(:disabled) {
+  color: var(--text);
+  background: linear-gradient(
+    180deg,
+    var(--surface) 0%,
+    color-mix(in srgb, var(--bg) 55%, var(--surface)) 100%
+  );
+  border-color: var(--border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.btn.icon-btn--accent {
+  color: color-mix(in srgb, var(--accent) 88%, #003d7a);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 11%, var(--surface)) 0%,
+    color-mix(in srgb, var(--accent) 6%, var(--surface)) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--accent) 18%, transparent),
+    inset 0 1px 0 var(--inset-highlight);
+}
+
+.btn.icon-btn--accent:hover:not(:disabled) {
+  color: var(--accent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--accent) 16%, var(--surface)) 0%,
+    color-mix(in srgb, var(--accent) 9%, var(--surface)) 100%
+  );
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+  box-shadow:
+    0 3px 10px color-mix(in srgb, var(--accent) 22%, transparent),
+    inset 0 1px 0 var(--inset-highlight);
+}
+
+.btn.icon-btn--success {
+  color: color-mix(in srgb, var(--success) 82%, #1a5c32);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--success) 12%, var(--surface)) 0%,
+    color-mix(in srgb, var(--success) 6%, var(--surface)) 100%
+  );
+  border-color: color-mix(in srgb, var(--success) 24%, var(--border));
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--success) 18%, transparent),
+    inset 0 1px 0 var(--inset-highlight);
+}
+
+.btn.icon-btn--success:hover:not(:disabled) {
+  color: var(--success);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--success) 17%, var(--surface)) 0%,
+    color-mix(in srgb, var(--success) 10%, var(--surface)) 100%
+  );
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  box-shadow:
+    0 3px 10px color-mix(in srgb, var(--success) 22%, transparent),
+    inset 0 1px 0 var(--inset-highlight);
+}
+
+.btn.icon-btn--danger {
+  color: color-mix(in srgb, var(--danger) 82%, #7a1510);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--danger) 12%, var(--surface)) 0%,
+    color-mix(in srgb, var(--danger) 6%, var(--surface)) 100%
+  );
+  border-color: color-mix(in srgb, var(--danger) 24%, var(--border));
+  box-shadow:
+    0 1px 2px color-mix(in srgb, var(--danger) 18%, transparent),
+    inset 0 1px 0 var(--inset-highlight);
+}
+
+.btn.icon-btn--danger:hover:not(:disabled) {
+  color: var(--danger);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--danger) 17%, var(--surface)) 0%,
+    color-mix(in srgb, var(--danger) 10%, var(--surface)) 100%
+  );
+  border-color: color-mix(in srgb, var(--danger) 34%, var(--border));
+  box-shadow:
+    0 3px 10px color-mix(in srgb, var(--danger) 22%, transparent),
+    inset 0 1px 0 var(--inset-highlight);
+}
+
+.btn.icon-btn--close .icon-btn__glyph {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.page-toolbar__view-btn.btn.icon-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.page-toolbar__view-btn.btn.icon-btn:hover:not(:disabled) {
+  background: var(--overlay-soft);
+  color: var(--text);
+}
+
+.page-toolbar__view-btn--active.btn.icon-btn,
+.page-toolbar__view-btn--active.btn.icon-btn:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}

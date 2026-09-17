@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import "./css/toast.css";
 
 export type ToastVariant = "success" | "error" | "info" | "warning";
 

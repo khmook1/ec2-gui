@@ -19,6 +19,7 @@ import {
 } from "@/providers/ListSelectionProvider";
 import type { RemoteEntry } from "@/types/filesystem";
 import { splitPathSegments } from "@/utils/file";
+import "./css/file-explorer.css";
 
 export function FileExplorerPage() {
   const {

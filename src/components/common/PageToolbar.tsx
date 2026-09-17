@@ -5,6 +5,7 @@ import {
   GuiViewIcon,
   TableListViewIcon,
 } from "@/components/icons/ToolbarIcons";
+import "./css/page-toolbar.css";
 
 export type { PageViewMode } from "@/components/common/PageViewMode";
 

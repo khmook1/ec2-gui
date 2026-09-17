@@ -3,6 +3,13 @@ import type {
   DockerContainer,
   DockerContainerAction,
   DockerContainerDetails,
+  DockerImage,
+  DockerImageAction,
+  DockerNetwork,
+  DockerNetworkAction,
+  DockerSystemAction,
+  DockerVolume,
+  DockerVolumeAction,
 } from "@/types/docker";
 
 export function checkRemoteDocker(): Promise<boolean> {
@@ -13,12 +20,62 @@ export function listRemoteDockerContainers(): Promise<DockerContainer[]> {
   return invoke<DockerContainer[]>("list_remote_docker_containers");
 }
 
+export function listRemoteDockerImages(): Promise<DockerImage[]> {
+  return invoke<DockerImage[]>("list_remote_docker_images");
+}
+
+export function listRemoteDockerNetworks(): Promise<DockerNetwork[]> {
+  return invoke<DockerNetwork[]>("list_remote_docker_networks");
+}
+
+export function listRemoteDockerVolumes(): Promise<DockerVolume[]> {
+  return invoke<DockerVolume[]>("list_remote_docker_volumes");
+}
+
 export function runRemoteDockerContainerAction(
   containerId: string,
   action: DockerContainerAction,
 ): Promise<string> {
   return invoke<string>("run_remote_docker_container_action", {
     containerId,
+    action,
+  });
+}
+
+export function runRemoteDockerImageAction(
+  imageRef: string,
+  action: DockerImageAction,
+): Promise<string> {
+  return invoke<string>("run_remote_docker_image_action", {
+    imageRef,
+    action,
+  });
+}
+
+export function runRemoteDockerVolumeAction(
+  volumeName: string,
+  action: DockerVolumeAction,
+): Promise<string> {
+  return invoke<string>("run_remote_docker_volume_action", {
+    volumeName,
+    action,
+  });
+}
+
+export function runRemoteDockerNetworkAction(
+  networkRef: string,
+  action: DockerNetworkAction,
+): Promise<string> {
+  return invoke<string>("run_remote_docker_network_action", {
+    networkRef,
+    action,
+  });
+}
+
+export function runRemoteDockerSystemAction(
+  action: DockerSystemAction,
+): Promise<string> {
+  return invoke<string>("run_remote_docker_system_action", {
     action,
   });
 }

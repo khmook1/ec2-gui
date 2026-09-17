@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import "./css/context-menu.css";
 
 export interface ContextMenuItem {
   id: string;

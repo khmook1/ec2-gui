@@ -1,0 +1,14 @@
+.code-block {
+  min-height: 0;
+}
+
+.code-block pre,
+.code-block code {
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  text-shadow: none !important;
+}
+
+.code-block span {
+  text-shadow: none !important;
+}

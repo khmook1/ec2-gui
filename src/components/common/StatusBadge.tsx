@@ -1,4 +1,5 @@
 import type { AppRuntimeStatus } from "@/types/app";
+import "./css/status-badge.css";
 
 interface StatusBadgeProps {
   status: AppRuntimeStatus;

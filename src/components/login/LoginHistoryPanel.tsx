@@ -1,4 +1,5 @@
 import type { CachedLoginHistoryEntry } from "@/lib/loginCache";
+import "./css/login-history.css";
 
 interface LoginHistoryPanelProps {
   entries: CachedLoginHistoryEntry[];

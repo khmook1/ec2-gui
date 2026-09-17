@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
 import { IconButton } from "@/components/common/IconButton";
 import { PageToolbar } from "@/components/common/PageToolbar";
+import { DiskCapacitySection } from "@/components/dashboard/DiskCapacitySection";
+import { LargeDirectoriesSection } from "@/components/dashboard/LargeDirectoriesSection";
 import {
   DashboardSummary,
   formatAppLabels,
-} from "@/components/dashboard/DashboardSummary";
-import { DiskCapacitySection } from "@/components/dashboard/DiskCapacitySection";
-import { LargeDirectoriesSection } from "@/components/dashboard/LargeDirectoriesSection";
+} from "@/components/dashboard/Summary";
 import { RefreshIcon } from "@/components/icons/ToolbarIcons";
 import { getRemoteDiskOverview } from "@/services/tauri";
 import { useAppStore } from "@/stores/appStore";
 import type { DiskOverview } from "@/types/disk";
+import { useCallback, useEffect, useState } from "react";
+import "../components/dashboard/css/dashboard.css";
 
 export function DashboardPage() {
   const status = useAppStore((state) => state.status);
@@ -68,7 +69,7 @@ export function DashboardPage() {
         }
       >
         <p className="page-toolbar__hint">
-          EC2 디스크 용량과 사용량이 큰 경로를 확인합니다.
+          원격 호스트 디스크 용량과 사용량이 큰 경로를 확인합니다.
         </p>
       </PageToolbar>
 

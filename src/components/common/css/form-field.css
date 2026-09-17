@@ -1,0 +1,89 @@
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form-section__title {
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.form-field--wide,
+.form-field--narrow {
+  min-width: 0;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field span {
+  font-size: 13px;
+  font-weight: 560;
+  color: var(--text-secondary);
+}
+
+.form-field input {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--toolbar-bg);
+  color: var(--text);
+  caret-color: var(--text);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.form-field input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+.form-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--surface);
+}
+
+.form-field input:disabled {
+  opacity: 0.7;
+}
+
+.form-field input:-webkit-autofill,
+.form-field input:-webkit-autofill:hover,
+.form-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--text);
+  caret-color: var(--text);
+  box-shadow: 0 0 0 1000px var(--toolbar-bg) inset;
+  transition: background-color 99999s ease-out;
+}
+
+.form-field__row {
+  display: flex;
+  gap: 8px;
+}
+
+.form-field__row input {
+  flex: 1;
+  min-width: 0;
+}
+
+.form-field__path {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.form-field__row .btn--ghost {
+  flex-shrink: 0;
+  white-space: nowrap;
+}

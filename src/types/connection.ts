@@ -1,28 +1,28 @@
 export type ConnectionStatus =
   "disconnected" | "connecting" | "connected" | "error";
 
-export type Ec2AuthMethod = "pem" | "password";
+export type SshAuthMethod = "pem" | "password";
 
-export interface Ec2Credentials {
+export interface SshCredentials {
   host: string;
   username: string;
   port: number;
-  authMethod: Ec2AuthMethod;
+  authMethod: SshAuthMethod;
   privateKeyPath?: string;
   keyPassphrase?: string;
   password?: string;
 }
 
-export interface Ec2ConnectionInfo {
+export interface SshConnectionInfo {
   host: string;
   username: string;
   port: number;
-  authMethod: Ec2AuthMethod;
+  authMethod: SshAuthMethod;
 }
 
-export interface Ec2ConnectResult {
+export interface SshConnectResult {
   host: string;
   username: string;
   port: number;
-  authMethod: Ec2AuthMethod;
+  authMethod: SshAuthMethod;
 }

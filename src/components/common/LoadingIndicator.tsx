@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import "./css/loading-indicator.css";
 
 const LOADING_ICON_SRC = "/lodding-icon.png";
 

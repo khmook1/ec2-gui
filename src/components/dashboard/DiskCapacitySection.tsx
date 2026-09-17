@@ -4,6 +4,7 @@ import {
 } from "@/components/dashboard/diskUi";
 import type { DiskFilesystem } from "@/types/disk";
 import { formatFileSize } from "@/utils/file";
+import "./css/dashboard.css";
 
 interface DiskCapacitySectionProps {
   filesystems: DiskFilesystem[];

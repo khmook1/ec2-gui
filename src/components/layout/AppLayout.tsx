@@ -2,11 +2,12 @@ import type { ReactNode } from "react";
 import { ContentLayout } from "@/components/layout/ContentLayout";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { TerminalPanel } from "@/components/terminal/TerminalPanel";
+import { TerminalPanel } from "@/components/terminal/Panel";
 import { useAppInfo } from "@/hooks/useAppInfo";
 import { useDockerCacheSession } from "@/hooks/useDockerCacheSession";
 import { useTerminalShortcut } from "@/hooks/useTerminalShortcut";
 import { useSidebarStore } from "@/stores/sidebarStore";
+import "./css/app-layout.css";
 
 interface AppLayoutProps {
   children: ReactNode;

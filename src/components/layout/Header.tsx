@@ -3,12 +3,13 @@ import { LogoIcon } from "@/components/common/LogoIcon";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { MenuNavIcon } from "@/components/icons/NavIcons";
 import { TerminalIcon } from "@/components/icons/ToolbarIcons";
-import { getNavItemById } from "@/config/sidebarNav";
+import { getRouteById } from "@/config/routeUtils";
 import { useConnectionStore } from "@/stores/connectionStore";
 import { useNavStore } from "@/stores/navStore";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import { useTerminalStore } from "@/stores/terminalStore";
 import type { AppRuntimeStatus } from "@/types/app";
+import "./css/header.css";
 
 interface HeaderProps {
   status: AppRuntimeStatus;
@@ -21,7 +22,7 @@ export function Header({ status }: HeaderProps) {
   const toggleSidebar = useSidebarStore((state) => state.toggle);
   const isTerminalOpen = useTerminalStore((state) => state.isOpen);
   const toggleTerminal = useTerminalStore((state) => state.toggle);
-  const headerTitle = getNavItemById(activeId)?.headerTitle ?? "파일";
+  const headerTitle = getRouteById(activeId)?.headerTitle ?? "파일";
 
   return (
     <header className="header">

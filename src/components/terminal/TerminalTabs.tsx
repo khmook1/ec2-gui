@@ -3,6 +3,7 @@ import { IconButton } from "@/components/common/IconButton";
 import { PlusIcon } from "@/components/icons/ToolbarIcons";
 import { closeSshShell } from "@/services/tauri";
 import { useTerminalStore } from "@/stores/terminalStore";
+import "./css/terminal-tabs.css";
 
 interface TerminalTabsProps {
   onAddSession: () => void;

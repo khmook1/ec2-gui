@@ -2,6 +2,7 @@ import { IconButton } from "@/components/common/IconButton";
 import { PageToolbar } from "@/components/common/PageToolbar";
 import { FolderUpIcon, RefreshIcon } from "@/components/icons/ToolbarIcons";
 import { buildPathFromSegments, splitPathSegments } from "@/utils/file";
+import "./css/explorer-breadcrumb.css";
 
 const BREADCRUMB_UNIQUE_DEPTH = 5;
 

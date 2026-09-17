@@ -1,4 +1,5 @@
 import { getHighlightSegments } from "@/utils/listSearch";
+import "./css/search-highlight.css";
 
 interface SearchHighlightProps {
   text: string;

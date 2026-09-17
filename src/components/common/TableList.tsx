@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { LoadingIndicator } from "@/components/common/LoadingIndicator";
+import "./css/table-list.css";
 
 export const SORT_DIRECTION = {
   ASC: "ASC",

@@ -1,0 +1,30 @@
+.login-auth-toggle {
+  display: flex;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--toolbar-muted);
+  gap: 2px;
+}
+
+.login-auth-toggle__item {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.login-auth-toggle__item--active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+.login-auth-toggle__item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

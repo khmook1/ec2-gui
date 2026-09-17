@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from "react";
+import "./css/alert.css";
 
 export type AlertVariant = "info" | "success" | "error" | "warning";
 

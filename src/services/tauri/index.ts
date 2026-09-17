@@ -2,12 +2,19 @@ export { getAppInfo } from "./app";
 export {
   checkRemoteDocker,
   listRemoteDockerContainers,
+  listRemoteDockerImages,
+  listRemoteDockerNetworks,
+  listRemoteDockerVolumes,
   runRemoteDockerContainerAction,
+  runRemoteDockerImageAction,
+  runRemoteDockerVolumeAction,
+  runRemoteDockerNetworkAction,
+  runRemoteDockerSystemAction,
   getRemoteDockerContainerDetails,
   getRemoteDockerContainerLogs,
 } from "./docker";
 export { getRemoteDiskOverview } from "./disk";
-export { connectEc2, disconnectEc2 } from "./ec2";
+export { connectSsh, disconnectSsh } from "./ssh";
 export {
   getRemoteHome,
   listRemoteDirectory,

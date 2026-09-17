@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { ContextMenuProvider } from "@/providers/ContextMenuProvider";
 import { ListSearchProvider } from "@/providers/ListSearchProvider";
+import "./css/content-layout.css";
 
 interface ContentLayoutProps {
   children: ReactNode;

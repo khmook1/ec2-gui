@@ -1,0 +1,12 @@
+.main-content__body > .content-layout {
+  flex: 1;
+  min-height: 0;
+}
+
+.content-layout {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--wallpaper-layer), var(--bg);
+}

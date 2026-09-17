@@ -1,12 +1,12 @@
 import { create } from "zustand";
-import type { ConnectionStatus, Ec2ConnectionInfo } from "@/types/connection";
+import type { ConnectionStatus, SshConnectionInfo } from "@/types/connection";
 
 interface ConnectionState {
   status: ConnectionStatus;
-  connection: Ec2ConnectionInfo | null;
+  connection: SshConnectionInfo | null;
   errorMessage: string | null;
   setConnecting: () => void;
-  setConnected: (connection: Ec2ConnectionInfo) => void;
+  setConnected: (connection: SshConnectionInfo) => void;
   setError: (message: string) => void;
   reset: () => void;
 }

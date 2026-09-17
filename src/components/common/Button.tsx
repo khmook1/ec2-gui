@@ -4,6 +4,7 @@ import {
   type ButtonHTMLAttributes,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import "./css/button.css";
 
 type ButtonVariant = "primary" | "ghost";
 

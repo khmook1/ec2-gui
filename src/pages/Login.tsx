@@ -6,23 +6,24 @@ import { AppIntro } from "@/components/common/AppIntro";
 import { AuthMethodToggle } from "@/components/login/AuthMethodToggle";
 import { LoginHistoryPanel } from "@/components/login/LoginHistoryPanel";
 import { FormField, FormSection } from "@/components/common/FormField";
-import { useEc2Login } from "@/hooks/useEc2Login";
+import { useSshLogin } from "@/hooks/useSshLogin";
 import {
   cachedFormToCredentials,
-  consumeSkipAutoLogin,
   getDefaultLoginFormValues,
-  loadLoginCache,
+  loadAutoLoginCache,
   loadLoginHistory,
   removeLoginHistoryEntry,
+  shouldSkipAutoLogin,
   type CachedLoginForm,
   type CachedLoginHistoryEntry,
 } from "@/lib/loginCache";
 import { useConnectionStore } from "@/stores/connectionStore";
+import "./css/login.css";
 
 type LoginFormValues = CachedLoginForm;
 
 export function LoginPage() {
-  const { login, isConnecting, errorMessage } = useEc2Login();
+  const { login, isConnecting, errorMessage } = useSshLogin();
   const [history, setHistory] = useState<CachedLoginHistoryEntry[]>(() =>
     loadLoginHistory(),
   );
@@ -45,11 +46,11 @@ export function LoginPage() {
   }, [authMethod, trigger]);
 
   useEffect(() => {
-    if (consumeSkipAutoLogin()) {
+    if (shouldSkipAutoLogin()) {
       return;
     }
 
-    const cached = loadLoginCache();
+    const cached = loadAutoLoginCache();
     if (!cached) {
       return;
     }
@@ -111,7 +112,7 @@ export function LoginPage() {
           <header className="login-card__header">
             <AppIntro
               eyebrow="SSH 접속"
-              subtitle="PEM 키 또는 비밀번호로 EC2에 연결합니다."
+              subtitle="SSH 서버 GUI 입니다."
               subtitleClassName="login-card__subtitle"
             />
           </header>

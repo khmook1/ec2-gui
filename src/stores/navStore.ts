@@ -1,35 +1,53 @@
 import { create } from "zustand";
-import { NAV_VIEW, type NavViewId } from "@/config/sidebarNav";
+import { DEFAULT_ROUTE_ID, type RouteId } from "@/config/Route";
+import { resolveNavigableRouteId, syncBrowserPath } from "@/config/routeUtils";
 
 interface NavState {
-  activeId: NavViewId;
+  activeId: RouteId;
   /** 뒤로 갈 수 있는 이전 화면들 (오래된 → 최근) */
-  history: NavViewId[];
+  history: RouteId[];
   /** 앞으로 갈 수 있는 화면들 (가까운 → 먼) */
-  forward: NavViewId[];
+  forward: RouteId[];
   dockerInstalled: boolean | null;
-  setActiveId: (id: NavViewId) => void;
+  setActiveId: (id: RouteId) => void;
+  /** URL 등에서 초기 화면을 복원할 때 히스토리 없이 설정 */
+  hydrateActiveId: (id: RouteId) => void;
   goBack: () => boolean;
   goForward: () => boolean;
   setDockerInstalled: (installed: boolean) => void;
   reset: () => void;
 }
 
+function applyActiveId(activeId: RouteId): void {
+  syncBrowserPath(activeId);
+}
+
 export const useNavStore = create<NavState>((set, get) => ({
-  activeId: NAV_VIEW.dashboard,
+  activeId: DEFAULT_ROUTE_ID,
   history: [],
   forward: [],
   dockerInstalled: null,
-  setActiveId: (activeId) =>
+  setActiveId: (id) =>
     set((state) => {
+      const activeId = resolveNavigableRouteId(id);
       if (state.activeId === activeId) {
         return state;
       }
+      applyActiveId(activeId);
       return {
         activeId,
         history: [...state.history, state.activeId],
         forward: [],
       };
+    }),
+  hydrateActiveId: (id) =>
+    set((state) => {
+      const activeId = resolveNavigableRouteId(id);
+      if (state.activeId === activeId) {
+        return state;
+      }
+      applyActiveId(activeId);
+      return { activeId };
     }),
   goBack: () => {
     const { history, activeId, forward } = get();
@@ -41,6 +59,7 @@ export const useNavStore = create<NavState>((set, get) => ({
     if (!previous) {
       return false;
     }
+    applyActiveId(previous);
     set({
       activeId: previous,
       history: nextHistory,
@@ -58,6 +77,7 @@ export const useNavStore = create<NavState>((set, get) => ({
     if (!next) {
       return false;
     }
+    applyActiveId(next);
     set({
       activeId: next,
       history: [...history, activeId],
@@ -66,11 +86,13 @@ export const useNavStore = create<NavState>((set, get) => ({
     return true;
   },
   setDockerInstalled: (dockerInstalled) => set({ dockerInstalled }),
-  reset: () =>
+  reset: () => {
+    applyActiveId(DEFAULT_ROUTE_ID);
     set({
-      activeId: NAV_VIEW.dashboard,
+      activeId: DEFAULT_ROUTE_ID,
       history: [],
       forward: [],
       dockerInstalled: null,
-    }),
+    });
+  },
 }));

@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/common/Button";
 import { DangerButton } from "@/components/common/DangerButton";
 import { FormField } from "@/components/common/FormField";
+import "./css/file-dialog.css";
 
 export interface DestructiveConfirmDialogProps {
   /** 대상 ID(경로·컨테이너 ID 등). null이면 다이얼로그를 렌더하지 않습니다. */

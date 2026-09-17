@@ -12,6 +12,7 @@ import {
   formatModifiedTime,
   getEntryKindLabel,
 } from "@/utils/file";
+import "./css/file-list.css";
 
 interface FileListProps {
   entries: RemoteEntry[];

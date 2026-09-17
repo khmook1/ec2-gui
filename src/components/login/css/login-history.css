@@ -1,0 +1,132 @@
+.login-history {
+  width: 100%;
+  max-width: 280px;
+  padding-top: 8px;
+}
+
+.login-history__title {
+  margin: 0 0 10px 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.login-history__list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.login-history__item {
+  position: relative;
+  animation: login-history-in 0.28s ease both;
+}
+
+.login-history__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 12px 36px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.05);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.login-history__card:hover:not(:disabled) {
+  border-color: rgba(0, 113, 227, 0.35);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 10px 28px rgba(0, 113, 227, 0.1);
+  transform: translateY(-1px);
+}
+
+.login-history__card:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-history__host {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.login-history__meta {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.login-history__time {
+  margin-top: 2px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 560;
+}
+
+.login-history__dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.login-history__dismiss:hover:not(:disabled) {
+  background: #f0f0f3;
+  color: var(--text);
+}
+
+.login-history__dismiss:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@keyframes login-history-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 720px) {
+  .login-history {
+    max-width: 440px;
+    padding-top: 0;
+  }
+}
+
+html[data-theme="dark"] .login-card,
+html[data-theme="dark"] .login-history__card {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 12px 40px rgba(0, 0, 0, 0.35);
+}

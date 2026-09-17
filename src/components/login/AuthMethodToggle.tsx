@@ -1,12 +1,13 @@
-import type { Ec2AuthMethod } from "@/types/connection";
+import type { SshAuthMethod } from "@/types/connection";
+import "./css/auth-method-toggle.css";
 
 interface AuthMethodToggleProps {
-  value: Ec2AuthMethod;
+  value: SshAuthMethod;
   disabled?: boolean;
-  onChange: (method: Ec2AuthMethod) => void;
+  onChange: (method: SshAuthMethod) => void;
 }
 
-const OPTIONS: { method: Ec2AuthMethod; label: string }[] = [
+const OPTIONS: { method: SshAuthMethod; label: string }[] = [
   { method: "password", label: "비밀번호" },
   { method: "pem", label: "PEM 키" },
 ];

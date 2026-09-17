@@ -7,6 +7,7 @@ import { useResolvedTheme } from "@/hooks/useResolvedTheme";
 import { getHighlightLanguage } from "@/utils/highlightLanguage";
 import oneDark from "react-syntax-highlighter/dist/esm/styles/prism/one-dark";
 import oneLight from "react-syntax-highlighter/dist/esm/styles/prism/one-light";
+import "./css/code-block.css";
 
 interface CodeBlockProps {
   code: string;
