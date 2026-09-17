@@ -1,13 +1,13 @@
 import { IconButton } from "@/components/common/IconButton";
 import { ActivityPlaceholder } from "@/components/dashboard/ActivityPlaceholder";
+import { FeatureComingSoon } from "@/components/dashboard/FeatureComingSoon";
 import { RefreshIcon, TerminalIcon } from "@/components/icons/ToolbarIcons";
 import { SectionCard } from "@/components/dashboard/atoms/SectionCard";
 import { DiskCapacitySection } from "@/components/dashboard/DiskCapacitySection";
 import { pickPrimaryFilesystem } from "@/components/dashboard/utils/diskUi";
+import { dashboardFeatureSupport } from "@/components/dashboard/utils/featureSupport";
 import {
   DockerOverviewSection,
-  pickRecentDockerContainers,
-  summarizeDockerContainers,
   type DockerOverviewCounts,
 } from "@/components/dashboard/DockerOverviewSection";
 import { LargeDirectoriesSection } from "@/components/dashboard/LargeDirectoriesSection";
@@ -19,27 +19,21 @@ import {
 } from "@/components/dashboard/Summary";
 import { SystemResourcesSection } from "@/components/dashboard/SystemResourcesSection";
 import {
+  useDiskHistoryQuery,
   useDiskOverviewQuery,
-  useDockerContainersQuery,
-  useDockerImagesQuery,
-  useDockerNetworksQuery,
-  useDockerVolumesQuery,
+  useDockerInstalledQuery,
+  useDockerOverviewQuery,
   usePermissionOverviewQuery,
   useSshSessionsQuery,
   useSystemResourcesQuery,
 } from "@/hooks/query";
 import { useAppInfo } from "@/hooks/useAppInfo";
-import {
-  diskHistoryHostKey,
-  loadDiskUsageHistory,
-  pushDiskUsageSample,
-  type DiskUsageSample,
-} from "@/lib/diskUsageHistory";
-import { loadAutoLoginCache } from "@/lib/loginCache";
+import { collapseToHourly } from "@/lib/diskUsageHistory";
+import { useConnectionStore } from "@/stores/connectionStore";
 import { useTerminalStore } from "@/stores/terminalStore";
 import type { RemotePermissionOverview } from "@/types/permissions";
 import { formatFileSize } from "@/utils/file";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import "../components/dashboard/css/dashboard.css";
 
 function errorMessage(error: unknown, fallback: string): string | null {
@@ -78,52 +72,40 @@ export function DashboardPage() {
   const { appName } = formatAppLabels(appInfo?.name, appInfo?.version);
 
   const setTerminalOpen = useTerminalStore((state) => state.setOpen);
-
-  const hostKey = useMemo(() => {
-    const cache = loadAutoLoginCache();
-    return diskHistoryHostKey(cache?.host, cache?.port, cache?.username);
-  }, []);
-
-  const [diskHistory, setDiskHistory] = useState<DiskUsageSample[]>(() =>
-    loadDiskUsageHistory(hostKey),
+  const showServerSyncOverlay = useConnectionStore(
+    (state) => state.showServerSyncOverlay,
   );
 
   const diskQuery = useDiskOverviewQuery();
-  const systemQuery = useSystemResourcesQuery();
+  const diskHistoryQuery = useDiskHistoryQuery();
+  const features = dashboardFeatureSupport(diskQuery.data?.os);
+  const systemQuery = useSystemResourcesQuery({
+    enabled: features.systemResources,
+  });
   const sshQuery = useSshSessionsQuery();
   const permissionQuery = usePermissionOverviewQuery();
-  const containersQuery = useDockerContainersQuery();
-  const imagesQuery = useDockerImagesQuery();
-  const volumesQuery = useDockerVolumesQuery();
-  const networksQuery = useDockerNetworksQuery();
+  const dockerInstalledQuery = useDockerInstalledQuery();
+  const showDocker = dockerInstalledQuery.data === true;
+  const dockerQuery = useDockerOverviewQuery({ enabled: showDocker });
 
-  useEffect(() => {
-    if (!diskQuery.data) {
-      return;
-    }
-    const primary = pickPrimaryFilesystem(diskQuery.data.filesystems);
-    if (primary) {
-      setDiskHistory(
-        pushDiskUsageSample(hostKey, {
-          usePercent: primary.usePercent,
-          usedBytes: primary.usedBytes,
-          mountedOn: primary.mountedOn,
-        }),
-      );
-    }
-  }, [diskQuery.data, hostKey]);
+  const diskHistory = useMemo(
+    () => collapseToHourly(diskHistoryQuery.data ?? []),
+    [diskHistoryQuery.data],
+  );
 
   const diskOverview = diskQuery.data ?? null;
   const systemResources = systemQuery.data ?? null;
   const sshSessions = sshQuery.data ?? [];
   const permissions = permissionQuery.data ?? null;
+  const dockerOverview = dockerQuery.data ?? null;
 
   const diskError = diskQuery.isError
     ? errorMessage(diskQuery.error, "디스크 정보를 불러오지 못했습니다.")
     : null;
-  const systemError = systemQuery.isError
-    ? errorMessage(systemQuery.error, "시스템 리소스를 불러오지 못했습니다.")
-    : null;
+  const systemError =
+    features.systemResources && systemQuery.isError
+      ? errorMessage(systemQuery.error, "시스템 리소스를 불러오지 못했습니다.")
+      : null;
   const sshError = sshQuery.isError
     ? errorMessage(sshQuery.error, "SSH 세션을 불러오지 못했습니다.")
     : null;
@@ -131,79 +113,48 @@ export function DashboardPage() {
     ? errorMessage(permissionQuery.error, "권한 정보를 불러오지 못했습니다.")
     : null;
 
-  const dockerFailures = [
-    containersQuery.isError
-      ? errorMessage(
-          containersQuery.error,
-          "컨테이너 목록을 불러오지 못했습니다.",
-        )
-      : null,
-    imagesQuery.isError
-      ? errorMessage(imagesQuery.error, "이미지 목록을 불러오지 못했습니다.")
-      : null,
-    volumesQuery.isError
-      ? errorMessage(volumesQuery.error, "볼륨 목록을 불러오지 못했습니다.")
-      : null,
-    networksQuery.isError
-      ? errorMessage(
-          networksQuery.error,
-          "네트워크 목록을 불러오지 못했습니다.",
-        )
-      : null,
-  ].filter((message): message is string => Boolean(message));
-
-  const containers = containersQuery.data ?? [];
-  const images = imagesQuery.data ?? [];
-  const volumes = volumesQuery.data ?? [];
-  const networks = networksQuery.data ?? [];
-
-  const allDockerFailed = dockerFailures.length === 4;
-  const dockerCounts: DockerOverviewCounts | null = allDockerFailed
-    ? null
-    : {
-        containers: summarizeDockerContainers(containers),
-        images: images.length,
-        volumes: volumes.length,
-        networks: networks.length,
-      };
-  const recentContainers = allDockerFailed
-    ? []
-    : pickRecentDockerContainers(containers);
-  const dockerError = allDockerFailed
-    ? (dockerFailures[0] ?? "Docker 정보를 불러오지 못했습니다.")
-    : dockerFailures.length > 0
-      ? dockerFailures.join(" · ")
+  const dockerCounts: DockerOverviewCounts | null = dockerOverview
+    ? {
+        containers: dockerOverview.containers,
+        images: dockerOverview.images,
+        volumes: dockerOverview.volumes,
+        networks: dockerOverview.networks,
+      }
+    : null;
+  const recentContainers = dockerOverview?.recentContainers ?? [];
+  const dockerError = dockerQuery.isError
+    ? errorMessage(dockerQuery.error, "Docker 정보를 불러오지 못했습니다.")
+    : dockerOverview && dockerOverview.warnings.length > 0
+      ? dockerOverview.warnings.join(" · ")
       : null;
 
   const loading =
     diskQuery.isPending ||
-    systemQuery.isPending ||
+    diskHistoryQuery.isPending ||
+    (features.systemResources && systemQuery.isPending) ||
     sshQuery.isPending ||
     permissionQuery.isPending ||
-    containersQuery.isPending ||
-    imagesQuery.isPending ||
-    volumesQuery.isPending ||
-    networksQuery.isPending;
+    (showDocker && dockerQuery.isPending);
 
   const refreshing =
     diskQuery.isFetching ||
-    systemQuery.isFetching ||
+    diskHistoryQuery.isFetching ||
+    (features.systemResources && systemQuery.isFetching) ||
     sshQuery.isFetching ||
     permissionQuery.isFetching ||
-    containersQuery.isFetching ||
-    imagesQuery.isFetching ||
-    volumesQuery.isFetching ||
-    networksQuery.isFetching;
+    (showDocker && dockerQuery.isFetching);
 
   const refreshAll = () => {
     void diskQuery.refetch();
-    void systemQuery.refetch();
+    void diskHistoryQuery.refetch();
+    if (features.systemResources) {
+      void systemQuery.refetch();
+    }
     void sshQuery.refetch();
     void permissionQuery.refetch();
-    void containersQuery.refetch();
-    void imagesQuery.refetch();
-    void volumesQuery.refetch();
-    void networksQuery.refetch();
+    if (showDocker) {
+      void dockerQuery.refetch();
+    }
   };
 
   const filesystems = diskOverview?.filesystems ?? [];
@@ -220,9 +171,34 @@ export function DashboardPage() {
   const permissionsBadge =
     !loading && !permissionError ? permissionBadge(permissions) : "준비 중";
 
+  const showLeftSystem = features.systemResources;
+  const showLeftDocker = showDocker;
+  const showLeftDirs = features.largeDirectories;
+  const leftHasSections = showLeftSystem || showLeftDocker || showLeftDirs;
+  const leftColumnReady =
+    Boolean(diskQuery.data) && !dockerInstalledQuery.isPending;
+  const showLeftComingSoon = leftColumnReady && !leftHasSections;
+
+  const showRightPermissions = true;
+  const showRightStorage = true;
+  const showRightSsh = true;
+  const showRightActivity = features.activity;
+  const rightHasSections =
+    showRightPermissions ||
+    showRightStorage ||
+    showRightSsh ||
+    showRightActivity;
+  const showRightComingSoon = !rightHasSections;
+
   return (
     <section className="explorer dashboard-page">
       <div className="dashboard-page__content">
+        {loading && !showServerSyncOverlay ? (
+          <p className="dashboard-connect-hint" role="status">
+            연결 시 서버 정보를 불러오는 데 최대 5분 정도 걸릴 수 있습니다.
+          </p>
+        ) : null}
+
         <header className="dashboard-topbar">
           <div className="dashboard-topbar__copy">
             <p className="dashboard-topbar__eyebrow">인프라 개요</p>
@@ -259,102 +235,126 @@ export function DashboardPage() {
           dockerCounts={dockerCounts}
           sshSessionCount={sshSessions.length}
           loading={loading}
+          showDocker={showDocker}
         />
 
         <div className="dashboard-grid">
           <div className="dashboard-grid__left">
-            <SectionCard
-              title="시스템 리소스"
-              subtitle="실시간"
-              badge={systemResources && !systemError ? "0.3s 샘플" : "준비 중"}
-            >
-              <SystemResourcesSection
-                resources={systemResources}
-                loading={systemQuery.isPending}
-                error={systemError}
-              />
-            </SectionCard>
+            {showLeftComingSoon ? (
+              <SectionCard title="기능 준비 중" badge="준비 중">
+                <FeatureComingSoon label="왼쪽 패널 준비 중" />
+              </SectionCard>
+            ) : null}
 
-            <SectionCard
-              title="Docker 컨테이너"
-              subtitle="최근 활동"
-              badge={dockerBadge}
-            >
-              <DockerOverviewSection
-                counts={dockerCounts}
-                recentContainers={recentContainers}
-                loading={
-                  containersQuery.isPending ||
-                  imagesQuery.isPending ||
-                  volumesQuery.isPending ||
-                  networksQuery.isPending
+            {showLeftSystem ? (
+              <SectionCard
+                title="시스템 리소스"
+                subtitle="실시간"
+                badge={
+                  systemResources && !systemError ? "0.3s 샘플" : "준비 중"
                 }
-                error={dockerError}
-              />
-            </SectionCard>
+              >
+                <SystemResourcesSection
+                  resources={systemResources}
+                  loading={systemQuery.isPending}
+                  error={systemError}
+                />
+              </SectionCard>
+            ) : null}
 
-            <SectionCard
-              title="용량이 큰 디렉터리"
-              subtitle="루트 1depth"
-              badge={
-                !diskQuery.isPending && !diskError && directories.length > 0
-                  ? directories.length
-                  : null
-              }
-            >
-              <LargeDirectoriesSection
-                directories={directories}
-                loading={diskQuery.isPending}
-                error={diskError}
-              />
-            </SectionCard>
+            {showLeftDocker ? (
+              <SectionCard
+                title="Docker 컨테이너"
+                subtitle="최근 활동"
+                badge={dockerBadge}
+              >
+                <DockerOverviewSection
+                  counts={dockerCounts}
+                  recentContainers={recentContainers}
+                  loading={dockerQuery.isPending}
+                  error={dockerError}
+                />
+              </SectionCard>
+            ) : null}
+
+            {showLeftDirs ? (
+              <SectionCard
+                title="용량이 큰 디렉터리"
+                subtitle="루트 1depth"
+                badge={
+                  !diskQuery.isPending && !diskError && directories.length > 0
+                    ? directories.length
+                    : null
+                }
+              >
+                <LargeDirectoriesSection
+                  directories={directories}
+                  loading={diskQuery.isPending}
+                  error={diskError}
+                />
+              </SectionCard>
+            ) : null}
           </div>
 
           <div className="dashboard-grid__right">
-            <SectionCard
-              title="내 권한"
-              subtitle="접속 계정"
-              badge={permissionsBadge}
-            >
-              <PermissionsSection
-                permissions={permissions}
-                loading={permissionQuery.isPending}
-                error={permissionError}
-              />
-            </SectionCard>
+            {showRightComingSoon ? (
+              <SectionCard title="기능 준비 중" badge="준비 중">
+                <FeatureComingSoon label="오른쪽 패널 준비 중" />
+              </SectionCard>
+            ) : null}
 
-            <SectionCard
-              title="스토리지"
-              subtitle="마운트 포인트"
-              badge={storageBadge}
-            >
-              <DiskCapacitySection
-                filesystems={filesystems}
-                history={diskHistory}
-                loading={diskQuery.isPending}
-                error={diskError}
-              />
-            </SectionCard>
+            {showRightPermissions ? (
+              <SectionCard
+                title="내 권한"
+                subtitle="접속 계정"
+                badge={permissionsBadge}
+              >
+                <PermissionsSection
+                  permissions={permissions}
+                  loading={permissionQuery.isPending}
+                  error={permissionError}
+                />
+              </SectionCard>
+            ) : null}
 
-            <SectionCard
-              title="SSH 세션"
-              subtitle="원격 로그인"
-              badge={
-                !sshQuery.isPending && !sshError
-                  ? `${sshSessions.length}개 활성`
-                  : "준비 중"
-              }
-            >
-              <SshSessionsSection
-                sessions={sshSessions}
-                loading={sshQuery.isPending}
-                error={sshError}
-              />
-            </SectionCard>
+            {showRightStorage ? (
+              <SectionCard
+                title="스토리지"
+                subtitle="마운트 포인트"
+                badge={storageBadge}
+              >
+                <DiskCapacitySection
+                  filesystems={filesystems}
+                  history={diskHistory}
+                  loading={diskQuery.isPending || diskHistoryQuery.isPending}
+                  error={diskError}
+                />
+              </SectionCard>
+            ) : null}
 
-            <SectionCard title="최근 활동" badge="최신">
-              <ActivityPlaceholder />
-            </SectionCard>
+            {showRightSsh ? (
+              <SectionCard
+                title="SSH 세션"
+                subtitle="원격 로그인"
+                badge={
+                  !sshQuery.isPending && !sshError
+                    ? `${sshSessions.length}개 활성`
+                    : "준비 중"
+                }
+              >
+                <SshSessionsSection
+                  sessions={sshSessions}
+                  loading={sshQuery.isPending}
+                  error={sshError}
+                />
+              </SectionCard>
+            ) : null}
+
+            {showRightActivity ? (
+              <SectionCard title="최근 활동" badge="최신">
+                <ActivityPlaceholder />
+              </SectionCard>
+            ) : null}
           </div>
         </div>
       </div>

@@ -37,6 +37,9 @@ function useInvalidateDockerLists() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.dockerNetworks(sessionKey),
       }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.dockerOverview(sessionKey),
+      }),
     ]);
   };
 }
@@ -85,9 +88,14 @@ export function useDockerImageActionMutation() {
         return;
       }
       if (sessionKey) {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.dockerImages(sessionKey),
-        });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dockerImages(sessionKey),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dockerOverview(sessionKey),
+          }),
+        ]);
       }
     },
   });
@@ -110,9 +118,14 @@ export function useDockerVolumeActionMutation() {
         return;
       }
       if (sessionKey) {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.dockerVolumes(sessionKey),
-        });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dockerVolumes(sessionKey),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dockerOverview(sessionKey),
+          }),
+        ]);
       }
     },
   });
@@ -135,9 +148,14 @@ export function useDockerNetworkActionMutation() {
         return;
       }
       if (sessionKey) {
-        await queryClient.invalidateQueries({
-          queryKey: queryKeys.dockerNetworks(sessionKey),
-        });
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dockerNetworks(sessionKey),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.dockerOverview(sessionKey),
+          }),
+        ]);
       }
     },
   });

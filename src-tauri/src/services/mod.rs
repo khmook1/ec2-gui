@@ -1,5 +1,6 @@
 pub mod cache_service;
 pub mod remote_disk;
+pub mod remote_disk_history;
 pub mod remote_docker;
 pub mod remote_fs;
 pub mod remote_permissions;
@@ -10,8 +11,10 @@ pub mod ssh;
 pub mod storage_service;
 
 pub use remote_disk::DiskOverview;
+pub use remote_disk_history::DiskUsageSample;
 pub use remote_docker::{
-    DockerContainer, DockerContainerDetails, DockerImage, DockerNetwork, DockerVolume,
+    DockerContainer, DockerContainerDetails, DockerImage, DockerNetwork, DockerOverview,
+    DockerVolume,
 };
 pub use remote_fs::RemoteDirectoryListing;
 pub use remote_permissions::RemotePermissionOverview;

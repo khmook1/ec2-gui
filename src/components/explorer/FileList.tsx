@@ -11,6 +11,8 @@ import {
   formatFileSize,
   formatModifiedTime,
   getEntryKindLabel,
+  getExplorerFileIconKind,
+  type ExplorerFileIconKind,
 } from "@/utils/file";
 import "./css/file-list.css";
 
@@ -21,17 +23,8 @@ interface FileListProps {
   onEntryContextMenu?: (event: MouseEvent, entry: RemoteEntry | null) => void;
 }
 
-function FileIcon({ isDirectory }: { isDirectory: boolean }) {
-  return (
-    <span
-      className={
-        isDirectory
-          ? "explorer-icon explorer-icon--folder"
-          : "explorer-icon explorer-icon--file"
-      }
-      aria-hidden
-    />
-  );
+function FileIcon({ kind }: { kind: ExplorerFileIconKind }) {
+  return <span className={`explorer-icon explorer-icon--${kind}`} aria-hidden />;
 }
 
 export function FileList({
@@ -51,7 +44,9 @@ export function FileList({
         colProp: { align: "left" },
         render: (entry) => (
           <span className="table-list__name-cell">
-            <FileIcon isDirectory={entry.isDirectory} />
+            <FileIcon
+              kind={getExplorerFileIconKind(entry.isDirectory, entry.name)}
+            />
             <span className="table-list__name-text">
               <SearchHighlight text={entry.name} query={query} />
             </span>
@@ -89,7 +84,7 @@ export function FileList({
         colProp: { align: "left" },
         render: (entry) => (
           <SearchHighlight
-            text={getEntryKindLabel(entry.isDirectory)}
+            text={getEntryKindLabel(entry.isDirectory, entry.name)}
             query={query}
           />
         ),

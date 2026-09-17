@@ -24,6 +24,8 @@ pub struct LargeDirectory {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiskOverview {
+    /// `linux` | `macos` | `unknown`
+    pub os: String,
     pub filesystems: Vec<DiskFilesystem>,
     pub large_directories: Vec<LargeDirectory>,
 }
@@ -38,17 +40,43 @@ const SKIP_FILESYSTEM_TYPES: &[&str] = &[
     "sysfs",
     "cgroup",
     "cgroup2",
+    "autofs",
 ];
 
+/// 원격 `uname -s` 결과. 대시보드 기능 노출 여부에 사용.
+pub fn detect_remote_os(session: &Session) -> String {
+    match exec_remote_command(session, "uname -s 2>/dev/null") {
+        Ok(value) if value.eq_ignore_ascii_case("Darwin") => "macos".to_string(),
+        Ok(value) if value.eq_ignore_ascii_case("Linux") => "linux".to_string(),
+        _ => "unknown".to_string(),
+    }
+}
+
 pub fn get_disk_overview(session: &Session) -> Result<DiskOverview, String> {
+    let os = detect_remote_os(session);
+    let macos = os == "macos";
+
     Ok(DiskOverview {
-        filesystems: list_filesystems(session)?,
-        large_directories: list_large_directories(session)?,
+        os,
+        filesystems: list_filesystems(session, macos)?,
+        // macOS에서 루트 `du`는 /Users·/System 전량 스캔으로 수분 걸릴 수 있어 건너뜁니다.
+        large_directories: if macos {
+            Vec::new()
+        } else {
+            list_large_directories(session)?
+        },
     })
 }
 
-fn list_filesystems(session: &Session) -> Result<Vec<DiskFilesystem>, String> {
-    let output = exec_remote_command(session, "df -B1 -P -l 2>/dev/null")?;
+fn list_filesystems(session: &Session, macos: bool) -> Result<Vec<DiskFilesystem>, String> {
+    // Linux(GNU): 바이트 단위. macOS(BSD): -k(1KiB) 후 바이트로 환산.
+    let (command, block_bytes) = if macos {
+        ("df -kP -l 2>/dev/null", 1024u64)
+    } else {
+        ("df -B1 -P -l 2>/dev/null", 1u64)
+    };
+
+    let output = exec_remote_command(session, command)?;
     let mut filesystems = Vec::new();
 
     for line in output.lines().skip(1) {
@@ -71,9 +99,12 @@ fn list_filesystems(session: &Session) -> Result<Vec<DiskFilesystem>, String> {
             continue;
         }
 
-        let size_bytes = parts[1].parse::<u64>().unwrap_or(0);
-        let used_bytes = parts[2].parse::<u64>().unwrap_or(0);
-        let available_bytes = parts[3].parse::<u64>().unwrap_or(0);
+        let size_bytes = parts[1].parse::<u64>().unwrap_or(0).saturating_mul(block_bytes);
+        let used_bytes = parts[2].parse::<u64>().unwrap_or(0).saturating_mul(block_bytes);
+        let available_bytes = parts[3]
+            .parse::<u64>()
+            .unwrap_or(0)
+            .saturating_mul(block_bytes);
         let use_percent = parts[4]
             .trim_end_matches('%')
             .parse::<u32>()
@@ -84,6 +115,16 @@ fn list_filesystems(session: &Session) -> Result<Vec<DiskFilesystem>, String> {
         if mounted_on.starts_with("/snap")
             || lower.starts_with("/dev/loop")
             || lower.starts_with("/dev/mapper/snap")
+        {
+            continue;
+        }
+
+        // macOS 가상·보조 마운트 노이즈
+        if macos
+            && (mounted_on.starts_with("/System/Volumes/Data/home")
+                || mounted_on.starts_with("/private/var/vm")
+                || mounted_on == "/dev"
+                || mounted_on.starts_with("/Volumes/com.apple"))
         {
             continue;
         }
@@ -103,8 +144,8 @@ fn list_filesystems(session: &Session) -> Result<Vec<DiskFilesystem>, String> {
     }
 
     filesystems.sort_by(|a, b| {
-        let a_root = a.mounted_on == "/";
-        let b_root = b.mounted_on == "/";
+        let a_root = a.mounted_on == "/" || a.mounted_on == "/System/Volumes/Data";
+        let b_root = b.mounted_on == "/" || b.mounted_on == "/System/Volumes/Data";
         b_root
             .cmp(&a_root)
             .then_with(|| b.size_bytes.cmp(&a.size_bytes))

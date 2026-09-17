@@ -8,6 +8,17 @@
   gap: 16px;
 }
 
+.dashboard-connect-hint {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 .dashboard-topbar {
   display: flex;
   align-items: center;
@@ -43,6 +54,10 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+.dashboard-metrics--no-docker {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .dashboard-grid {
@@ -217,15 +232,15 @@
 }
 
 .dashboard-resource__icon {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: grid;
   place-items: center;
-  border-radius: 9px;
+  border-radius: 6px;
   background: color-mix(in srgb, var(--surface) 88%, var(--bg));
   border: 1px solid var(--border);
   color: var(--accent);
-  font-size: 0.702rem;
+  font-size: 0.6rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -389,7 +404,13 @@
 .dashboard-container__image {
   margin-top: 4px;
   color: var(--text-secondary);
-  font: 0.625rem ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font:
+    0.625rem ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Monaco,
+    Consolas,
+    monospace;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -810,6 +831,44 @@
   background: color-mix(in srgb, var(--danger) 10%, var(--surface));
   color: color-mix(in srgb, var(--danger) 72%, var(--text));
   border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+}
+
+/* Coming soon (empty column) */
+.dashboard-coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 220px;
+  padding: 28px 20px;
+  text-align: center;
+}
+
+.dashboard-coming-soon__icon {
+  display: block;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  border-radius: 20px;
+  background: #0a0a0a;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--text) 8%, transparent);
+}
+
+.dashboard-coming-soon__title {
+  margin: 6px 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.dashboard-coming-soon__desc {
+  margin: 0;
+  max-width: 22rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
 }
 
 /* Activity */

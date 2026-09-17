@@ -124,15 +124,20 @@ export function DiskCapacitySection({
           return (
             <i
               key={sample.ts}
-              title={`${sample.usePercent}% · ${new Date(sample.ts).toLocaleString()}`}
+              title={`${sample.usePercent}% · ${new Date(sample.ts).toLocaleString("ko-KR", {
+                month: "numeric",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`}
               style={{ height: `${height}%` }}
             />
           );
         })}
       </div>
       <div className="dashboard-resource__footer">
-        <span>샘플 {history.length}개</span>
-        <span>최대 24</span>
+        <span>시간별 {history.length}개</span>
+        <span>최대 24시간</span>
       </div>
 
       {others.length > 0 ? (

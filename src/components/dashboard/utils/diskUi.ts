@@ -17,7 +17,10 @@ export function pickPrimaryFilesystem(
   filesystems: DiskFilesystem[],
 ): DiskFilesystem | null {
   return (
-    filesystems.find((fs) => fs.mountedOn === "/") ?? filesystems[0] ?? null
+    filesystems.find((fs) => fs.mountedOn === "/") ??
+    filesystems.find((fs) => fs.mountedOn === "/System/Volumes/Data") ??
+    filesystems[0] ??
+    null
   );
 }
 

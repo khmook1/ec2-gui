@@ -1,6 +1,7 @@
 use serde::Serialize;
 use ssh2::Session;
 
+use super::remote_disk::detect_remote_os;
 use super::remote_fs::exec_remote_command;
 
 #[derive(Serialize)]
@@ -38,6 +39,11 @@ pub struct SystemResources {
 
 /// Linux `/proc` 기반 스냅샷. CPU·NET은 짧은 샘플 간격으로 사용률/초당 바이트를 계산한다.
 pub fn get_system_resources(session: &Session) -> Result<SystemResources, String> {
+    let os = detect_remote_os(session);
+    if os != "linux" {
+        return Err("시스템 리소스는 Linux에서만 지원합니다.".to_string());
+    }
+
     let output = exec_remote_command(
         session,
         r#"

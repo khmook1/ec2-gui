@@ -1,0 +1,59 @@
+.create-entry-dialog__body {
+  padding: 0;
+  background: var(--surface);
+  overflow: visible;
+}
+
+.create-entry-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 18px;
+}
+
+.create-entry-dialog .form-field textarea {
+  width: 100%;
+  min-height: 160px;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  resize: vertical;
+  background: var(--toolbar-bg);
+  color: var(--text);
+  caret-color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.create-entry-dialog .form-field textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.85;
+}
+
+.create-entry-dialog .form-field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--surface);
+}
+
+.create-entry-dialog .form-field textarea:disabled {
+  opacity: 0.7;
+}
+
+.create-entry-dialog__error {
+  margin: -6px 0 0;
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
+.create-entry-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

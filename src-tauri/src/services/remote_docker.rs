@@ -3,7 +3,7 @@ use ssh2::Session;
 
 use super::remote_fs::{exec_remote_command, exec_remote_command_checked};
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DockerContainer {
     pub id: String,
@@ -40,6 +40,30 @@ pub struct DockerVolume {
     pub mountpoint: String,
     pub scope: String,
 }
+
+#[derive(Serialize, Clone, Copy, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerContainerCounts {
+    pub total: u32,
+    pub running: u32,
+    pub paused: u32,
+    pub stopped: u32,
+    pub unknown: u32,
+}
+
+/// 대시보드 Docker 요약 (목록 4회 호출 대신 1회).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DockerOverview {
+    pub containers: DockerContainerCounts,
+    pub images: u32,
+    pub volumes: u32,
+    pub networks: u32,
+    pub recent_containers: Vec<DockerContainer>,
+    pub warnings: Vec<String>,
+}
+
+const RECENT_CONTAINER_LIMIT: usize = 4;
 
 #[derive(Deserialize)]
 struct DockerPsRow {
@@ -209,6 +233,107 @@ pub fn list_volumes(session: &Session) -> Result<Vec<DockerVolume>, String> {
     }
 
     Ok(volumes)
+}
+
+fn container_state(status: &str) -> &'static str {
+    let normalized = status.to_lowercase();
+    let normalized = normalized.trim();
+    if normalized.is_empty() {
+        return "unknown";
+    }
+    if normalized.contains("(paused)") || normalized == "paused" {
+        return "paused";
+    }
+    if normalized.starts_with("up")
+        || normalized.starts_with("running")
+        || normalized.starts_with("restarting")
+    {
+        return "running";
+    }
+    if normalized.starts_with("exited")
+        || normalized.starts_with("created")
+        || normalized.starts_with("dead")
+        || normalized.starts_with("removing")
+        || normalized.starts_with("removed")
+    {
+        return "stopped";
+    }
+    "unknown"
+}
+
+fn summarize_containers(containers: &[DockerContainer]) -> DockerContainerCounts {
+    let mut counts = DockerContainerCounts {
+        total: containers.len() as u32,
+        ..DockerContainerCounts::default()
+    };
+
+    for container in containers {
+        match container_state(&container.status) {
+            "running" => counts.running += 1,
+            "paused" => counts.paused += 1,
+            "stopped" => counts.stopped += 1,
+            _ => counts.unknown += 1,
+        }
+    }
+
+    counts
+}
+
+/// 컨테이너·이미지·볼륨·네트워크를 모아 대시보드용 요약을 만듭니다.
+/// 일부 목록 실패 시에도 가능한 데이터는 반환하고 `warnings`에 메시지를 담습니다.
+pub fn get_docker_overview(session: &Session) -> Result<DockerOverview, String> {
+    let mut warnings = Vec::new();
+
+    let containers = match list_containers(session) {
+        Ok(value) => value,
+        Err(error) => {
+            warnings.push(error);
+            Vec::new()
+        }
+    };
+    let images = match list_images(session) {
+        Ok(value) => value,
+        Err(error) => {
+            warnings.push(error);
+            Vec::new()
+        }
+    };
+    let volumes = match list_volumes(session) {
+        Ok(value) => value,
+        Err(error) => {
+            warnings.push(error);
+            Vec::new()
+        }
+    };
+    let networks = match list_networks(session) {
+        Ok(value) => value,
+        Err(error) => {
+            warnings.push(error);
+            Vec::new()
+        }
+    };
+
+    if warnings.len() == 4 {
+        return Err(warnings
+            .into_iter()
+            .next()
+            .unwrap_or_else(|| "Docker 정보를 불러오지 못했습니다.".to_string()));
+    }
+
+    let recent_containers = containers
+        .iter()
+        .take(RECENT_CONTAINER_LIMIT)
+        .cloned()
+        .collect();
+
+    Ok(DockerOverview {
+        containers: summarize_containers(&containers),
+        images: images.len() as u32,
+        volumes: volumes.len() as u32,
+        networks: networks.len() as u32,
+        recent_containers,
+        warnings,
+    })
 }
 
 fn validate_docker_list_output(output: &str) -> Result<&str, String> {
@@ -612,4 +737,50 @@ pub fn system_action(session: &Session, action: &str) -> Result<String, String> 
     };
 
     exec_remote_command_checked(session, &command)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{container_state, summarize_containers, DockerContainer};
+
+    #[test]
+    fn classifies_container_states() {
+        assert_eq!(container_state("Up 2 hours"), "running");
+        assert_eq!(container_state("Up 3 minutes (Paused)"), "paused");
+        assert_eq!(container_state("Exited (0) 1 hour ago"), "stopped");
+        assert_eq!(container_state(""), "unknown");
+    }
+
+    #[test]
+    fn summarizes_container_counts() {
+        let containers = vec![
+            DockerContainer {
+                id: "1".into(),
+                image: "nginx".into(),
+                status: "Up 1 hour".into(),
+                names: "web".into(),
+                ports: String::new(),
+            },
+            DockerContainer {
+                id: "2".into(),
+                image: "redis".into(),
+                status: "Exited (0) 2 hours ago".into(),
+                names: "cache".into(),
+                ports: String::new(),
+            },
+            DockerContainer {
+                id: "3".into(),
+                image: "app".into(),
+                status: "Up 5 minutes (Paused)".into(),
+                names: "api".into(),
+                ports: String::new(),
+            },
+        ];
+        let counts = summarize_containers(&containers);
+        assert_eq!(counts.total, 3);
+        assert_eq!(counts.running, 1);
+        assert_eq!(counts.paused, 1);
+        assert_eq!(counts.stopped, 1);
+        assert_eq!(counts.unknown, 0);
+    }
 }

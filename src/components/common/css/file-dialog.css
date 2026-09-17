@@ -32,6 +32,13 @@
   flex-shrink: 0;
 }
 
+.file-dialog__header-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
 .file-dialog__heading {
   min-width: 0;
 }
@@ -111,6 +118,87 @@
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.file-dialog__editor {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  min-height: 360px;
+  height: 100%;
+  margin: 0;
+  padding: 16px 18px 20px;
+  border: none;
+  resize: vertical;
+  background: transparent;
+  color: var(--text);
+  caret-color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.7813rem;
+  line-height: 1.55;
+  outline: none;
+}
+
+.file-dialog__editor:disabled {
+  opacity: 0.7;
+}
+
+.file-dialog__body--editing {
+  display: flex;
+  flex-direction: column;
+}
+
+.file-dialog__body--image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--border) 55%, transparent) 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--border) 55%, transparent) 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 75%,
+      color-mix(in srgb, var(--border) 55%, transparent) 75%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 75%,
+      color-mix(in srgb, var(--border) 55%, transparent) 75%
+    ),
+    color-mix(in srgb, var(--bg) 70%, var(--surface));
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+}
+
+.file-dialog__image-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 280px;
+  padding: 20px;
+}
+
+.file-dialog__image {
+  display: block;
+  max-width: 100%;
+  max-height: min(560px, calc(100vh - 220px));
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(15, 15, 18, 0.18);
 }
 
 .file-dialog--confirm {

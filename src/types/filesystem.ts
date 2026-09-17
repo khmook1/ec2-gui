@@ -18,4 +18,5 @@ export interface RemoteFileContent {
   content: string;
   truncated: boolean;
   isBinary: boolean;
+  isImage: boolean;
 }

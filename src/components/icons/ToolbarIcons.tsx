@@ -127,3 +127,22 @@ export function EyeOffIcon(props: ToolbarIconProps) {
     </ToolbarSvg>
   );
 }
+
+/** 편집 */
+export function EditIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </ToolbarSvg>
+  );
+}
+
+/** 저장/확인 */
+export function CheckIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <path d="M20 6 9 17l-5-5" />
+    </ToolbarSvg>
+  );
+}

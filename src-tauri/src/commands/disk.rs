@@ -1,6 +1,7 @@
 use tauri::State;
 
 use crate::services::DiskOverview;
+use crate::services::DiskUsageSample;
 use crate::services::RemotePermissionOverview;
 use crate::services::RemoteSshSession;
 use crate::services::SshConnectionManager;
@@ -32,4 +33,18 @@ pub fn get_remote_permission_overview(
     state: State<'_, SshConnectionManager>,
 ) -> Result<RemotePermissionOverview, String> {
     state.get_permission_overview()
+}
+
+#[tauri::command(async)]
+pub fn ensure_remote_disk_history(
+    state: State<'_, SshConnectionManager>,
+) -> Result<(), String> {
+    state.ensure_disk_history_collector()
+}
+
+#[tauri::command(async)]
+pub fn get_remote_disk_history(
+    state: State<'_, SshConnectionManager>,
+) -> Result<Vec<DiskUsageSample>, String> {
+    state.get_disk_history()
 }

@@ -20,7 +20,9 @@ import {
   type CachedLoginForm,
   type CachedLoginHistoryEntry,
 } from "@/lib/loginCache";
+import { getLocalLoginDefaults } from "@/services/tauri";
 import { useConnectionStore } from "@/stores/connectionStore";
+import type { LocalLoginDefaults } from "@/types/app";
 import "./css/login.css";
 
 type LoginFormValues = CachedLoginForm;
@@ -31,6 +33,9 @@ export function LoginPage() {
     loadLoginHistory(),
   );
   const [showPassword, setShowPassword] = useState(false);
+  const [localDefaults, setLocalDefaults] = useState<LocalLoginDefaults | null>(
+    null,
+  );
   const {
     register,
     handleSubmit,
@@ -61,6 +66,24 @@ export function LoginPage() {
   }, [authMethod, trigger]);
 
   useEffect(() => {
+    let cancelled = false;
+    void getLocalLoginDefaults()
+      .then((defaults) => {
+        if (!cancelled) {
+          setLocalDefaults(defaults);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLocalDefaults(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (shouldSkipAutoLogin()) {
       return;
     }
@@ -77,6 +100,25 @@ export function LoginPage() {
 
     void login(cachedFormToCredentials(cached));
   }, [login]);
+
+  function applyLocalDefaults() {
+    if (!localDefaults?.available) {
+      return;
+    }
+
+    setValue("host", localDefaults.host, { shouldValidate: true, shouldDirty: true });
+    setValue("port", localDefaults.port, { shouldValidate: true, shouldDirty: true });
+    setValue("username", localDefaults.username, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    setValue("memo", localDefaults.memo, { shouldValidate: true, shouldDirty: true });
+    setValue("authMethod", "password", { shouldValidate: true, shouldDirty: true });
+    setValue("privateKeyPath", "", { shouldValidate: true, shouldDirty: true });
+    setValue("keyPassphrase", "", { shouldValidate: true, shouldDirty: true });
+    setValue("password", "", { shouldValidate: true, shouldDirty: true });
+    setShowPassword(false);
+  }
 
   async function pickPrivateKeyFile() {
     const selected = await open({
@@ -300,6 +342,19 @@ export function LoginPage() {
           onUpdateMemo={handleUpdateMemo}
         />
       </div>
+
+      {localDefaults?.available ? (
+        <Button
+          type="button"
+          variant="ghost"
+          className="login-local-btn"
+          disabled={isConnecting}
+          title="로컬 맥 SSH 접속 정보를 빠르게 채웁니다"
+          onClick={applyLocalDefaults}
+        >
+          로컬 퀵
+        </Button>
+      ) : null}
     </div>
   );
 }

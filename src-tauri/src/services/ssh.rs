@@ -450,6 +450,19 @@ impl SshConnectionManager {
         super::remote_fs::read_file(&connection.session, path)
     }
 
+    pub fn write_file(&self, path: &str, content: &str) -> Result<(), String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_fs::write_file(&connection.session, path, content)
+    }
+
     pub fn is_docker_installed(&self) -> Result<bool, String> {
         let guard = self
             .connection
@@ -513,6 +526,19 @@ impl SshConnectionManager {
             .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_docker::list_volumes(&connection.session)
+    }
+
+    pub fn get_docker_overview(&self) -> Result<super::remote_docker::DockerOverview, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_docker::get_docker_overview(&connection.session)
     }
 
     pub fn docker_container_action(
@@ -682,6 +708,40 @@ impl SshConnectionManager {
             .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
 
         super::remote_permissions::get_permission_overview(&connection.session)
+    }
+
+    pub fn ensure_disk_history_collector(&self) -> Result<(), String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_disk_history::ensure_disk_history_collector(
+            &connection.session,
+            &connection.username,
+        )
+    }
+
+    pub fn get_disk_history(
+        &self,
+    ) -> Result<Vec<super::remote_disk_history::DiskUsageSample>, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_disk_history::read_disk_history(
+            &connection.session,
+            &connection.username,
+        )
     }
 }
 

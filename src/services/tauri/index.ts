@@ -1,4 +1,4 @@
-export { getAppInfo } from "./app";
+export { getAppInfo, getLocalLoginDefaults } from "./app";
 export {
   checkRemoteDocker,
   listRemoteDockerContainers,
@@ -12,12 +12,15 @@ export {
   runRemoteDockerSystemAction,
   getRemoteDockerContainerDetails,
   getRemoteDockerContainerLogs,
+  getRemoteDockerOverview,
 } from "./docker";
 export {
   getRemoteDiskOverview,
   getRemoteSystemResources,
   listRemoteSshSessions,
   getRemotePermissionOverview,
+  ensureRemoteDiskHistory,
+  getRemoteDiskHistory,
 } from "./disk";
 export { connectSsh, disconnectSsh } from "./ssh";
 export {
@@ -27,6 +30,7 @@ export {
   createRemoteFile,
   deleteRemotePath,
   readRemoteFile,
+  writeRemoteFile,
 } from "./filesystem";
 export {
   clearAppCache,

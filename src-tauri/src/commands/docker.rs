@@ -4,6 +4,7 @@ use crate::services::DockerContainer;
 use crate::services::DockerContainerDetails;
 use crate::services::DockerImage;
 use crate::services::DockerNetwork;
+use crate::services::DockerOverview;
 use crate::services::DockerVolume;
 use crate::services::SshConnectionManager;
 
@@ -40,6 +41,13 @@ pub fn list_remote_docker_volumes(
     state: State<'_, SshConnectionManager>,
 ) -> Result<Vec<DockerVolume>, String> {
     state.list_docker_volumes()
+}
+
+#[tauri::command(async)]
+pub fn get_remote_docker_overview(
+    state: State<'_, SshConnectionManager>,
+) -> Result<DockerOverview, String> {
+    state.get_docker_overview()
 }
 
 #[tauri::command(async)]

@@ -1,3 +1,5 @@
+export type RemoteOs = "linux" | "macos" | "unknown";
+
 export interface DiskFilesystem {
   filesystem: string;
   sizeBytes: number;
@@ -13,6 +15,8 @@ export interface LargeDirectory {
 }
 
 export interface DiskOverview {
+  /** 원격 호스트 OS (`uname -s`) */
+  os: RemoteOs;
   filesystems: DiskFilesystem[];
   largeDirectories: LargeDirectory[];
 }

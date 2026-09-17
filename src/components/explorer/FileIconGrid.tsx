@@ -4,6 +4,11 @@ import { SearchHighlight } from "@/components/common/SearchHighlight";
 import { useFilteredRemoteEntries } from "@/lib/useFilteredRemoteEntries";
 import { useListSelection } from "@/providers/ListSelectionProvider";
 import type { RemoteEntry } from "@/types/filesystem";
+import {
+  getEntryKindLabel,
+  getExplorerFileIconKind,
+  type ExplorerFileIconKind,
+} from "@/utils/file";
 import "./css/file-icon-grid.css";
 
 interface FileIconGridProps {
@@ -13,14 +18,10 @@ interface FileIconGridProps {
   onEntryContextMenu?: (event: MouseEvent, entry: RemoteEntry | null) => void;
 }
 
-function GridIcon({ isDirectory }: { isDirectory: boolean }) {
+function GridIcon({ kind }: { kind: ExplorerFileIconKind }) {
   return (
     <span
-      className={
-        isDirectory
-          ? "explorer-icon explorer-icon--folder explorer-icon--grid"
-          : "explorer-icon explorer-icon--file explorer-icon--grid"
-      }
+      className={`explorer-icon explorer-icon--grid explorer-icon--${kind}`}
       aria-hidden
     />
   );
@@ -90,9 +91,7 @@ export function FileIconGrid({
               .join(" ")}
             disabled={isLoading}
             title={entry.name}
-            aria-label={
-              entry.isDirectory ? `${entry.name} 폴더` : `${entry.name} 파일`
-            }
+            aria-label={`${entry.name} ${getEntryKindLabel(entry.isDirectory, entry.name)}`}
             aria-pressed={selected}
             onMouseDown={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -105,7 +104,9 @@ export function FileIconGrid({
             }}
             onContextMenu={(event) => onEntryContextMenu?.(event, entry)}
           >
-            <GridIcon isDirectory={entry.isDirectory} />
+            <GridIcon
+              kind={getExplorerFileIconKind(entry.isDirectory, entry.name)}
+            />
             <span className="explorer-icon-grid__name">
               <SearchHighlight text={entry.name} query={query} />
             </span>

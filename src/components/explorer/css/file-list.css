@@ -172,6 +172,113 @@
     0 15px 0 #d5d5da;
 }
 
+.explorer-icon--image {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #7dd3fc 0%, #38bdf8 42%, #0ea5e9 100%);
+  border: 1px solid #0284c7;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.explorer-icon--image::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #fef9c3;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.45);
+}
+
+.explorer-icon--image::after {
+  content: "";
+  position: absolute;
+  left: -2px;
+  right: 0;
+  bottom: 0;
+  height: 7px;
+  background: linear-gradient(135deg, transparent 28%, #166534 29%, #22c55e 100%);
+}
+
+.explorer-icon--grid.explorer-icon--image {
+  width: 40px;
+  height: 34px;
+  border-radius: 4px;
+}
+
+.explorer-icon--grid.explorer-icon--image::before {
+  top: 5px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+}
+
+.explorer-icon--grid.explorer-icon--image::after {
+  height: 14px;
+}
+
+.explorer-icon--unviewable {
+  position: relative;
+  overflow: visible;
+  background: linear-gradient(180deg, #ececf0 0%, #d8d8de 100%);
+  border: 1px solid #9a9aa3;
+  border-radius: 1px 2px 2px 1px;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  opacity: 0.92;
+}
+
+.explorer-icon--unviewable::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: 7px;
+  height: 7px;
+  background: linear-gradient(
+    225deg,
+    #c8c8d0 0%,
+    #c8c8d0 48%,
+    #ececf0 52%,
+    #ececf0 100%
+  );
+  border-left: 1px solid #9a9aa3;
+  border-bottom: 1px solid #9a9aa3;
+  border-radius: 0 0 0 1px;
+}
+
+.explorer-icon--unviewable::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 1;
+  width: 140%;
+  height: 1.5px;
+  border-radius: 1px;
+  background: #dc2626;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.65);
+  transform: translate(-50%, -50%) rotate(-42deg);
+}
+
+.explorer-icon--grid.explorer-icon--unviewable {
+  width: 36px;
+  height: 46px;
+  border-radius: 2px 4px 4px 2px;
+}
+
+.explorer-icon--grid.explorer-icon--unviewable::before {
+  width: 12px;
+  height: 12px;
+}
+
+.explorer-icon--grid.explorer-icon--unviewable::after {
+  height: 2.5px;
+  width: 130%;
+}
+
 .explorer-empty {
   flex: 1;
   display: flex;

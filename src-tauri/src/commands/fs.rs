@@ -49,3 +49,12 @@ pub fn read_remote_file(
 ) -> Result<RemoteFileContent, String> {
     state.read_file(&path)
 }
+
+#[tauri::command(async)]
+pub fn write_remote_file(
+    path: String,
+    content: String,
+    state: State<'_, SshConnectionManager>,
+) -> Result<(), String> {
+    state.write_file(&path, &content)
+}

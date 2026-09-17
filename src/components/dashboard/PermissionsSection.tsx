@@ -1,7 +1,4 @@
-import type {
-  RemotePermissionOverview,
-  SudoAccess,
-} from "@/types/permissions";
+import type { RemotePermissionOverview, SudoAccess } from "@/types/permissions";
 import "./css/dashboard.css";
 
 interface PermissionsSectionProps {
@@ -26,7 +23,10 @@ function sudoLabel(sudo: SudoAccess): { detail: string; tone: CapabilityTone } {
     case "passwordless":
       return { detail: "비밀번호 없이 sudo 가능", tone: "granted" };
     case "group":
-      return { detail: "sudo/wheel 그룹 · 비밀번호 필요할 수 있음", tone: "limited" };
+      return {
+        detail: "sudo/wheel 그룹 · 비밀번호 필요할 수 있음",
+        tone: "limited",
+      };
     case "none":
     default:
       return { detail: "sudo 권한 없음", tone: "denied" };
@@ -123,11 +123,11 @@ export function PermissionsSection({
 
   const capabilities = buildCapabilities(permissions);
   const avatarLetter = permissions.username.slice(0, 1).toUpperCase() || "?";
-  const secondaryGroups = permissions.groups.filter(
-    (group) => group !== permissions.primaryGroup,
-  );
-  const hasGroups =
-    Boolean(permissions.primaryGroup) || secondaryGroups.length > 0;
+  const primaryGroup = permissions.primaryGroup.trim();
+  const secondaryGroups = permissions.groups
+    .map((group) => group.trim())
+    .filter((group) => group.length > 0 && group !== primaryGroup);
+  const hasGroups = primaryGroup.length > 0 || secondaryGroups.length > 0;
 
   return (
     <div className="dashboard-permissions">
@@ -153,13 +153,10 @@ export function PermissionsSection({
               uid {permissions.uid}
             </span>
           </div>
-          <div
-            className="dashboard-permissions__chips"
-            aria-label="소속 그룹"
-          >
-            {permissions.primaryGroup ? (
+          <div className="dashboard-permissions__chips" aria-label="소속 그룹">
+            {primaryGroup ? (
               <span className="dashboard-permissions__chip dashboard-permissions__chip--primary">
-                {permissions.primaryGroup}
+                {primaryGroup}
               </span>
             ) : null}
             {secondaryGroups.map((group) => (
@@ -184,7 +181,9 @@ export function PermissionsSection({
               <div className="dashboard-perm__label">{item.label}</div>
               <div className="dashboard-perm__detail">{item.detail}</div>
             </div>
-            <span className="dashboard-perm__badge">{toneBadge(item.tone)}</span>
+            <span className="dashboard-perm__badge">
+              {toneBadge(item.tone)}
+            </span>
           </li>
         ))}
       </ul>

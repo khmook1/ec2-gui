@@ -5,6 +5,14 @@ export interface AppInfo {
   version: string;
 }
 
+export interface LocalLoginDefaults {
+  available: boolean;
+  host: string;
+  port: number;
+  username: string;
+  memo: string;
+}
+
 export interface ApiError {
   message: string;
   status?: number;

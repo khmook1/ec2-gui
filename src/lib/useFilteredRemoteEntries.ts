@@ -21,7 +21,7 @@ export function useFilteredRemoteEntries(entries: RemoteEntry[]) {
     return entries.filter((entry) => {
       const dateLabel = formatModifiedTime(entry.modifiedAt);
       const sizeLabel = entry.isDirectory ? "—" : formatFileSize(entry.size);
-      const kindLabel = getEntryKindLabel(entry.isDirectory);
+      const kindLabel = getEntryKindLabel(entry.isDirectory, entry.name);
 
       return matchesAnyListSearch(
         [entry.name, dateLabel, sizeLabel, kindLabel, entry.path],

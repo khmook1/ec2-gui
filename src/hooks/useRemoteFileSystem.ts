@@ -5,6 +5,7 @@ import {
   useDeleteRemotePathMutation,
   useRemoteDirectoryQuery,
   useRemoteHomeQuery,
+  useWriteRemoteFileMutation,
 } from "@/hooks/query";
 import type { RemoteEntry } from "@/types/filesystem";
 import {
@@ -26,7 +27,7 @@ interface UseRemoteFileSystemResult {
   goUp: () => Promise<void>;
   selectEntry: (path: string | null) => void;
   createDirectory: (name: string) => Promise<void>;
-  createFile: (name: string) => Promise<void>;
+  createFile: (name: string, content?: string) => Promise<void>;
   deleteEntry: (path: string) => Promise<void>;
 }
 
@@ -52,6 +53,7 @@ export function useRemoteFileSystem(): UseRemoteFileSystemResult {
 
   const createDirMutation = useCreateRemoteDirectoryMutation();
   const createFileMutation = useCreateRemoteFileMutation();
+  const writeFileMutation = useWriteRemoteFileMutation();
   const deleteMutation = useDeleteRemotePathMutation();
 
   useEffect(() => {
@@ -77,6 +79,7 @@ export function useRemoteFileSystem(): UseRemoteFileSystemResult {
   const isMutating =
     createDirMutation.isPending ||
     createFileMutation.isPending ||
+    writeFileMutation.isPending ||
     deleteMutation.isPending;
 
   const isLoading =
@@ -98,6 +101,9 @@ export function useRemoteFileSystem(): UseRemoteFileSystemResult {
       : null) ??
     (createFileMutation.error
       ? getErrorMessage(createFileMutation.error)
+      : null) ??
+    (writeFileMutation.error
+      ? getErrorMessage(writeFileMutation.error)
       : null) ??
     (deleteMutation.error ? getErrorMessage(deleteMutation.error) : null);
 
@@ -139,8 +145,9 @@ export function useRemoteFileSystem(): UseRemoteFileSystemResult {
   const createDirectory = useCallback(
     async (name: string) => {
       if (!isValidRemoteEntryName(name)) {
-        setLocalError("올바른 폴더 이름을 입력하세요.");
-        return;
+        const message = "올바른 폴더 이름을 입력하세요.";
+        setLocalError(message);
+        throw new Error(message);
       }
       setLocalError(null);
       try {
@@ -150,28 +157,33 @@ export function useRemoteFileSystem(): UseRemoteFileSystemResult {
         await directoryQuery.refetch();
       } catch (error) {
         setLocalError(getErrorMessage(error));
+        throw error;
       }
     },
     [createDirMutation, directoryQuery, resolvedPath],
   );
 
   const createFile = useCallback(
-    async (name: string) => {
+    async (name: string, content = "") => {
       if (!isValidRemoteEntryName(name)) {
-        setLocalError("올바른 파일 이름을 입력하세요.");
-        return;
+        const message = "올바른 파일 이름을 입력하세요.";
+        setLocalError(message);
+        throw new Error(message);
       }
       setLocalError(null);
+      const path = joinRemotePath(resolvedPath, name);
       try {
-        await createFileMutation.mutateAsync(
-          joinRemotePath(resolvedPath, name),
-        );
+        await createFileMutation.mutateAsync(path);
+        if (content.length > 0) {
+          await writeFileMutation.mutateAsync({ path, content });
+        }
         await directoryQuery.refetch();
       } catch (error) {
         setLocalError(getErrorMessage(error));
+        throw error;
       }
     },
-    [createFileMutation, directoryQuery, resolvedPath],
+    [createFileMutation, directoryQuery, resolvedPath, writeFileMutation],
   );
 
   const deleteEntry = useCallback(

@@ -15,6 +15,8 @@ export interface AppDialogProps {
   size?: AppDialogSize;
   /** true면 Escape·백드롭 클릭·닫기 버튼 비활성 */
   closeDisabled?: boolean;
+  /** 헤더 닫기 버튼 왼쪽에 표시할 액션 (편집 등) */
+  headerActions?: ReactNode;
   /** 헤더와 본문 사이 메타 행 (파일 크기 등) */
   meta?: ReactNode;
   /** 헤더와 본문 사이 추가 영역 (탭 등) */
@@ -37,6 +39,7 @@ export function AppDialog({
   busy = false,
   size = "default",
   closeDisabled = false,
+  headerActions,
   meta,
   toolbar,
   bodyClassName,
@@ -81,9 +84,12 @@ export function AppDialog({
               <p className="file-dialog__path">{subtitle}</p>
             ) : null}
           </div>
-          <Button variant="ghost" disabled={closeDisabled} onClick={onClose}>
-            닫기
-          </Button>
+          <div className="file-dialog__header-actions">
+            {headerActions}
+            <Button variant="ghost" disabled={closeDisabled} onClick={onClose}>
+              닫기
+            </Button>
+          </div>
         </header>
 
         {meta != null ? (

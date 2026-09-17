@@ -7,6 +7,7 @@ import type {
   DockerImageAction,
   DockerNetwork,
   DockerNetworkAction,
+  DockerOverview,
   DockerSystemAction,
   DockerVolume,
   DockerVolumeAction,
@@ -97,4 +98,8 @@ export function getRemoteDockerContainerLogs(
     tail: options?.tail ?? 200,
     since: options?.since?.trim() ? options.since.trim() : null,
   });
+}
+
+export function getRemoteDockerOverview(): Promise<DockerOverview> {
+  return invoke<DockerOverview>("get_remote_docker_overview");
 }

@@ -29,3 +29,10 @@ export async function deleteRemotePath(path: string): Promise<void> {
 export async function readRemoteFile(path: string): Promise<RemoteFileContent> {
   return invoke<RemoteFileContent>("read_remote_file", { path });
 }
+
+export async function writeRemoteFile(
+  path: string,
+  content: string,
+): Promise<void> {
+  return invoke("write_remote_file", { path, content });
+}

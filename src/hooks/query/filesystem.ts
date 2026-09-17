@@ -8,6 +8,7 @@ import {
   getRemoteHome,
   listRemoteDirectory,
   readRemoteFile,
+  writeRemoteFile,
 } from "@/services/tauri/filesystem";
 
 export function useRemoteHomeQuery(options?: { enabled?: boolean }) {
@@ -105,6 +106,32 @@ export function useDeleteRemotePathMutation() {
       await queryClient.removeQueries({
         queryKey: queryKeys.remoteFile(sessionKey, path),
       });
+    },
+  });
+}
+
+export function useWriteRemoteFileMutation() {
+  const queryClient = useQueryClient();
+  const sessionKey = useSessionKey();
+
+  return useMutation({
+    mutationFn: ({ path, content }: { path: string; content: string }) =>
+      writeRemoteFile(path, content),
+    onSuccess: async (_data, { path }) => {
+      if (!sessionKey) {
+        return;
+      }
+      const parent = path.includes("/")
+        ? path.slice(0, path.lastIndexOf("/")) || "/"
+        : "/";
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.remoteFile(sessionKey, path),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.remoteDir(sessionKey, parent),
+        }),
+      ]);
     },
   });
 }

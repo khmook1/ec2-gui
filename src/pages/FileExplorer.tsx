@@ -3,6 +3,10 @@ import {
   PageViewModeProvider,
   PageViewSwitch,
 } from "@/components/common/PageViewMode";
+import {
+  CreateEntryDialog,
+  type CreateEntryKind,
+} from "@/components/explorer/CreateEntryDialog";
 import { FileContentDialog } from "@/components/explorer/FileContentDialog";
 import { FileExplorerToolbar } from "@/components/explorer/FileExplorerToolbar";
 import { FileIconGrid } from "@/components/explorer/FileIconGrid";
@@ -40,12 +44,54 @@ export function FileExplorerPage() {
   const { openContextMenu } = useContextMenu();
   const { requestConfirm, confirmDialog } = useDestructiveConfirm();
   const [previewPath, setPreviewPath] = useState<string | null>(null);
+  const [createKind, setCreateKind] = useState<CreateEntryKind | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const canGoUp = splitPathSegments(currentPath).length > 0;
 
   const handleClosePreview = useCallback(() => {
     setPreviewPath(null);
   }, []);
+
+  const openCreateDialog = useCallback((kind: CreateEntryKind) => {
+    setCreateError(null);
+    setCreateKind(kind);
+  }, []);
+
+  const handleCloseCreate = useCallback(() => {
+    if (isCreating) {
+      return;
+    }
+    setCreateError(null);
+    setCreateKind(null);
+  }, [isCreating]);
+
+  const handleCreateSubmit = useCallback(
+    async ({ name, content }: { name: string; content: string }) => {
+      setIsCreating(true);
+      setCreateError(null);
+      try {
+        if (createKind === "directory") {
+          await createDirectory(name);
+        } else if (createKind === "file") {
+          await createFile(name, content);
+        }
+        setCreateKind(null);
+      } catch (error) {
+        setCreateError(
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+              ? error
+              : "생성에 실패했습니다.",
+        );
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [createDirectory, createFile, createKind],
+  );
 
   const handleOpenEntry = useCallback(
     (entry: RemoteEntry) => {
@@ -67,11 +113,7 @@ export function FileExplorerPage() {
           label: "폴더 추가",
           disabled: isLoading,
           onSelect: () => {
-            const name = window.prompt("새 폴더 이름");
-            if (name == null) {
-              return;
-            }
-            void createDirectory(name);
+            openCreateDialog("directory");
           },
         },
         {
@@ -79,11 +121,7 @@ export function FileExplorerPage() {
           label: "파일 생성",
           disabled: isLoading,
           onSelect: () => {
-            const name = window.prompt("새 파일 이름");
-            if (name == null) {
-              return;
-            }
-            void createFile(name);
+            openCreateDialog("file");
           },
         },
       ];
@@ -108,7 +146,7 @@ export function FileExplorerPage() {
 
       return items;
     },
-    [createDirectory, createFile, deleteEntry, isLoading, requestConfirm],
+    [deleteEntry, isLoading, openCreateDialog, requestConfirm],
   );
 
   const openExplorerContextMenu = useCallback(
@@ -195,6 +233,15 @@ export function FileExplorerPage() {
 
         {confirmDialog}
       </ListSelectionProvider>
+
+      <CreateEntryDialog
+        kind={createKind}
+        parentPath={currentPath}
+        isSubmitting={isCreating}
+        errorMessage={createError}
+        onClose={handleCloseCreate}
+        onSubmit={handleCreateSubmit}
+      />
 
       <FileContentDialog
         key={previewPath ?? "file-preview-closed"}

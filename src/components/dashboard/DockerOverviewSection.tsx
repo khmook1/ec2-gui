@@ -2,23 +2,17 @@ import {
   getDockerContainerState,
   isNginxContainer,
   type DockerContainer,
+  type DockerContainerCounts,
   type DockerContainerState,
+  type DockerOverview,
 } from "@/types/docker";
 import "./css/dashboard.css";
 import "../docker/css/docker-list.css";
 
-export interface DockerOverviewCounts {
-  containers: {
-    total: number;
-    running: number;
-    paused: number;
-    stopped: number;
-    unknown: number;
-  };
-  images: number;
-  volumes: number;
-  networks: number;
-}
+export type DockerOverviewCounts = Pick<
+  DockerOverview,
+  "containers" | "images" | "volumes" | "networks"
+>;
 
 interface DockerOverviewSectionProps {
   counts: DockerOverviewCounts | null;
@@ -39,35 +33,6 @@ const STATE_LABEL: Record<DockerContainerState, string> = {
   stopped: "중지",
   unknown: "기타",
 };
-
-const RECENT_LIMIT = 4;
-
-export function summarizeDockerContainers(
-  containers: DockerContainer[],
-): DockerOverviewCounts["containers"] {
-  const counts = {
-    total: containers.length,
-    running: 0,
-    paused: 0,
-    stopped: 0,
-    unknown: 0,
-  };
-
-  for (const container of containers) {
-    const state = getDockerContainerState(container.status);
-    counts[state] += 1;
-  }
-
-  return counts;
-}
-
-/** docker ps -a 기본 정렬(최신 생성 우선)에서 상위 N개 */
-export function pickRecentDockerContainers(
-  containers: DockerContainer[],
-  limit = RECENT_LIMIT,
-): DockerContainer[] {
-  return containers.slice(0, limit);
-}
 
 function formatContainerName(names: string): string {
   const primary = names.split(",")[0]?.trim() ?? names;
@@ -192,3 +157,5 @@ export function DockerOverviewSection({
     </div>
   );
 }
+
+export type { DockerContainerCounts };

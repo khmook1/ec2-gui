@@ -1,6 +1,7 @@
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::Serialize;
 use ssh2::{FileStat, FileType, Session};
 
@@ -39,9 +40,11 @@ pub struct RemoteFileContent {
     pub content: String,
     pub truncated: bool,
     pub is_binary: bool,
+    pub is_image: bool,
 }
 
 const MAX_PREVIEW_BYTES: usize = 1024 * 1024;
+const MAX_WRITE_BYTES: usize = 1024 * 1024;
 
 pub fn resolve_home_directory(session: &Session, username: &str) -> Result<String, String> {
     match exec_remote_command(session, "echo $HOME") {
@@ -236,8 +239,16 @@ pub fn read_file(session: &Session, path: &str) -> Result<RemoteFileContent, Str
         .unwrap_or(&normalized)
         .to_string();
 
-    let is_binary = is_likely_binary(&buffer);
-    let content = if is_binary {
+    let image_mime = guess_image_mime(&name);
+    let is_image = image_mime.is_some();
+    let is_binary = !is_image && is_likely_binary(&buffer);
+    let content = if let Some(mime) = image_mime {
+        if truncated {
+            String::new()
+        } else {
+            format!("data:{mime};base64,{}", STANDARD.encode(&buffer))
+        }
+    } else if is_binary {
         String::new()
     } else {
         String::from_utf8_lossy(&buffer).into_owned()
@@ -250,7 +261,40 @@ pub fn read_file(session: &Session, path: &str) -> Result<RemoteFileContent, Str
         content,
         truncated,
         is_binary,
+        is_image,
     })
+}
+
+pub fn write_file(session: &Session, path: &str, content: &str) -> Result<(), String> {
+    let normalized = normalize_remote_path(path);
+    validate_mutable_path(&normalized)?;
+
+    let bytes = content.as_bytes();
+    if bytes.len() > MAX_WRITE_BYTES {
+        return Err(format!(
+            "파일 내용이 너무 큽니다. (최대 {}바이트)",
+            MAX_WRITE_BYTES
+        ));
+    }
+
+    let sftp = session
+        .sftp()
+        .map_err(|error| format!("SFTP 채널을 열 수 없습니다: {error}"))?;
+
+    if let Ok(stat) = sftp.stat(Path::new(&normalized)) {
+        if stat.file_type() == FileType::Directory {
+            return Err("폴더에는 쓸 수 없습니다.".to_string());
+        }
+    }
+
+    let mut file = sftp
+        .create(Path::new(&normalized))
+        .map_err(|error| format!("파일을 열 수 없습니다: {error}"))?;
+
+    file.write_all(bytes)
+        .map_err(|error| format!("파일을 저장할 수 없습니다: {error}"))?;
+
+    Ok(())
 }
 
 fn is_likely_binary(bytes: &[u8]) -> bool {
@@ -276,6 +320,25 @@ fn is_likely_binary(bytes: &[u8]) -> bool {
         .count();
 
     (non_text as f32) / (sample.len() as f32) > 0.3
+}
+
+fn guess_image_mime(filename: &str) -> Option<&'static str> {
+    let extension = filename
+        .rsplit('.')
+        .next()
+        .filter(|ext| !ext.is_empty() && *ext != filename)?
+        .to_ascii_lowercase();
+
+    match extension.as_str() {
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "png" => Some("image/png"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        "bmp" => Some("image/bmp"),
+        "ico" => Some("image/x-icon"),
+        "svg" => Some("image/svg+xml"),
+        _ => None,
+    }
 }
 
 fn delete_path_recursive(sftp: &ssh2::Sftp, path: &str) -> Result<(), String> {

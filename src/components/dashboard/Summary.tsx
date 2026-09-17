@@ -18,6 +18,7 @@ interface DashboardSummaryProps {
   dockerCounts: DockerOverviewCounts | null;
   sshSessionCount: number;
   loading: boolean;
+  showDocker?: boolean;
 }
 
 function toPanelTone(tone: ReturnType<typeof toneForPercent>): InfoPanelTone {
@@ -33,6 +34,7 @@ export function DashboardSummary({
   dockerCounts,
   sshSessionCount,
   loading,
+  showDocker = true,
 }: DashboardSummaryProps) {
   const primary = pickPrimaryFilesystem(filesystems);
   const diskTone = primary
@@ -51,7 +53,14 @@ export function DashboardSummary({
       : "accent";
 
   return (
-    <section className="dashboard-metrics" aria-label="핵심 지표">
+    <section
+      className={
+        showDocker
+          ? "dashboard-metrics"
+          : "dashboard-metrics dashboard-metrics--no-docker"
+      }
+      aria-label="핵심 지표"
+    >
       <InfoPanel
         title="서버 상태"
         value={appReady ? "정상" : "확인 중"}
@@ -70,17 +79,19 @@ export function DashboardSummary({
         tone={diskTone === "success" ? "accent" : diskTone}
         loading={loading}
       />
-      <InfoPanel
-        title="Docker 컨테이너"
-        value={dockerCounts ? `${running}` : "—"}
-        description={
-          dockerCounts
-            ? `실행 ${running} · 중지 ${stopped} · 전체 ${total}`
-            : "Docker 정보 대기 중"
-        }
-        tone={dockerTone}
-        loading={loading}
-      />
+      {showDocker ? (
+        <InfoPanel
+          title="Docker 컨테이너"
+          value={dockerCounts ? `${running}` : "—"}
+          description={
+            dockerCounts
+              ? `실행 ${running} · 중지 ${stopped} · 전체 ${total}`
+              : "Docker 정보 대기 중"
+          }
+          tone={dockerTone}
+          loading={loading}
+        />
+      ) : null}
       <InfoPanel
         title="SSH 세션"
         value={String(sshSessionCount)}

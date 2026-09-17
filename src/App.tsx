@@ -1,5 +1,6 @@
 import { AppLayout } from "@/components/layout/AppLayout";
 import { RouteOutlet } from "@/components/layout/RouteOutlet";
+import { ServerSyncOverlay } from "@/components/common/ServerSyncOverlay";
 import { useGlobalBackNavigation } from "@/hooks/useGlobalBackNavigation";
 import { useRouteUrlSync } from "@/hooks/useRouteUrlSync";
 import { useSettingsBootstrap } from "@/hooks/useSettingsBootstrap";
@@ -18,15 +19,21 @@ function App() {
   const isConnected = useConnectionStore(
     (state) => state.status === "connected",
   );
+  const showServerSyncOverlay = useConnectionStore(
+    (state) => state.showServerSyncOverlay,
+  );
 
   if (!isConnected) {
     return <LoginPage />;
   }
 
   return (
-    <AppLayout>
-      <ConnectedMainView />
-    </AppLayout>
+    <>
+      <AppLayout>
+        <ConnectedMainView />
+      </AppLayout>
+      {showServerSyncOverlay ? <ServerSyncOverlay /> : null}
+    </>
   );
 }
 

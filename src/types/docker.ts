@@ -28,6 +28,24 @@ export interface DockerVolume {
   scope: string;
 }
 
+export interface DockerContainerCounts {
+  total: number;
+  running: number;
+  paused: number;
+  stopped: number;
+  unknown: number;
+}
+
+/** 대시보드용 Docker 요약 (`get_remote_docker_overview`) */
+export interface DockerOverview {
+  containers: DockerContainerCounts;
+  images: number;
+  volumes: number;
+  networks: number;
+  recentContainers: DockerContainer[];
+  warnings: string[];
+}
+
 export interface DockerContainerDetails {
   id: string;
   name: string;

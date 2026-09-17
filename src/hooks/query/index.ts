@@ -2,7 +2,9 @@ export { queryKeys } from "./keys";
 export { useSessionKey } from "./useSessionKey";
 export { useAppInfoQuery } from "./app";
 export {
+  useDiskHistoryQuery,
   useDiskOverviewQuery,
+  useDockerOverviewQuery,
   usePermissionOverviewQuery,
   useSshSessionsQuery,
   useSystemResourcesQuery,
@@ -36,6 +38,7 @@ export {
   useRemoteDirectoryQuery,
   useRemoteFileQuery,
   useRemoteHomeQuery,
+  useWriteRemoteFileMutation,
 } from "./filesystem";
 export {
   useClearAppCacheMutation,
