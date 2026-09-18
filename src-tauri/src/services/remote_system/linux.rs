@@ -129,6 +129,8 @@ fn parse_system_resources(output: &str) -> Result<SystemResources, String> {
         cpu: cpu.ok_or_else(|| "CPU 정보를 파싱하지 못했습니다.".to_string())?,
         memory: memory.ok_or_else(|| "메모리 정보를 파싱하지 못했습니다.".to_string())?,
         network: network.ok_or_else(|| "네트워크 정보를 파싱하지 못했습니다.".to_string())?,
+        memory_pressure: None,
+        host: None,
     })
 }
 

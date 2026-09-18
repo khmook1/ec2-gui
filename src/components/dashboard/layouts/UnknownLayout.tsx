@@ -52,6 +52,7 @@ export function UnknownLayout({
           diskHistoryLoading={props.diskHistoryLoading}
           diskError={props.diskError}
           storageBadge={props.storageBadge}
+          os={props.os}
         />
         <SshSessionsCard
           sshSessions={props.sshSessions}

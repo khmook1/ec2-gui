@@ -1,9 +1,9 @@
 import type { RemoteOs } from "@/types/disk";
 
 export interface DashboardFeatureSupport {
-  /** Linux `/proc` 기반 CPU·메모리·네트워크 */
+  /** CPU·메모리·네트워크 (Linux `/proc` / macOS sysctl) */
   systemResources: boolean;
-  /** 루트 1depth `du` (macOS는 스캔 비용으로 미지원) */
+  /** 대용량 디렉터리 (Linux 루트 1depth / macOS 주요 경로) */
   largeDirectories: boolean;
   /** 활동 피드 — 아직 미구현 */
   activity: boolean;
@@ -21,6 +21,11 @@ export function dashboardFeatureSupport(
         activity: false,
       };
     case "macos":
+      return {
+        systemResources: true,
+        largeDirectories: true,
+        activity: false,
+      };
     case "windows":
     case "unknown":
     default:

@@ -563,8 +563,13 @@
   background: var(--danger);
 }
 
-.dashboard-storage__chart {
+.dashboard-storage__chart-block {
   margin-top: 13px;
+  display: grid;
+  gap: 6px;
+}
+
+.dashboard-storage__chart {
   height: 72px;
   display: flex;
   align-items: flex-end;
@@ -580,6 +585,33 @@
     color-mix(in srgb, var(--accent) 75%, var(--border)),
     color-mix(in srgb, var(--accent) 35%, var(--border))
   );
+}
+
+.dashboard-storage__chart-axis {
+  display: flex;
+  gap: 4px;
+  min-height: 1.1em;
+}
+
+.dashboard-storage__chart-tick {
+  flex: 1;
+  min-width: 3px;
+  overflow: hidden;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+.dashboard-storage__chart-tick:first-child {
+  text-align: left;
+}
+
+.dashboard-storage__chart-tick:last-child {
+  text-align: right;
 }
 
 .dashboard-storage__mounts {

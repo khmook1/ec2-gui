@@ -1,4 +1,4 @@
-import type { DiskFilesystem } from "@/types/disk";
+import type { DiskFilesystem, RemoteOs } from "@/types/disk";
 import { formatFileSize } from "@/utils/file";
 
 export type DiskUsageTone = "success" | "warning" | "danger" | "neutral";
@@ -15,7 +15,17 @@ export function toneForPercent(percent: number): DiskUsageTone {
 
 export function pickPrimaryFilesystem(
   filesystems: DiskFilesystem[],
+  os?: RemoteOs | null,
 ): DiskFilesystem | null {
+  if (os === "macos") {
+    return (
+      filesystems.find((fs) => fs.mountedOn === "/System/Volumes/Data") ??
+      filesystems.find((fs) => fs.mountedOn === "/") ??
+      filesystems[0] ??
+      null
+    );
+  }
+
   return (
     filesystems.find((fs) => fs.mountedOn === "/") ??
     filesystems.find((fs) => fs.mountedOn === "/System/Volumes/Data") ??

@@ -111,6 +111,23 @@ pub fn sort_filesystems(filesystems: &mut [DiskFilesystem]) {
     });
 }
 
+/// APFS Data 볼륨을 `/`보다 우선한다.
+pub fn sort_filesystems_macos(filesystems: &mut [DiskFilesystem]) {
+    fn rank(mounted_on: &str) -> u8 {
+        match mounted_on {
+            "/System/Volumes/Data" => 2,
+            "/" => 1,
+            _ => 0,
+        }
+    }
+
+    filesystems.sort_by(|a, b| {
+        rank(&b.mounted_on)
+            .cmp(&rank(&a.mounted_on))
+            .then_with(|| b.size_bytes.cmp(&a.size_bytes))
+    });
+}
+
 pub fn parse_large_directories(output: &str) -> Vec<LargeDirectory> {
     let mut directories = Vec::new();
 

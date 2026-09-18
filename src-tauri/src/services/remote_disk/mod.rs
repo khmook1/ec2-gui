@@ -21,10 +21,10 @@ pub fn get_disk_overview(session: &Session) -> Result<DiskOverview, String> {
     let os = detect_remote_os(session);
 
     let (filesystems, large_directories) = match os.as_str() {
-        "macos" => {
-            // 루트 `du`는 /Users·/System 전량 스캔으로 수분 걸릴 수 있어 건너뜁니다.
-            (macos::list_filesystems(session)?, Vec::new())
-        }
+        "macos" => (
+            macos::list_filesystems(session)?,
+            macos::list_large_directories(session)?,
+        ),
         // linux·unknown·windows: GNU df / du 가정 (SSH 유닉스 계열)
         _ => (
             linux::list_filesystems(session)?,

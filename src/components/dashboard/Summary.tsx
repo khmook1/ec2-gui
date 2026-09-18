@@ -7,7 +7,7 @@ import {
   type InfoPanelTone,
 } from "@/components/dashboard/atoms/InfoPanel";
 import type { DockerOverviewCounts } from "@/components/dashboard/DockerOverviewSection";
-import type { DiskFilesystem } from "@/types/disk";
+import type { DiskFilesystem, RemoteOs } from "@/types/disk";
 import { formatFileSize } from "@/utils/file";
 import { formatLabel } from "@/utils/format";
 import "./css/dashboard.css";
@@ -19,6 +19,7 @@ interface DashboardSummaryProps {
   sshSessionCount: number;
   loading: boolean;
   showDocker?: boolean;
+  os?: RemoteOs | null;
 }
 
 function toPanelTone(tone: ReturnType<typeof toneForPercent>): InfoPanelTone {
@@ -35,8 +36,9 @@ export function DashboardSummary({
   sshSessionCount,
   loading,
   showDocker = true,
+  os,
 }: DashboardSummaryProps) {
-  const primary = pickPrimaryFilesystem(filesystems);
+  const primary = pickPrimaryFilesystem(filesystems, os);
   const diskTone = primary
     ? toPanelTone(toneForPercent(primary.usePercent))
     : "neutral";

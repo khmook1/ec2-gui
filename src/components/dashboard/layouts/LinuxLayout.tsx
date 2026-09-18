@@ -56,6 +56,7 @@ export function LinuxLayout({
           diskHistoryLoading={props.diskHistoryLoading}
           diskError={props.diskError}
           storageBadge={props.storageBadge}
+          os={props.os}
         />
         <SshSessionsCard
           sshSessions={props.sshSessions}

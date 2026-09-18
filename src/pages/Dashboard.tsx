@@ -152,7 +152,8 @@ export function DashboardPage() {
 
   const filesystems = diskOverview?.filesystems ?? [];
   const directories = diskOverview?.largeDirectories ?? [];
-  const primary = pickPrimaryFilesystem(filesystems);
+  const remoteOs = diskOverview?.os ?? null;
+  const primary = pickPrimaryFilesystem(filesystems, remoteOs);
   const storageBadge =
     !loading && !diskError && primary
       ? formatFileSize(primary.sizeBytes)
@@ -166,6 +167,7 @@ export function DashboardPage() {
 
   const layoutProps: DashboardLayoutProps = {
     loading,
+    os: remoteOs,
     filesystems,
     directories,
     diskHistory,
@@ -238,6 +240,7 @@ export function DashboardPage() {
           sshSessionCount={sshSessions.length}
           loading={loading}
           showDocker={showDocker}
+          os={remoteOs}
         />
 
         <DashboardOsLayout os={diskOverview?.os} {...layoutProps} />

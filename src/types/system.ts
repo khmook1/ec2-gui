@@ -17,8 +17,23 @@ export interface NetworkResource {
   txBytesPerSec: number;
 }
 
+/** macOS `memory_pressure` 요약 */
+export interface MemoryPressureInfo {
+  /** `normal` | `warn` | `critical` | `unknown` */
+  level: string;
+  freePercent?: number | null;
+}
+
+export interface HostInfo {
+  model: string;
+  osVersion: string;
+  uptimeSeconds: number;
+}
+
 export interface SystemResources {
   cpu: CpuResource;
   memory: MemoryResource;
   network: NetworkResource;
+  memoryPressure?: MemoryPressureInfo | null;
+  host?: HostInfo | null;
 }

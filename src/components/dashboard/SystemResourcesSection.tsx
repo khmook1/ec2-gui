@@ -26,6 +26,50 @@ function networkBarPercent(rx: number, tx: number): number {
   return Math.min(100, Math.round((mbps / 1000) * 100));
 }
 
+function formatUptime(seconds: number): string {
+  if (seconds <= 0) {
+    return "—";
+  }
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  if (days > 0) {
+    return `${days}일 ${hours}시간`;
+  }
+  if (hours > 0) {
+    return `${hours}시간 ${mins}분`;
+  }
+  return `${mins}분`;
+}
+
+function pressureLabel(level: string): string {
+  switch (level) {
+    case "normal":
+      return "정상";
+    case "warn":
+      return "주의";
+    case "critical":
+      return "위험";
+    default:
+      return "알 수 없음";
+  }
+}
+
+function pressureTone(
+  level: string,
+): "success" | "warning" | "danger" | "neutral" {
+  switch (level) {
+    case "normal":
+      return "success";
+    case "warn":
+      return "warning";
+    case "critical":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
 export function SystemResourcesSection({
   resources,
   loading,
@@ -64,7 +108,7 @@ export function SystemResourcesSection({
     );
   }
 
-  const { cpu, memory, network } = resources;
+  const { cpu, memory, network, memoryPressure, host } = resources;
   const cpuTone = toneForPercent(cpu.usePercent);
   const memTone = toneForPercent(memory.usePercent);
   const netPercent = networkBarPercent(
@@ -73,6 +117,9 @@ export function SystemResourcesSection({
   );
   const totalMbps =
     ((network.rxBytesPerSec + network.txBytesPerSec) * 8) / 1_000_000;
+  const pressure = memoryPressure?.level
+    ? pressureTone(memoryPressure.level)
+    : null;
 
   return (
     <div className="dashboard-resources" aria-label="시스템 리소스">
@@ -83,6 +130,25 @@ export function SystemResourcesSection({
         >
           {error}
         </p>
+      ) : null}
+
+      {host ? (
+        <div className="dashboard-resource dashboard-resource--host">
+          <div className="dashboard-resource__row">
+            <div className="dashboard-resource__name">
+              <span className="dashboard-resource__icon" aria-hidden>
+                HOST
+              </span>
+              <div>
+                <strong>{host.model}</strong>
+                <div className="dashboard-resource__meta">
+                  macOS {host.osVersion} · 업타임{" "}
+                  {formatUptime(host.uptimeSeconds)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : null}
 
       <div className="dashboard-resource">
@@ -134,6 +200,20 @@ export function SystemResourcesSection({
               <div className="dashboard-resource__meta">
                 {formatFileSize(memory.usedBytes)} /{" "}
                 {formatFileSize(memory.totalBytes)}
+                {memoryPressure ? (
+                  <>
+                    {" "}
+                    · 압력{" "}
+                    <span
+                      className={`dashboard-resource__value--${pressure ?? "neutral"}`}
+                    >
+                      {pressureLabel(memoryPressure.level)}
+                    </span>
+                    {memoryPressure.freePercent != null
+                      ? ` (여유 ${memoryPressure.freePercent}%)`
+                      : null}
+                  </>
+                ) : null}
               </div>
             </div>
           </div>

@@ -72,11 +72,14 @@ export function LargeDirectoriesCard({
   directories,
   diskLoading,
   diskError,
-}: Pick<DashboardLayoutProps, "directories" | "diskLoading" | "diskError">) {
+  subtitle = "루트 1depth",
+}: Pick<DashboardLayoutProps, "directories" | "diskLoading" | "diskError"> & {
+  subtitle?: string;
+}) {
   return (
     <SectionCard
       title="용량이 큰 디렉터리"
-      subtitle="루트 1depth"
+      subtitle={subtitle}
       badge={
         !diskLoading && !diskError && directories.length > 0
           ? directories.length
@@ -126,6 +129,7 @@ export function StorageCard({
   diskHistoryLoading,
   diskError,
   storageBadge,
+  os,
 }: Pick<
   DashboardLayoutProps,
   | "filesystems"
@@ -134,6 +138,7 @@ export function StorageCard({
   | "diskHistoryLoading"
   | "diskError"
   | "storageBadge"
+  | "os"
 >) {
   return (
     <SectionCard title="스토리지" subtitle="마운트 포인트" badge={storageBadge}>
@@ -142,6 +147,7 @@ export function StorageCard({
         history={diskHistory}
         loading={diskLoading || diskHistoryLoading}
         error={diskError}
+        os={os}
       />
     </SectionCard>
   );

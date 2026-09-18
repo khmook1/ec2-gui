@@ -3,7 +3,7 @@ import {
   toneForPercent,
 } from "@/components/dashboard/utils/diskUi";
 import type { DiskUsageSample } from "@/lib/diskUsageHistory";
-import type { DiskFilesystem } from "@/types/disk";
+import type { DiskFilesystem, RemoteOs } from "@/types/disk";
 import { formatFileSize } from "@/utils/file";
 import "./css/dashboard.css";
 
@@ -12,6 +12,40 @@ interface DiskCapacitySectionProps {
   history: DiskUsageSample[];
   loading: boolean;
   error: string | null;
+  os?: RemoteOs | null;
+}
+
+function formatChartTime(ts: number, prevTs: number | null): string {
+  const date = new Date(ts);
+  const time = date.toLocaleTimeString("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  if (prevTs == null) {
+    return time;
+  }
+  const prev = new Date(prevTs);
+  if (
+    prev.getFullYear() !== date.getFullYear() ||
+    prev.getMonth() !== date.getMonth() ||
+    prev.getDate() !== date.getDate()
+  ) {
+    return `${date.getMonth() + 1}/${date.getDate()} ${time}`;
+  }
+  return time;
+}
+
+/** 막대 수에 맞춰 축 라벨을 간격을 두고 표시 (양끝 포함) */
+function shouldShowAxisLabel(index: number, total: number): boolean {
+  if (total <= 8) {
+    return true;
+  }
+  if (index === 0 || index === total - 1) {
+    return true;
+  }
+  const step = Math.max(2, Math.ceil(total / 6));
+  return index % step === 0;
 }
 
 export function DiskCapacitySection({
@@ -19,6 +53,7 @@ export function DiskCapacitySection({
   history,
   loading,
   error,
+  os,
 }: DiskCapacitySectionProps) {
   if (loading) {
     return (
@@ -44,7 +79,7 @@ export function DiskCapacitySection({
     );
   }
 
-  const primary = pickPrimaryFilesystem(filesystems);
+  const primary = pickPrimaryFilesystem(filesystems, os);
 
   if (!primary) {
     return (
@@ -87,7 +122,9 @@ export function DiskCapacitySection({
             {formatFileSize(primary.usedBytes)}
           </strong>
           <div className="dashboard-storage__hint">
-            {primary.mountedOn} 마운트 사용량
+            {os === "macos" && primary.mountedOn === "/System/Volumes/Data"
+              ? "APFS Data 볼륨 사용량"
+              : `${primary.mountedOn} 마운트 사용량`}
           </div>
         </div>
         <span
@@ -112,28 +149,42 @@ export function DiskCapacitySection({
       </div>
 
       <div
-        className="dashboard-storage__chart"
+        className="dashboard-storage__chart-block"
         role="img"
         aria-label={`디스크 사용률 샘플 ${chartSamples.length}개`}
       >
-        {chartSamples.map((sample) => {
-          const height = Math.max(
-            8,
-            Math.round((sample.usePercent / maxPercent) * 100),
-          );
-          return (
-            <i
-              key={sample.ts}
-              title={`${sample.usePercent}% · ${new Date(sample.ts).toLocaleString("ko-KR", {
-                month: "numeric",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`}
-              style={{ height: `${height}%` }}
-            />
-          );
-        })}
+        <div className="dashboard-storage__chart">
+          {chartSamples.map((sample) => {
+            const height = Math.max(
+              8,
+              Math.round((sample.usePercent / maxPercent) * 100),
+            );
+            return (
+              <i
+                key={sample.ts}
+                title={`${sample.usePercent}% · ${new Date(sample.ts).toLocaleString("ko-KR", {
+                  month: "numeric",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`}
+                style={{ height: `${height}%` }}
+              />
+            );
+          })}
+        </div>
+        <div className="dashboard-storage__chart-axis" aria-hidden="true">
+          {chartSamples.map((sample, index) => {
+            const prevTs =
+              index > 0 ? chartSamples[index - 1]?.ts ?? null : null;
+            const show = shouldShowAxisLabel(index, chartSamples.length);
+            return (
+              <span key={sample.ts} className="dashboard-storage__chart-tick">
+                {show ? formatChartTime(sample.ts, prevTs) : null}
+              </span>
+            );
+          })}
+        </div>
       </div>
       <div className="dashboard-resource__footer">
         <span>시간별 {history.length}개</span>

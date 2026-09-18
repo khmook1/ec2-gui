@@ -1,31 +1,26 @@
 import {
-  ComingSoonCard,
   DockerOverviewCard,
+  LargeDirectoriesCard,
   PermissionsCard,
   SshSessionsCard,
   StorageCard,
+  SystemResourcesCard,
 } from "./SectionCards";
 import type { DashboardLayoutProps } from "./types";
 
 /**
  * macOS 원격 호스트용 대시보드.
- * `/proc`·루트 `du` 등 Linux 전용 기능은 제외하고, 공통·Docker만 구성합니다.
+ * 시스템 리소스·제한 경로 대용량 디렉터리·Data 볼륨 중심 스토리지를 포함합니다.
  */
-export function MacLayout({
-  showDocker,
-  dockerInstalledPending,
-  ...props
-}: DashboardLayoutProps) {
-  const leftHasSections = showDocker;
-  const leftColumnReady = !dockerInstalledPending;
-  const showLeftComingSoon = leftColumnReady && !leftHasSections;
-
+export function MacLayout({ showDocker, ...props }: DashboardLayoutProps) {
   return (
     <div className="dashboard-grid">
       <div className="dashboard-grid__left">
-        {showLeftComingSoon ? (
-          <ComingSoonCard label="왼쪽 패널 준비 중" />
-        ) : null}
+        <SystemResourcesCard
+          systemResources={props.systemResources}
+          systemLoading={props.systemLoading}
+          systemError={props.systemError}
+        />
 
         {showDocker ? (
           <DockerOverviewCard
@@ -36,6 +31,13 @@ export function MacLayout({
             dockerBadge={props.dockerBadge}
           />
         ) : null}
+
+        <LargeDirectoriesCard
+          directories={props.directories}
+          diskLoading={props.diskLoading}
+          diskError={props.diskError}
+          subtitle="Users · Apps · Library"
+        />
       </div>
 
       <div className="dashboard-grid__right">
@@ -52,6 +54,7 @@ export function MacLayout({
           diskHistoryLoading={props.diskHistoryLoading}
           diskError={props.diskError}
           storageBadge={props.storageBadge}
+          os={props.os}
         />
         <SshSessionsCard
           sshSessions={props.sshSessions}
