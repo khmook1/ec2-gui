@@ -1,8 +1,13 @@
+:root {
+  --ai-toggle-size: 136px;
+  --ai-toggle-right: 60px;
+  --ai-toggle-bottom: 60px;
+}
+
 .ai-chatbot-toggle {
-  --ai-toggle-size: 180px;
   position: fixed;
-  right: 36px;
-  bottom: 36px;
+  right: var(--ai-toggle-right);
+  bottom: var(--ai-toggle-bottom);
   z-index: 2400;
   display: grid;
   place-items: center;

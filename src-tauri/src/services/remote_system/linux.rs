@@ -1,49 +1,12 @@
-use serde::Serialize;
 use ssh2::Session;
 
-use super::remote_disk::detect_remote_os;
-use super::remote_fs::exec_remote_command;
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CpuResource {
-    pub cores: u32,
-    pub load1: f64,
-    pub use_percent: u32,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MemoryResource {
-    pub total_bytes: u64,
-    pub used_bytes: u64,
-    pub available_bytes: u64,
-    pub use_percent: u32,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NetworkResource {
-    pub interface: String,
-    pub rx_bytes_per_sec: u64,
-    pub tx_bytes_per_sec: u64,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SystemResources {
-    pub cpu: CpuResource,
-    pub memory: MemoryResource,
-    pub network: NetworkResource,
-}
+use super::{
+    CpuResource, MemoryResource, NetworkResource, SystemResources,
+};
+use super::super::remote_fs::exec_remote_command;
 
 /// Linux `/proc` 기반 스냅샷. CPU·NET은 짧은 샘플 간격으로 사용률/초당 바이트를 계산한다.
 pub fn get_system_resources(session: &Session) -> Result<SystemResources, String> {
-    let os = detect_remote_os(session);
-    if os != "linux" {
-        return Err("시스템 리소스는 Linux에서만 지원합니다.".to_string());
-    }
-
     let output = exec_remote_command(
         session,
         r#"

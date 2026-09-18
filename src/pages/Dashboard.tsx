@@ -1,23 +1,16 @@
 import { IconButton } from "@/components/common/IconButton";
-import { ActivityPlaceholder } from "@/components/dashboard/ActivityPlaceholder";
-import { FeatureComingSoon } from "@/components/dashboard/FeatureComingSoon";
 import { RefreshIcon, TerminalIcon } from "@/components/icons/ToolbarIcons";
-import { SectionCard } from "@/components/dashboard/atoms/SectionCard";
-import { DiskCapacitySection } from "@/components/dashboard/DiskCapacitySection";
 import { pickPrimaryFilesystem } from "@/components/dashboard/utils/diskUi";
 import { dashboardFeatureSupport } from "@/components/dashboard/utils/featureSupport";
-import {
-  DockerOverviewSection,
-  type DockerOverviewCounts,
-} from "@/components/dashboard/DockerOverviewSection";
-import { LargeDirectoriesSection } from "@/components/dashboard/LargeDirectoriesSection";
-import { PermissionsSection } from "@/components/dashboard/PermissionsSection";
-import { SshSessionsSection } from "@/components/dashboard/SshSessionsSection";
 import {
   DashboardSummary,
   formatAppLabels,
 } from "@/components/dashboard/Summary";
-import { SystemResourcesSection } from "@/components/dashboard/SystemResourcesSection";
+import {
+  DashboardOsLayout,
+  type DashboardLayoutProps,
+} from "@/components/dashboard/layouts";
+import type { DockerOverviewCounts } from "@/components/dashboard/DockerOverviewSection";
 import {
   useDiskHistoryQuery,
   useDiskOverviewQuery,
@@ -171,24 +164,33 @@ export function DashboardPage() {
   const permissionsBadge =
     !loading && !permissionError ? permissionBadge(permissions) : "준비 중";
 
-  const showLeftSystem = features.systemResources;
-  const showLeftDocker = showDocker;
-  const showLeftDirs = features.largeDirectories;
-  const leftHasSections = showLeftSystem || showLeftDocker || showLeftDirs;
-  const leftColumnReady =
-    Boolean(diskQuery.data) && !dockerInstalledQuery.isPending;
-  const showLeftComingSoon = leftColumnReady && !leftHasSections;
-
-  const showRightPermissions = true;
-  const showRightStorage = true;
-  const showRightSsh = true;
-  const showRightActivity = features.activity;
-  const rightHasSections =
-    showRightPermissions ||
-    showRightStorage ||
-    showRightSsh ||
-    showRightActivity;
-  const showRightComingSoon = !rightHasSections;
+  const layoutProps: DashboardLayoutProps = {
+    loading,
+    filesystems,
+    directories,
+    diskHistory,
+    diskLoading: diskQuery.isPending,
+    diskHistoryLoading: diskHistoryQuery.isPending,
+    diskError,
+    storageBadge,
+    systemResources,
+    systemLoading: systemQuery.isPending,
+    systemError,
+    showDocker,
+    dockerCounts,
+    recentContainers,
+    dockerLoading: dockerQuery.isPending,
+    dockerError,
+    dockerBadge,
+    dockerInstalledPending: dockerInstalledQuery.isPending,
+    sshSessions,
+    sshLoading: sshQuery.isPending,
+    sshError,
+    permissions,
+    permissionsLoading: permissionQuery.isPending,
+    permissionError,
+    permissionsBadge,
+  };
 
   return (
     <section className="explorer dashboard-page">
@@ -238,125 +240,7 @@ export function DashboardPage() {
           showDocker={showDocker}
         />
 
-        <div className="dashboard-grid">
-          <div className="dashboard-grid__left">
-            {showLeftComingSoon ? (
-              <SectionCard title="기능 준비 중" badge="준비 중">
-                <FeatureComingSoon label="왼쪽 패널 준비 중" />
-              </SectionCard>
-            ) : null}
-
-            {showLeftSystem ? (
-              <SectionCard
-                title="시스템 리소스"
-                subtitle="실시간"
-                badge={
-                  systemResources && !systemError ? "0.3s 샘플" : "준비 중"
-                }
-              >
-                <SystemResourcesSection
-                  resources={systemResources}
-                  loading={systemQuery.isPending}
-                  error={systemError}
-                />
-              </SectionCard>
-            ) : null}
-
-            {showLeftDocker ? (
-              <SectionCard
-                title="Docker 컨테이너"
-                subtitle="최근 활동"
-                badge={dockerBadge}
-              >
-                <DockerOverviewSection
-                  counts={dockerCounts}
-                  recentContainers={recentContainers}
-                  loading={dockerQuery.isPending}
-                  error={dockerError}
-                />
-              </SectionCard>
-            ) : null}
-
-            {showLeftDirs ? (
-              <SectionCard
-                title="용량이 큰 디렉터리"
-                subtitle="루트 1depth"
-                badge={
-                  !diskQuery.isPending && !diskError && directories.length > 0
-                    ? directories.length
-                    : null
-                }
-              >
-                <LargeDirectoriesSection
-                  directories={directories}
-                  loading={diskQuery.isPending}
-                  error={diskError}
-                />
-              </SectionCard>
-            ) : null}
-          </div>
-
-          <div className="dashboard-grid__right">
-            {showRightComingSoon ? (
-              <SectionCard title="기능 준비 중" badge="준비 중">
-                <FeatureComingSoon label="오른쪽 패널 준비 중" />
-              </SectionCard>
-            ) : null}
-
-            {showRightPermissions ? (
-              <SectionCard
-                title="내 권한"
-                subtitle="접속 계정"
-                badge={permissionsBadge}
-              >
-                <PermissionsSection
-                  permissions={permissions}
-                  loading={permissionQuery.isPending}
-                  error={permissionError}
-                />
-              </SectionCard>
-            ) : null}
-
-            {showRightStorage ? (
-              <SectionCard
-                title="스토리지"
-                subtitle="마운트 포인트"
-                badge={storageBadge}
-              >
-                <DiskCapacitySection
-                  filesystems={filesystems}
-                  history={diskHistory}
-                  loading={diskQuery.isPending || diskHistoryQuery.isPending}
-                  error={diskError}
-                />
-              </SectionCard>
-            ) : null}
-
-            {showRightSsh ? (
-              <SectionCard
-                title="SSH 세션"
-                subtitle="원격 로그인"
-                badge={
-                  !sshQuery.isPending && !sshError
-                    ? `${sshSessions.length}개 활성`
-                    : "준비 중"
-                }
-              >
-                <SshSessionsSection
-                  sessions={sshSessions}
-                  loading={sshQuery.isPending}
-                  error={sshError}
-                />
-              </SectionCard>
-            ) : null}
-
-            {showRightActivity ? (
-              <SectionCard title="최근 활동" badge="최신">
-                <ActivityPlaceholder />
-              </SectionCard>
-            ) : null}
-          </div>
-        </div>
+        <DashboardOsLayout os={diskOverview?.os} {...layoutProps} />
       </div>
     </section>
   );

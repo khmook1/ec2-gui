@@ -1,7 +1,4 @@
 use serde::Serialize;
-use ssh2::Session;
-
-use super::remote_fs::exec_remote_command;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -24,7 +21,7 @@ pub struct LargeDirectory {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DiskOverview {
-    /// `linux` | `macos` | `unknown`
+    /// `linux` | `macos` | `windows` | `unknown`
     pub os: String,
     pub filesystems: Vec<DiskFilesystem>,
     pub large_directories: Vec<LargeDirectory>,
@@ -43,40 +40,8 @@ const SKIP_FILESYSTEM_TYPES: &[&str] = &[
     "autofs",
 ];
 
-/// 원격 `uname -s` 결과. 대시보드 기능 노출 여부에 사용.
-pub fn detect_remote_os(session: &Session) -> String {
-    match exec_remote_command(session, "uname -s 2>/dev/null") {
-        Ok(value) if value.eq_ignore_ascii_case("Darwin") => "macos".to_string(),
-        Ok(value) if value.eq_ignore_ascii_case("Linux") => "linux".to_string(),
-        _ => "unknown".to_string(),
-    }
-}
-
-pub fn get_disk_overview(session: &Session) -> Result<DiskOverview, String> {
-    let os = detect_remote_os(session);
-    let macos = os == "macos";
-
-    Ok(DiskOverview {
-        os,
-        filesystems: list_filesystems(session, macos)?,
-        // macOS에서 루트 `du`는 /Users·/System 전량 스캔으로 수분 걸릴 수 있어 건너뜁니다.
-        large_directories: if macos {
-            Vec::new()
-        } else {
-            list_large_directories(session)?
-        },
-    })
-}
-
-fn list_filesystems(session: &Session, macos: bool) -> Result<Vec<DiskFilesystem>, String> {
-    // Linux(GNU): 바이트 단위. macOS(BSD): -k(1KiB) 후 바이트로 환산.
-    let (command, block_bytes) = if macos {
-        ("df -kP -l 2>/dev/null", 1024u64)
-    } else {
-        ("df -B1 -P -l 2>/dev/null", 1u64)
-    };
-
-    let output = exec_remote_command(session, command)?;
+/// `df -P` 계열 출력을 파싱. `block_bytes`로 블록 단위를 바이트로 환산한다.
+pub fn parse_df_output(output: &str, block_bytes: u64) -> Vec<DiskFilesystem> {
     let mut filesystems = Vec::new();
 
     for line in output.lines().skip(1) {
@@ -119,16 +84,6 @@ fn list_filesystems(session: &Session, macos: bool) -> Result<Vec<DiskFilesystem
             continue;
         }
 
-        // macOS 가상·보조 마운트 노이즈
-        if macos
-            && (mounted_on.starts_with("/System/Volumes/Data/home")
-                || mounted_on.starts_with("/private/var/vm")
-                || mounted_on == "/dev"
-                || mounted_on.starts_with("/Volumes/com.apple"))
-        {
-            continue;
-        }
-
         if size_bytes == 0 {
             continue;
         }
@@ -143,6 +98,10 @@ fn list_filesystems(session: &Session, macos: bool) -> Result<Vec<DiskFilesystem
         });
     }
 
+    filesystems
+}
+
+pub fn sort_filesystems(filesystems: &mut [DiskFilesystem]) {
     filesystems.sort_by(|a, b| {
         let a_root = a.mounted_on == "/" || a.mounted_on == "/System/Volumes/Data";
         let b_root = b.mounted_on == "/" || b.mounted_on == "/System/Volumes/Data";
@@ -150,17 +109,9 @@ fn list_filesystems(session: &Session, macos: bool) -> Result<Vec<DiskFilesystem
             .cmp(&a_root)
             .then_with(|| b.size_bytes.cmp(&a.size_bytes))
     });
-
-    Ok(filesystems)
 }
 
-fn list_large_directories(session: &Session) -> Result<Vec<LargeDirectory>, String> {
-    // 루트 1depth만 측정. 가상 FS·권한 오류는 stderr로 버리고 상위 사용량만 수집.
-    let output = exec_remote_command(
-        session,
-        "du -xd1 -B1 / 2>/dev/null | sort -nr | head -n 15",
-    )?;
-
+pub fn parse_large_directories(output: &str) -> Vec<LargeDirectory> {
     let mut directories = Vec::new();
 
     for line in output.lines() {
@@ -192,5 +143,5 @@ fn list_large_directories(session: &Session) -> Result<Vec<LargeDirectory>, Stri
         });
     }
 
-    Ok(directories)
+    directories
 }

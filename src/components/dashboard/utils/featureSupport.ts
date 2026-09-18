@@ -9,15 +9,25 @@ export interface DashboardFeatureSupport {
   activity: boolean;
 }
 
-/** 원격 OS별 대시보드 섹션 노출 여부 */
+/** 원격 OS별 쿼리·기능 활성화 여부 (레이아웃 노출은 OS Layout이 담당) */
 export function dashboardFeatureSupport(
   os: RemoteOs | null | undefined,
 ): DashboardFeatureSupport {
-  const isLinux = os === "linux";
-
-  return {
-    systemResources: isLinux,
-    largeDirectories: isLinux,
-    activity: false,
-  };
+  switch (os) {
+    case "linux":
+      return {
+        systemResources: true,
+        largeDirectories: true,
+        activity: false,
+      };
+    case "macos":
+    case "windows":
+    case "unknown":
+    default:
+      return {
+        systemResources: false,
+        largeDirectories: false,
+        activity: false,
+      };
+  }
 }

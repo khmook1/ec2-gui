@@ -1,4 +1,4 @@
-export type RemoteOs = "linux" | "macos" | "unknown";
+export type RemoteOs = "linux" | "macos" | "windows" | "unknown";
 
 export interface DiskFilesystem {
   filesystem: string;
