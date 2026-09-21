@@ -29,6 +29,7 @@ pub fn run() {
             commands::fs::read_remote_file,
             commands::fs::write_remote_file,
             commands::disk::get_remote_disk_overview,
+            commands::disk::get_remote_large_directories,
             commands::disk::get_remote_system_resources,
             commands::disk::list_remote_ssh_sessions,
             commands::disk::get_remote_permission_overview,

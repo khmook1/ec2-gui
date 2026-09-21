@@ -70,10 +70,13 @@ export function DockerOverviewCard({
 
 export function LargeDirectoriesCard({
   directories,
-  diskLoading,
-  diskError,
+  directoriesLoading,
+  directoriesError,
   subtitle = "루트 1depth",
-}: Pick<DashboardLayoutProps, "directories" | "diskLoading" | "diskError"> & {
+}: Pick<
+  DashboardLayoutProps,
+  "directories" | "directoriesLoading" | "directoriesError"
+> & {
   subtitle?: string;
 }) {
   return (
@@ -81,15 +84,15 @@ export function LargeDirectoriesCard({
       title="용량이 큰 디렉터리"
       subtitle={subtitle}
       badge={
-        !diskLoading && !diskError && directories.length > 0
+        !directoriesLoading && !directoriesError && directories.length > 0
           ? directories.length
           : null
       }
     >
       <LargeDirectoriesSection
         directories={directories}
-        loading={diskLoading}
-        error={diskError}
+        loading={directoriesLoading}
+        error={directoriesError}
       />
     </SectionCard>
   );

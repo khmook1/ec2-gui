@@ -10,7 +10,7 @@ pub mod settings_service;
 pub mod ssh;
 pub mod storage_service;
 
-pub use remote_disk::DiskOverview;
+pub use remote_disk::{DiskOverview, LargeDirectory};
 pub use remote_disk_history::DiskUsageSample;
 pub use remote_docker::{
     DockerContainer, DockerContainerDetails, DockerImage, DockerNetwork, DockerOverview,

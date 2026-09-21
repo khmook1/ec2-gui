@@ -669,6 +669,21 @@ impl SshConnectionManager {
         super::remote_disk::get_disk_overview(&connection.session)
     }
 
+    pub fn get_large_directories(
+        &self,
+    ) -> Result<Vec<super::remote_disk::LargeDirectory>, String> {
+        let guard = self
+            .connection
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+        let connection = guard
+            .as_ref()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+
+        super::remote_disk::get_large_directories(&connection.session)
+    }
+
     pub fn get_system_resources(&self) -> Result<super::remote_system::SystemResources, String> {
         let guard = self
             .connection

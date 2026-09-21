@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { DiskOverview } from "@/types/disk";
+import type { DiskOverview, LargeDirectory } from "@/types/disk";
 import type { DiskUsageSample } from "@/lib/diskUsageHistory";
 import type { RemotePermissionOverview } from "@/types/permissions";
 import type { RemoteSshSession } from "@/types/sshSession";
@@ -7,6 +7,10 @@ import type { SystemResources } from "@/types/system";
 
 export async function getRemoteDiskOverview(): Promise<DiskOverview> {
   return invoke<DiskOverview>("get_remote_disk_overview");
+}
+
+export async function getRemoteLargeDirectories(): Promise<LargeDirectory[]> {
+  return invoke<LargeDirectory[]>("get_remote_large_directories");
 }
 
 export async function getRemoteSystemResources(): Promise<SystemResources> {

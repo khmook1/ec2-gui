@@ -5,6 +5,7 @@ export {
   useDiskHistoryQuery,
   useDiskOverviewQuery,
   useDockerOverviewQuery,
+  useLargeDirectoriesQuery,
   usePermissionOverviewQuery,
   useSshSessionsQuery,
   useSystemResourcesQuery,

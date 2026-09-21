@@ -63,40 +63,37 @@ fi
 [ "$CPU_PCT" -gt 100 ] && CPU_PCT=100
 
 MEM_TOTAL=$(sysctl -n hw.memsize 2>/dev/null || echo 0)
-MP_OUT=$(memory_pressure 2>/dev/null || true)
-FREE_PCT=$(printf '%s\n' "$MP_OUT" | sed -nE 's/.*free percentage:[[:space:]]*([0-9]+).*/\1/p' | head -n1)
-PRESSURE=unknown
-printf '%s\n' "$MP_OUT" | grep -qi 'status is GREEN' && PRESSURE=normal
-printf '%s\n' "$MP_OUT" | grep -qi 'status is YELLOW' && PRESSURE=warn
-printf '%s\n' "$MP_OUT" | grep -qi 'status is RED' && PRESSURE=critical
-
-if [ -n "$FREE_PCT" ] && [ "$MEM_TOTAL" -gt 0 ]; then
-  MEM_AVAIL=$(( MEM_TOTAL * FREE_PCT / 100 ))
-  MEM_USED=$(( MEM_TOTAL - MEM_AVAIL ))
-  MEM_PCT=$(( 100 - FREE_PCT ))
-  [ "$MEM_PCT" -lt 0 ] && MEM_PCT=0
+# memory_pressure는 수 초~수십 초 걸릴 수 있어 vm_stat만 사용
+PAGE=$(pagesize 2>/dev/null || echo 4096)
+VM=$(vm_stat 2>/dev/null)
+FREE_P=$(printf '%s\n' "$VM" | awk '/Pages free/ {gsub(/\./,"",$3); print $3+0}')
+ACT_P=$(printf '%s\n' "$VM" | awk '/Pages active/ {gsub(/\./,"",$3); print $3+0}')
+INACT_P=$(printf '%s\n' "$VM" | awk '/Pages inactive/ {gsub(/\./,"",$3); print $3+0}')
+WIRED_P=$(printf '%s\n' "$VM" | awk '/Pages wired/ {gsub(/\./,"",$4); print $4+0}')
+COMP_P=$(printf '%s\n' "$VM" | awk '/occupied by compressor/ {gsub(/\./,"",$5); print $5+0}')
+SPEC_P=$(printf '%s\n' "$VM" | awk '/Pages speculative/ {gsub(/\./,"",$3); print $3+0}')
+[ -z "$FREE_P" ] && FREE_P=0
+[ -z "$ACT_P" ] && ACT_P=0
+[ -z "$INACT_P" ] && INACT_P=0
+[ -z "$WIRED_P" ] && WIRED_P=0
+[ -z "$COMP_P" ] && COMP_P=0
+[ -z "$SPEC_P" ] && SPEC_P=0
+MEM_USED=$(( (ACT_P + WIRED_P + COMP_P) * PAGE ))
+MEM_AVAIL=$(( (FREE_P + INACT_P + SPEC_P) * PAGE ))
+if [ "$MEM_TOTAL" -gt 0 ]; then
+  MEM_PCT=$(( (100 * MEM_USED) / MEM_TOTAL ))
   [ "$MEM_PCT" -gt 100 ] && MEM_PCT=100
+  FREE_PCT=$(( 100 - MEM_PCT ))
 else
-  # vm_stat 폴백
-  PAGE=$(pagesize 2>/dev/null || echo 4096)
-  FREE_P=$(vm_stat 2>/dev/null | awk '/Pages free/ {gsub(/\./,"",$3); print $3+0}')
-  ACT_P=$(vm_stat 2>/dev/null | awk '/Pages active/ {gsub(/\./,"",$3); print $3+0}')
-  INACT_P=$(vm_stat 2>/dev/null | awk '/Pages inactive/ {gsub(/\./,"",$3); print $3+0}')
-  WIRED_P=$(vm_stat 2>/dev/null | awk '/Pages wired/ {gsub(/\./,"",$4); print $4+0}')
-  COMP_P=$(vm_stat 2>/dev/null | awk '/occupied by compressor/ {gsub(/\./,"",$5); print $5+0}')
-  [ -z "$FREE_P" ] && FREE_P=0
-  [ -z "$ACT_P" ] && ACT_P=0
-  [ -z "$INACT_P" ] && INACT_P=0
-  [ -z "$WIRED_P" ] && WIRED_P=0
-  [ -z "$COMP_P" ] && COMP_P=0
-  MEM_USED=$(( (ACT_P + WIRED_P + COMP_P) * PAGE ))
-  MEM_AVAIL=$(( (FREE_P + INACT_P) * PAGE ))
-  if [ "$MEM_TOTAL" -gt 0 ]; then
-    MEM_PCT=$(( (100 * MEM_USED) / MEM_TOTAL ))
-  else
-    MEM_PCT=0
-  fi
-  FREE_PCT=""
+  MEM_PCT=0
+  FREE_PCT=0
+fi
+if [ "$FREE_PCT" -ge 40 ]; then
+  PRESSURE=normal
+elif [ "$FREE_PCT" -ge 20 ]; then
+  PRESSURE=warn
+else
+  PRESSURE=critical
 fi
 
 RX_BPS=$(( (R2 - R1) * 10 / 3 ))
@@ -117,11 +114,7 @@ fi
 printf 'cpu\t%s\t%s\t%s\n' "$CORES" "$LOAD1" "$CPU_PCT"
 printf 'mem\t%s\t%s\t%s\t%s\n' "$MEM_TOTAL" "$MEM_USED" "$MEM_AVAIL" "$MEM_PCT"
 printf 'net\t%s\t%s\t%s\n' "$IFACE" "$RX_BPS" "$TX_BPS"
-if [ -n "$FREE_PCT" ]; then
-  printf 'pressure\t%s\t%s\n' "$PRESSURE" "$FREE_PCT"
-else
-  printf 'pressure\t%s\t\n' "$PRESSURE"
-fi
+printf 'pressure\t%s\t%s\n' "$PRESSURE" "$FREE_PCT"
 printf 'host\t%s\t%s\t%s\n' "$MODEL" "$OSVER" "$UPTIME"
 "#,
     )?;

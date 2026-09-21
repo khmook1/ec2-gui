@@ -15,17 +15,28 @@ pub fn list_filesystems(session: &Session) -> Result<Vec<DiskFilesystem>, String
     Ok(filesystems)
 }
 
-/// `/Users`·`/Applications`·`/Library` 1depth만 측정 (루트 전체 `du` 회피).
+/// 주요 경로 1depth 용량. 경로마다 짧은 타임아웃으로 SSH 세션 점유를 제한한다.
+///
+/// `/Users`·`/Library` 전체 `du`는 수분 걸릴 수 있어, 경로별 상한(초) 안에
+/// 끝나지 않으면 해당 루트는 건너뛴다.
 pub fn list_large_directories(session: &Session) -> Result<Vec<LargeDirectory>, String> {
     let output = exec_remote_command(
         session,
         r#"
 set +e
-# BSD du: KiB 단위. 디바이스 경계 유지(-x), depth 1(-d 1)
-for root in /Users /Applications /Library; do
-  [ -d "$root" ] || continue
-  du -x -d 1 -k "$root" 2>/dev/null
-done | sort -nr | head -n 15
+# 경로별 최대 4초. perl alarm으로 du가 SSH 채널을 무기한 점유하지 않게 함.
+run_du() {
+  root="$1"
+  [ -d "$root" ] || return 0
+  perl -e 'alarm 4; exec @ARGV' du -x -d 1 -k "$root" 2>/dev/null || true
+}
+
+# Applications 먼저(상대적으로 작음), Users·Library는 타임아웃에 걸릴 수 있음
+{
+  run_du /Applications
+  run_du /Users
+  run_du /Library
+} | sort -nr | head -n 15
 "#,
     )?;
 
@@ -33,7 +44,6 @@ done | sort -nr | head -n 15
     for dir in &mut directories {
         dir.size_bytes = dir.size_bytes.saturating_mul(1024);
     }
-    // 스캔 루트 자체 합계는 하위와 중복될 수 있어 제외
     directories.retain(|d| {
         d.path != "/Users" && d.path != "/Applications" && d.path != "/Library"
     });

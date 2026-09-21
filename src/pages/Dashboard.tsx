@@ -16,6 +16,7 @@ import {
   useDiskOverviewQuery,
   useDockerInstalledQuery,
   useDockerOverviewQuery,
+  useLargeDirectoriesQuery,
   usePermissionOverviewQuery,
   useSshSessionsQuery,
   useSystemResourcesQuery,
@@ -75,6 +76,13 @@ export function DashboardPage() {
   const systemQuery = useSystemResourcesQuery({
     enabled: features.systemResources,
   });
+  const largeDirsQuery = useLargeDirectoriesQuery({
+    // du는 SSH mutex를 오래 점유 → 동기화 오버레이가 끝난 뒤 후순위로
+    enabled:
+      features.largeDirectories &&
+      !showServerSyncOverlay &&
+      Boolean(diskQuery.data),
+  });
   const sshQuery = useSshSessionsQuery();
   const permissionQuery = usePermissionOverviewQuery();
   const dockerInstalledQuery = useDockerInstalledQuery();
@@ -105,6 +113,13 @@ export function DashboardPage() {
   const permissionError = permissionQuery.isError
     ? errorMessage(permissionQuery.error, "권한 정보를 불러오지 못했습니다.")
     : null;
+  const directoriesError =
+    features.largeDirectories && largeDirsQuery.isError
+      ? errorMessage(
+          largeDirsQuery.error,
+          "대용량 디렉터리 정보를 불러오지 못했습니다.",
+        )
+      : null;
 
   const dockerCounts: DockerOverviewCounts | null = dockerOverview
     ? {
@@ -132,6 +147,7 @@ export function DashboardPage() {
   const refreshing =
     diskQuery.isFetching ||
     diskHistoryQuery.isFetching ||
+    largeDirsQuery.isFetching ||
     (features.systemResources && systemQuery.isFetching) ||
     sshQuery.isFetching ||
     permissionQuery.isFetching ||
@@ -140,6 +156,9 @@ export function DashboardPage() {
   const refreshAll = () => {
     void diskQuery.refetch();
     void diskHistoryQuery.refetch();
+    if (features.largeDirectories) {
+      void largeDirsQuery.refetch();
+    }
     if (features.systemResources) {
       void systemQuery.refetch();
     }
@@ -151,7 +170,7 @@ export function DashboardPage() {
   };
 
   const filesystems = diskOverview?.filesystems ?? [];
-  const directories = diskOverview?.largeDirectories ?? [];
+  const directories = largeDirsQuery.data ?? [];
   const remoteOs = diskOverview?.os ?? null;
   const primary = pickPrimaryFilesystem(filesystems, remoteOs);
   const storageBadge =
@@ -170,6 +189,8 @@ export function DashboardPage() {
     os: remoteOs,
     filesystems,
     directories,
+    directoriesLoading: features.largeDirectories && largeDirsQuery.isPending,
+    directoriesError,
     diskHistory,
     diskLoading: diskQuery.isPending,
     diskHistoryLoading: diskHistoryQuery.isPending,

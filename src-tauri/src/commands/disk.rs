@@ -2,6 +2,7 @@ use tauri::State;
 
 use crate::services::DiskOverview;
 use crate::services::DiskUsageSample;
+use crate::services::LargeDirectory;
 use crate::services::RemotePermissionOverview;
 use crate::services::RemoteSshSession;
 use crate::services::SshConnectionManager;
@@ -12,6 +13,13 @@ pub fn get_remote_disk_overview(
     state: State<'_, SshConnectionManager>,
 ) -> Result<DiskOverview, String> {
     state.get_disk_overview()
+}
+
+#[tauri::command(async)]
+pub fn get_remote_large_directories(
+    state: State<'_, SshConnectionManager>,
+) -> Result<Vec<LargeDirectory>, String> {
+    state.get_large_directories()
 }
 
 #[tauri::command(async)]

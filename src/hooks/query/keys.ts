@@ -31,6 +31,8 @@ export const queryKeys = {
     ["docker", "systemOutput", session, action] as const,
 
   diskOverview: (session: string) => ["dashboard", "disk", session] as const,
+  largeDirectories: (session: string) =>
+    ["dashboard", "largeDirectories", session] as const,
   diskHistory: (session: string) =>
     ["dashboard", "diskHistory", session] as const,
   systemResources: (session: string) =>

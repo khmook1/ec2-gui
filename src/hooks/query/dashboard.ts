@@ -6,12 +6,14 @@ import {
   getRemoteDiskHistory,
   getRemoteDiskOverview,
   getRemoteDockerOverview,
+  getRemoteLargeDirectories,
   getRemotePermissionOverview,
   getRemoteSystemResources,
   listRemoteSshSessions,
 } from "@/services/tauri";
 import type { DiskUsageSample } from "@/lib/diskUsageHistory";
 import type { DockerOverview } from "@/types/docker";
+import type { LargeDirectory } from "@/types/disk";
 
 export function useDiskOverviewQuery() {
   const sessionKey = useSessionKey();
@@ -20,6 +22,19 @@ export function useDiskOverviewQuery() {
     queryKey: queryKeys.diskOverview(sessionKey ?? ""),
     queryFn: getRemoteDiskOverview,
     enabled: Boolean(sessionKey),
+  });
+}
+
+/** `du` 스캔은 SSH 세션을 오래 점유하므로 초기 동기화·파일 목록 이후에 실행한다. */
+export function useLargeDirectoriesQuery(options?: { enabled?: boolean }) {
+  const sessionKey = useSessionKey();
+  const enabled = Boolean(sessionKey) && (options?.enabled ?? true);
+
+  return useQuery<LargeDirectory[]>({
+    queryKey: queryKeys.largeDirectories(sessionKey ?? ""),
+    queryFn: getRemoteLargeDirectories,
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

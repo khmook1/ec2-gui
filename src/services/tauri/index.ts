@@ -16,6 +16,7 @@ export {
 } from "./docker";
 export {
   getRemoteDiskOverview,
+  getRemoteLargeDirectories,
   getRemoteSystemResources,
   listRemoteSshSessions,
   getRemotePermissionOverview,

@@ -37,8 +37,8 @@ export function LinuxLayout({
 
         <LargeDirectoriesCard
           directories={props.directories}
-          diskLoading={props.diskLoading}
-          diskError={props.diskError}
+          directoriesLoading={props.directoriesLoading}
+          directoriesError={props.directoriesError}
         />
       </div>
 

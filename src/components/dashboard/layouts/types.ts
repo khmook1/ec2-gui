@@ -13,6 +13,8 @@ export interface DashboardLayoutProps {
 
   filesystems: DiskFilesystem[];
   directories: LargeDirectory[];
+  directoriesLoading: boolean;
+  directoriesError: string | null;
   diskHistory: DiskUsageSample[];
   diskLoading: boolean;
   diskHistoryLoading: boolean;

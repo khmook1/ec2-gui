@@ -34,8 +34,8 @@ export function MacLayout({ showDocker, ...props }: DashboardLayoutProps) {
 
         <LargeDirectoriesCard
           directories={props.directories}
-          diskLoading={props.diskLoading}
-          diskError={props.diskError}
+          directoriesLoading={props.directoriesLoading}
+          directoriesError={props.directoriesError}
           subtitle="Users · Apps · Library"
         />
       </div>
