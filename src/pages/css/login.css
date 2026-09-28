@@ -92,6 +92,11 @@
   width: 100%;
 }
 
+.login-form__cancel {
+  margin-top: 8px;
+  width: 100%;
+}
+
 .login-local-btn {
   position: fixed;
   left: 50%;

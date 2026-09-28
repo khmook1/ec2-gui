@@ -4,6 +4,7 @@ mod utils;
 
 use services::storage_service;
 use services::SshConnectionManager;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,6 +13,9 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build())
         .manage(SshConnectionManager::new())
         .setup(|app| {
+            if let Some(manager) = app.try_state::<SshConnectionManager>() {
+                manager.bind_app(app.handle().clone());
+            }
             storage_service::resolve_and_ensure(app.handle())
                 .map_err(|error| -> Box<dyn std::error::Error> { error.into() })?;
             Ok(())
@@ -21,6 +25,8 @@ pub fn run() {
             commands::app::get_local_login_defaults,
             commands::ssh::connect_ssh,
             commands::ssh::disconnect_ssh,
+            commands::ssh::disconnect_ssh_session,
+            commands::ssh::set_active_ssh_session,
             commands::fs::get_remote_home,
             commands::fs::list_remote_directory,
             commands::fs::create_remote_directory,
@@ -35,6 +41,9 @@ pub fn run() {
             commands::disk::get_remote_permission_overview,
             commands::disk::ensure_remote_disk_history,
             commands::disk::get_remote_disk_history,
+            commands::disk::get_remote_block_devices,
+            commands::disk::get_remote_disk_expand_status,
+            commands::disk::expand_remote_disk,
             commands::docker::check_remote_docker,
             commands::docker::list_remote_docker_containers,
             commands::docker::list_remote_docker_images,

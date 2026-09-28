@@ -5,6 +5,8 @@ import {
   SshSessionsCard,
   StorageCard,
 } from "./SectionCards";
+import { DashboardArea } from "@/components/dashboard/atoms/DashboardArea";
+import { DockerSectionIcon } from "@/components/icons/DashboardSectionIcons";
 import type { DashboardLayoutProps } from "./types";
 
 /**
@@ -28,13 +30,20 @@ export function UnknownLayout({
         ) : null}
 
         {showDocker ? (
-          <DockerOverviewCard
-            dockerCounts={props.dockerCounts}
-            recentContainers={props.recentContainers}
-            dockerLoading={props.dockerLoading}
-            dockerError={props.dockerError}
-            dockerBadge={props.dockerBadge}
-          />
+          <DashboardArea
+            title="Docker"
+            subtitle="컨테이너 · 이미지 · 볼륨"
+            icon={<DockerSectionIcon />}
+            className="dashboard-area--docker"
+          >
+            <DockerOverviewCard
+              dockerCounts={props.dockerCounts}
+              recentContainers={props.recentContainers}
+              dockerLoading={props.dockerLoading}
+              dockerError={props.dockerError}
+              dockerBadge={props.dockerBadge}
+            />
+          </DashboardArea>
         ) : null}
       </div>
 

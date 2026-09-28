@@ -2,9 +2,12 @@ export { queryKeys } from "./keys";
 export { useSessionKey } from "./useSessionKey";
 export { useAppInfoQuery } from "./app";
 export {
+  useBlockDevicesQuery,
+  useDiskExpandStatusQuery,
   useDiskHistoryQuery,
   useDiskOverviewQuery,
   useDockerOverviewQuery,
+  useExpandDiskMutation,
   useLargeDirectoriesQuery,
   usePermissionOverviewQuery,
   useSshSessionsQuery,

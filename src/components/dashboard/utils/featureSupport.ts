@@ -5,6 +5,8 @@ export interface DashboardFeatureSupport {
   systemResources: boolean;
   /** 대용량 디렉터리 (Linux 루트 1depth / macOS 주요 경로) */
   largeDirectories: boolean;
+  /** lsblk · EBS/OS 디스크 확장 */
+  blockDevices: boolean;
   /** 활동 피드 — 아직 미구현 */
   activity: boolean;
 }
@@ -18,12 +20,14 @@ export function dashboardFeatureSupport(
       return {
         systemResources: true,
         largeDirectories: true,
+        blockDevices: true,
         activity: false,
       };
     case "macos":
       return {
         systemResources: true,
         largeDirectories: true,
+        blockDevices: false,
         activity: false,
       };
     case "windows":
@@ -32,6 +36,7 @@ export function dashboardFeatureSupport(
       return {
         systemResources: false,
         largeDirectories: false,
+        blockDevices: false,
         activity: false,
       };
   }

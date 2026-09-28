@@ -1,5 +1,11 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { DiskOverview, LargeDirectory } from "@/types/disk";
+import type {
+  BlockDevice,
+  DiskExpandResult,
+  DiskExpandStatus,
+  DiskOverview,
+  LargeDirectory,
+} from "@/types/disk";
 import type { DiskUsageSample } from "@/lib/diskUsageHistory";
 import type { RemotePermissionOverview } from "@/types/permissions";
 import type { RemoteSshSession } from "@/types/sshSession";
@@ -31,4 +37,20 @@ export async function ensureRemoteDiskHistory(): Promise<void> {
 
 export async function getRemoteDiskHistory(): Promise<DiskUsageSample[]> {
   return invoke<DiskUsageSample[]>("get_remote_disk_history");
+}
+
+export async function getRemoteBlockDevices(): Promise<BlockDevice[]> {
+  return invoke<BlockDevice[]>("get_remote_block_devices");
+}
+
+export async function getRemoteDiskExpandStatus(): Promise<DiskExpandStatus> {
+  return invoke<DiskExpandStatus>("get_remote_disk_expand_status");
+}
+
+export async function expandRemoteDisk(
+  targetSizeGb?: number | null,
+): Promise<DiskExpandResult> {
+  return invoke<DiskExpandResult>("expand_remote_disk", {
+    targetSizeGb: targetSizeGb ?? null,
+  });
 }

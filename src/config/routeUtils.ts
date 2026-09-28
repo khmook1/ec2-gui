@@ -4,7 +4,6 @@ import {
   ROUTES,
   type AppRoute,
   type RouteId,
-  type RoutePage,
 } from "@/config/Route";
 
 export interface RouteVisibilityContext {
@@ -79,7 +78,7 @@ export function getRouteByPath(path: string): AppRoute | undefined {
 
 export function resolveNavigableRouteId(id: RouteId): RouteId {
   const route = getRouteById(id);
-  if (route?.defaultChildId && !route.component) {
+  if (route?.defaultChildId) {
     return route.defaultChildId;
   }
   return id;
@@ -90,21 +89,6 @@ export function getRoutePath(id: RouteId): string {
   return (
     getRouteById(navigableId)?.path ?? getRouteById(DEFAULT_ROUTE_ID)!.path
   );
-}
-
-export function getRoutePage(id: RouteId): RoutePage {
-  const navigableId = resolveNavigableRouteId(id);
-  const route = getRouteById(navigableId);
-  if (route?.component) {
-    return route.component;
-  }
-  if (route?.defaultChildId) {
-    const child = getRouteById(route.defaultChildId);
-    if (child?.component) {
-      return child.component;
-    }
-  }
-  return getRouteById(DEFAULT_ROUTE_ID)!.component!;
 }
 
 export function isDockerRouteId(id: RouteId): boolean {

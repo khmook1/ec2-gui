@@ -19,6 +19,7 @@ import "./css/file-list.css";
 interface FileListProps {
   entries: RemoteEntry[];
   isLoading: boolean;
+  isLetterFocused?: (entry: RemoteEntry) => boolean;
   onOpenEntry: (entry: RemoteEntry) => void;
   onEntryContextMenu?: (event: MouseEvent, entry: RemoteEntry | null) => void;
 }
@@ -30,6 +31,7 @@ function FileIcon({ kind }: { kind: ExplorerFileIconKind }) {
 export function FileList({
   entries,
   isLoading,
+  isLetterFocused,
   onOpenEntry,
   onEntryContextMenu,
 }: FileListProps) {
@@ -108,9 +110,16 @@ export function FileList({
       onRowContextMenu={(entry, _index, event) =>
         onEntryContextMenu?.(event, entry)
       }
-      getRowClassName={(entry) =>
-        selectedKey === entry.path ? "table-list__row--selected" : undefined
-      }
+      getRowClassName={(entry) => {
+        const classes: string[] = [];
+        if (selectedKey === entry.path) {
+          classes.push("table-list__row--selected");
+        }
+        if (isLetterFocused?.(entry)) {
+          classes.push("table-list__row--letter-focus");
+        }
+        return classes.length > 0 ? classes.join(" ") : undefined;
+      }}
     />
   );
 }

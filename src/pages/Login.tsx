@@ -22,13 +22,18 @@ import {
 } from "@/lib/loginCache";
 import { getLocalLoginDefaults } from "@/services/tauri";
 import { useConnectionStore } from "@/stores/connectionStore";
+import { useSshSessionStore } from "@/stores/sshSessionStore";
 import type { LocalLoginDefaults } from "@/types/app";
 import "./css/login.css";
 
 type LoginFormValues = CachedLoginForm;
 
 export function LoginPage() {
-  const { login, isConnecting, errorMessage } = useSshLogin();
+  const { login, isConnecting, errorMessage, cancelAddSession } = useSshLogin();
+  const isAddingSession = useSshSessionStore((state) => state.isAddingSession);
+  const hasExistingSessions = useSshSessionStore(
+    (state) => state.sessions.length > 0,
+  );
   const [history, setHistory] = useState<CachedLoginHistoryEntry[]>(() =>
     loadLoginHistory(),
   );
@@ -84,6 +89,9 @@ export function LoginPage() {
   }, []);
 
   useEffect(() => {
+    if (isAddingSession || hasExistingSessions) {
+      return;
+    }
     if (shouldSkipAutoLogin()) {
       return;
     }
@@ -99,7 +107,7 @@ export function LoginPage() {
     }
 
     void login(cachedFormToCredentials(cached));
-  }, [login]);
+  }, [hasExistingSessions, isAddingSession, login]);
 
   function applyLocalDefaults() {
     if (!localDefaults?.available) {
@@ -173,8 +181,12 @@ export function LoginPage() {
         <div className="login-card">
           <header className="login-card__header">
             <AppIntro
-              eyebrow="SSH 접속"
-              subtitle="SSH 서버 GUI 입니다."
+              eyebrow={isAddingSession ? "세션 추가" : "SSH 접속"}
+              subtitle={
+                isAddingSession
+                  ? "새 SSH 세션으로 로그인합니다."
+                  : "SSH 서버 GUI 입니다."
+              }
               subtitleClassName="login-card__subtitle"
             />
           </header>
@@ -331,6 +343,17 @@ export function LoginPage() {
             >
               {isConnecting ? "접속 중..." : "접속하기"}
             </Button>
+            {isAddingSession ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="login-form__cancel"
+                disabled={isConnecting}
+                onClick={cancelAddSession}
+              >
+                취소
+              </Button>
+            ) : null}
           </form>
         </div>
 

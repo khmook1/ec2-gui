@@ -2,15 +2,17 @@ import {
   markSkipAutoLogin,
   saveLoginCache,
 } from "@/lib/loginCache";
-import {
-  useConnectSshMutation,
-  useDisconnectSshMutation,
-} from "@/hooks/query";
+import { useConnectSshMutation, useDisconnectSshMutation } from "@/hooks/query";
 import { useToast } from "@/providers/ToastProvider";
 import { useConnectionStore } from "@/stores/connectionStore";
 import { useNavStore } from "@/stores/navStore";
+import { useSshSessionStore } from "@/stores/sshSessionStore";
 import { useTerminalStore } from "@/stores/terminalStore";
-import type { SshCredentials } from "@/types/connection";
+import {
+  disconnectSshSession,
+  setActiveSshSession,
+} from "@/services/tauri";
+import type { SshAuthMethod, SshCredentials } from "@/types/connection";
 
 function getErrorMessage(error: unknown): string {
   if (typeof error === "string") {
@@ -33,6 +35,37 @@ function getErrorMessage(error: unknown): string {
   return "SSH 접속에 실패했습니다.";
 }
 
+function persistActiveTerminalSnapshot() {
+  const activeId = useSshSessionStore.getState().activeSessionId;
+  if (!activeId) {
+    return;
+  }
+  useSshSessionStore
+    .getState()
+    .updateSessionTerminal(activeId, useTerminalStore.getState().getSnapshot());
+}
+
+export async function activateSshSession(sessionId: string): Promise<void> {
+  const session = useSshSessionStore
+    .getState()
+    .sessions.find((item) => item.id === sessionId);
+  if (!session) {
+    return;
+  }
+
+  persistActiveTerminalSnapshot();
+
+  await setActiveSshSession(sessionId);
+
+  useSshSessionStore.getState().setActiveSessionId(sessionId);
+  useConnectionStore.getState().mirrorConnection({
+    ...session.connection,
+    connectionId: session.id,
+  });
+  useTerminalStore.getState().hydrate(session.terminal);
+  useNavStore.getState().reset();
+}
+
 export function useSshLogin() {
   const toast = useToast();
   const status = useConnectionStore((state) => state.status);
@@ -50,16 +83,30 @@ export function useSshLogin() {
     credentials: SshCredentials,
     options?: { memo?: string },
   ) {
+    persistActiveTerminalSnapshot();
     setConnecting();
 
     try {
       const result = await connectMutation.mutateAsync(credentials);
-      setConnected({
+      const authMethod = result.authMethod as SshAuthMethod;
+      const connectionInfo = {
         host: result.host,
         username: result.username,
         port: result.port,
-        authMethod: result.authMethod,
-      });
+        authMethod,
+        connectionId: result.connectionId,
+      };
+
+      useSshSessionStore
+        .getState()
+        .upsertConnectedSession(
+          result.connectionId,
+          connectionInfo,
+          options?.memo,
+        );
+      setConnected(connectionInfo);
+      useTerminalStore.getState().reset();
+      useNavStore.getState().reset();
       saveLoginCache(credentials, options?.memo);
       toast.success(`${result.username}@${result.host}에 연결되었습니다.`);
       return true;
@@ -71,7 +118,42 @@ export function useSshLogin() {
     }
   }
 
+  async function closeSession(sessionId: string) {
+    persistActiveTerminalSnapshot();
+    const wasActive =
+      useSshSessionStore.getState().activeSessionId === sessionId;
+
+    try {
+      await disconnectSshSession(sessionId);
+    } catch {
+      // Local session should reset even if remote disconnect fails.
+    }
+
+    const nextActive = useSshSessionStore.getState().removeSession(sessionId);
+
+    if (!nextActive) {
+      markSkipAutoLogin();
+      useNavStore.getState().reset();
+      useTerminalStore.getState().reset();
+      useSshSessionStore.getState().reset();
+      reset();
+      toast.info("연결을 해제했습니다.");
+      return;
+    }
+
+    if (wasActive) {
+      await activateSshSession(nextActive);
+    }
+    toast.info("세션을 닫았습니다.");
+  }
+
   async function logout() {
+    const activeId = useSshSessionStore.getState().activeSessionId;
+    if (activeId) {
+      await closeSession(activeId);
+      return;
+    }
+
     markSkipAutoLogin();
 
     try {
@@ -79,8 +161,28 @@ export function useSshLogin() {
     } finally {
       useNavStore.getState().reset();
       useTerminalStore.getState().reset();
+      useSshSessionStore.getState().reset();
       reset();
       toast.info("연결을 해제했습니다.");
+    }
+  }
+
+  function beginAddSession() {
+    persistActiveTerminalSnapshot();
+    useSshSessionStore.getState().beginAddSession();
+  }
+
+  function cancelAddSession() {
+    useSshSessionStore.getState().cancelAddSession();
+    const activeId = useSshSessionStore.getState().activeSessionId;
+    const session = useSshSessionStore
+      .getState()
+      .sessions.find((item) => item.id === activeId);
+    if (session) {
+      useConnectionStore.getState().mirrorConnection({
+        ...session.connection,
+        connectionId: session.id,
+      });
     }
   }
 
@@ -92,5 +194,8 @@ export function useSshLogin() {
     isConnecting: status === "connecting" || connectMutation.isPending,
     login,
     logout,
+    closeSession,
+    beginAddSession,
+    cancelAddSession,
   };
 }

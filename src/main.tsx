@@ -5,6 +5,7 @@ import App from "./App";
 import { repairDocumentUrl } from "@/config/routeUtils";
 import { getAppName } from "@/lib/env";
 import { AiChatbotProvider } from "@/providers/AiChatbotProvider";
+import { AutoRefreshProvider } from "@/providers/AutoRefreshProvider";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ToastProvider } from "@/providers/ToastProvider";
 import "./index.css";
@@ -28,11 +29,13 @@ void getCurrentWindow()
 createRoot(rootElement).render(
   <StrictMode>
     <QueryProvider>
-      <ToastProvider>
-        <AiChatbotProvider>
-          <App />
-        </AiChatbotProvider>
-      </ToastProvider>
+      <AutoRefreshProvider>
+        <ToastProvider>
+          <AiChatbotProvider>
+            <App />
+          </AiChatbotProvider>
+        </ToastProvider>
+      </AutoRefreshProvider>
     </QueryProvider>
   </StrictMode>,
 );

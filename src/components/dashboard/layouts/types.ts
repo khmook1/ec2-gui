@@ -1,6 +1,11 @@
 import type { DockerOverviewCounts } from "@/components/dashboard/DockerOverviewSection";
 import type { DiskUsageSample } from "@/lib/diskUsageHistory";
-import type { DiskFilesystem, LargeDirectory, RemoteOs } from "@/types/disk";
+import type {
+  BlockDevice,
+  DiskFilesystem,
+  LargeDirectory,
+  RemoteOs,
+} from "@/types/disk";
 import type { DockerContainer } from "@/types/docker";
 import type { RemotePermissionOverview } from "@/types/permissions";
 import type { RemoteSshSession } from "@/types/sshSession";
@@ -20,6 +25,11 @@ export interface DashboardLayoutProps {
   diskHistoryLoading: boolean;
   diskError: string | null;
   storageBadge: string | null;
+
+  blockDevices: BlockDevice[];
+  blockDevicesLoading: boolean;
+  blockDevicesError: string | null;
+  onExpandDisk?: () => void;
 
   systemResources: SystemResources | null;
   systemLoading: boolean;
@@ -42,3 +52,4 @@ export interface DashboardLayoutProps {
   permissionError: string | null;
   permissionsBadge: string | null;
 }
+

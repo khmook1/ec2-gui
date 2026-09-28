@@ -61,6 +61,14 @@
   transform: translate(-50%, calc(-100% - 8px));
 }
 
+.icon-btn-tooltip--bottom {
+  transform: translate(-50%, 8px) translateY(-4px);
+}
+
+.icon-btn-tooltip--bottom.icon-btn-tooltip--visible {
+  transform: translate(-50%, 8px);
+}
+
 .icon-btn-tooltip--command {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.6875rem;

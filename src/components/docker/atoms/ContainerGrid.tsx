@@ -56,7 +56,9 @@ export function ContainerGrid({
       {filteredContainers.map((container) => {
         const selected = selectedKey === container.id;
         const state = getDockerContainerState(container.status);
-        const running = state === "running" || state === "paused";
+        const restarting = state === "restarting";
+        const running =
+          state === "running" || state === "paused" || restarting;
         const nginx = isNginxContainer(container);
 
         return (
@@ -68,6 +70,7 @@ export function ContainerGrid({
               "explorer-icon-grid__item",
               "explorer-icon-grid__item--docker",
               nginx ? "explorer-icon-grid__item--nginx" : "",
+              restarting ? "explorer-icon-grid__item--restarting" : "",
               selected ? "explorer-icon-grid__item--selected" : "",
             ]
               .filter(Boolean)
@@ -92,12 +95,22 @@ export function ContainerGrid({
                 NGINX
               </span>
             ) : null}
+            {restarting ? (
+              <span
+                className="docker-grid__restart-badge"
+                aria-label="재시작 중"
+              >
+                RESTART
+              </span>
+            ) : null}
             <span
               className={[
                 "docker-grid__status-dot",
-                running
-                  ? "docker-grid__status-dot--running"
-                  : "docker-grid__status-dot--stopped",
+                restarting
+                  ? "docker-grid__status-dot--restarting"
+                  : running
+                    ? "docker-grid__status-dot--running"
+                    : "docker-grid__status-dot--stopped",
               ].join(" ")}
               aria-hidden
             />
@@ -108,7 +121,15 @@ export function ContainerGrid({
             <span className="docker-grid__meta">
               <SearchHighlight text={container.image} query={query} />
             </span>
-            <span className="docker-grid__meta docker-grid__meta--status">
+            <span
+              className={[
+                "docker-grid__meta",
+                "docker-grid__meta--status",
+                restarting ? "docker-grid__meta--status-restarting" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+            >
               <SearchHighlight text={container.status} query={query} />
             </span>
           </button>

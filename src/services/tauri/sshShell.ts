@@ -52,3 +52,19 @@ export function listenSshTerminalClosed(
     handler(event.payload);
   });
 }
+
+export interface SshSessionReconnectedPayload {
+  host: string;
+  username: string;
+}
+
+export function listenSshSessionReconnected(
+  handler: (payload: SshSessionReconnectedPayload) => void,
+): Promise<UnlistenFn> {
+  return listen<SshSessionReconnectedPayload>(
+    "ssh-session-reconnected",
+    (event) => {
+      handler(event.payload);
+    },
+  );
+}

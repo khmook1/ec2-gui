@@ -13,6 +13,7 @@ import "./css/icon-button.css";
 
 export type IconButtonTone = "accent" | "success" | "neutral" | "danger";
 export type IconButtonVariant = "default" | "close";
+export type IconButtonTooltipPosition = "top" | "bottom";
 
 export interface IconButtonProps extends Omit<ButtonProps, "variant" | "children"> {
   tone?: IconButtonTone;
@@ -20,6 +21,8 @@ export interface IconButtonProps extends Omit<ButtonProps, "variant" | "children
   variant?: IconButtonVariant;
   /** 있으면 hover·focus 시 툴팁을 표시합니다. */
   tooltip?: string;
+  /** 툴팁이 버튼 기준 어느쪽에 붙을지. 기본 `top`. */
+  tooltipPosition?: IconButtonTooltipPosition;
   children?: ReactNode;
 }
 
@@ -27,6 +30,7 @@ export function IconButton({
   tone = "neutral",
   variant = "default",
   tooltip,
+  tooltipPosition = "top",
   className,
   children,
   "aria-label": ariaLabel,
@@ -61,9 +65,9 @@ export function IconButton({
     const rect = el.getBoundingClientRect();
     setTooltipPos({
       x: rect.left + rect.width / 2,
-      y: rect.top,
+      y: tooltipPosition === "bottom" ? rect.bottom : rect.top,
     });
-  }, []);
+  }, [tooltipPosition]);
 
   const showTooltip = useCallback(() => {
     updateTooltipPos();
@@ -119,6 +123,7 @@ export function IconButton({
       className={[
         "icon-btn-tooltip",
         "icon-btn-tooltip--fixed",
+        `icon-btn-tooltip--${tooltipPosition}`,
         tooltipVisible ? "icon-btn-tooltip--visible" : "",
       ]
         .filter(Boolean)

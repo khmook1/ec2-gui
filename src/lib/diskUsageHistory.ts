@@ -1,33 +1,34 @@
-/** 디스크 사용률 샘플 (원격 storage.json / UI 시간 버킷) */
+/** 디스크 사용률 샘플 (원격 disk-history/YYYY-MM-DD.json / UI 일 버킷) */
 export interface DiskUsageSample {
-  /** ms epoch (10분 또는 1시간 버킷) */
+  /** ms epoch (해당 날짜 00:00) */
   ts: number;
   usePercent: number;
   usedBytes: number;
   mountedOn: string;
 }
 
-const MAX_HOURLY_SAMPLES = 24;
-const HOUR_MS = 60 * 60 * 1000;
+export const MAX_DAILY_SAMPLES = 30;
 
-/** 타임스탬프를 정시(1시간) 버킷으로 내림 */
-export function hourBucket(ts: number): number {
-  return Math.floor(ts / HOUR_MS) * HOUR_MS;
+/** 타임스탬프를 로컬 자정(1일) 버킷으로 내림 */
+export function dayBucket(ts: number): number {
+  const date = new Date(ts);
+  date.setHours(0, 0, 0, 0);
+  return date.getTime();
 }
 
-/** 10분 단위 원격 샘플을 시간당 1개(최신값)로 합칩니다. */
-export function collapseToHourly(samples: DiskUsageSample[]): DiskUsageSample[] {
-  const byHour = new Map<number, DiskUsageSample>();
+/** 원격 일별 샘플을 날짜당 1개(최신값)로 합칩니다. */
+export function collapseToDaily(samples: DiskUsageSample[]): DiskUsageSample[] {
+  const byDay = new Map<number, DiskUsageSample>();
 
-  for (const sample of samples) {
-    const bucket = hourBucket(sample.ts);
-    byHour.set(bucket, {
+  for (const sample of [...samples].sort((a, b) => a.ts - b.ts)) {
+    const bucket = dayBucket(sample.ts);
+    byDay.set(bucket, {
       ...sample,
       ts: bucket,
     });
   }
 
-  return [...byHour.values()]
+  return [...byDay.values()]
     .sort((a, b) => a.ts - b.ts)
-    .slice(-MAX_HOURLY_SAMPLES);
+    .slice(-MAX_DAILY_SAMPLES);
 }

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { IconButton } from "@/components/common/IconButton";
-import { LogoIcon } from "@/components/common/LogoIcon";
 import {
   ChevronDownNavIcon,
   LogOutNavIcon,
   MenuNavIcon,
 } from "@/components/icons/NavIcons";
+import { PlusIcon } from "@/components/icons/ToolbarIcons";
 import type { AppRoute, RouteId } from "@/config/Route";
 import { resolveNavigableRouteId } from "@/config/routeUtils";
 import { useSshLogin } from "@/hooks/useSshLogin";
@@ -36,7 +36,7 @@ function collectExpandedByActive(
 export function Sidebar() {
   const isOpen = useSidebarStore((state) => state.isOpen);
   const toggle = useSidebarStore((state) => state.toggle);
-  const { logout } = useSshLogin();
+  const { logout, beginAddSession } = useSshLogin();
   const { items, activeId, setActiveId, isItemEnabled } = useSidebarNav();
   const [expandedIds, setExpandedIds] = useState<
     Partial<Record<RouteId, boolean>>
@@ -81,16 +81,26 @@ export function Sidebar() {
     >
       <div className="sidebar__panel">
         <div className="sidebar__top">
-          <LogoIcon size={40} />
           <IconButton
             tone="neutral"
             tooltip="사이드바 닫기"
+            tooltipPosition="bottom"
             aria-label="사이드바 닫기"
             aria-expanded={true}
             className="sidebar__menu-btn"
             onClick={toggle}
           >
             <MenuNavIcon />
+          </IconButton>
+          <IconButton
+            tone="accent"
+            tooltip="세션 추가 (⌘T)"
+            tooltipPosition="bottom"
+            aria-label="세션 추가"
+            className="sidebar__add-session-btn"
+            onClick={beginAddSession}
+          >
+            <PlusIcon />
           </IconButton>
         </div>
         <div className="sidebar__brand">
@@ -192,9 +202,7 @@ export function Sidebar() {
                             "sidebar__nav-item",
                             "sidebar__nav-item--child",
                             childActive ? "sidebar__nav-item--active" : "",
-                            !childEnabled
-                              ? "sidebar__nav-item--disabled"
-                              : "",
+                            !childEnabled ? "sidebar__nav-item--disabled" : "",
                           ]
                             .filter(Boolean)
                             .join(" ")}

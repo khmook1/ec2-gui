@@ -4,9 +4,10 @@ use std::net::{TcpStream, ToSocketAddrs};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use serde::Serialize;
+use socket2::{SockRef, TcpKeepalive};
 use ssh2::{Channel, Session};
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -14,8 +15,15 @@ const DEFAULT_SSH_PORT: u16 = 22;
 const CONNECT_TIMEOUT_SECS: u64 = 15;
 const SHELL_POLL_INTERVAL_MS: u64 = 16;
 const SHELL_READ_BUF_SIZE: usize = 8192;
+/// Idle 후 SSH keepalive 전송 주기(초). NAT/방화벽 idle drop 방지.
+const SSH_KEEPALIVE_INTERVAL_SECS: u32 = 10;
+/// 백그라운드 keepalive 점검 최소 간격.
+const KEEPALIVE_TICK_INTERVAL: Duration = Duration::from_secs(5);
+const TCP_KEEPALIVE_TIME: Duration = Duration::from_secs(30);
+const TCP_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
 
 static NEXT_SHELL_ID: AtomicU64 = AtomicU64::new(1);
+static NEXT_CONNECTION_ID: AtomicU64 = AtomicU64::new(1);
 static SHELL_READER_STARTED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone, Serialize)]
@@ -31,6 +39,24 @@ struct SshTerminalClosedEvent {
     shell_id: String,
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SshSessionReconnectedEvent {
+    host: String,
+    username: String,
+}
+
+#[derive(Clone)]
+enum StoredAuth {
+    Pem {
+        private_key_path: String,
+        key_passphrase: Option<String>,
+    },
+    Password {
+        password: String,
+    },
+}
+
 #[allow(dead_code)]
 pub struct ActiveConnection {
     pub host: String,
@@ -39,18 +65,34 @@ pub struct ActiveConnection {
     pub auth_method: String,
     /// Kept alive for future remote operations after login.
     pub session: Session,
+    auth: StoredAuth,
     shells: HashMap<String, Channel>,
     cached_identity: Mutex<Option<super::remote_fs::RemoteIdentity>>,
 }
 
 pub struct SshConnectionManager {
-    connection: Mutex<Option<ActiveConnection>>,
+    connections: Mutex<HashMap<String, ActiveConnection>>,
+    active_id: Mutex<Option<String>>,
+    app: Mutex<Option<AppHandle>>,
+    last_keepalive_tick: Mutex<Option<Instant>>,
+    /// 수동 disconnect 중(연결 0개)이면 자동 재접속하지 않음.
+    reconnect_enabled: AtomicBool,
 }
 
 impl SshConnectionManager {
     pub fn new() -> Self {
         Self {
-            connection: Mutex::new(None),
+            connections: Mutex::new(HashMap::new()),
+            active_id: Mutex::new(None),
+            app: Mutex::new(None),
+            last_keepalive_tick: Mutex::new(None),
+            reconnect_enabled: AtomicBool::new(false),
+        }
+    }
+
+    pub fn bind_app(&self, app: AppHandle) {
+        if let Ok(mut guard) = self.app.lock() {
+            *guard = Some(app);
         }
     }
 
@@ -63,7 +105,7 @@ impl SshConnectionManager {
         private_key_path: Option<&str>,
         key_passphrase: Option<&str>,
         password: Option<&str>,
-    ) -> Result<(String, String, u16, String), String> {
+    ) -> Result<(String, String, String, u16, String), String> {
         let host = host.trim();
         let username = username.trim();
         let port = port.unwrap_or(DEFAULT_SSH_PORT);
@@ -76,7 +118,7 @@ impl SshConnectionManager {
             return Err("아이디를 입력해 주세요.".to_string());
         }
 
-        let session = match auth_method {
+        let (session, auth) = match auth_method {
             "pem" => {
                 let key_path = private_key_path.unwrap_or("").trim();
                 if key_path.is_empty() {
@@ -87,36 +129,79 @@ impl SshConnectionManager {
                         "키 파일을 찾을 수 없습니다: {key_path}\n터미널에서 사용하는 .pem 경로와 동일한지 확인하세요."
                     ));
                 }
-                open_ssh_session_with_key(host, port, username, key_path, key_passphrase)?
+                let session =
+                    open_ssh_session_with_key(host, port, username, key_path, key_passphrase)?;
+                (
+                    session,
+                    StoredAuth::Pem {
+                        private_key_path: key_path.to_string(),
+                        key_passphrase: key_passphrase.map(str::to_string),
+                    },
+                )
             }
             "password" => {
                 let password = password.unwrap_or("");
                 if password.is_empty() {
                     return Err("비밀번호를 입력해 주세요.".to_string());
                 }
-                open_ssh_session_with_password(host, port, username, password)?
+                let session = open_ssh_session_with_password(host, port, username, password)?;
+                (
+                    session,
+                    StoredAuth::Password {
+                        password: password.to_string(),
+                    },
+                )
             }
             _ => return Err("지원하지 않는 인증 방식입니다.".to_string()),
         };
 
         let auth_method = auth_method.to_string();
+        let connection_id = format!(
+            "conn-{}",
+            NEXT_CONNECTION_ID.fetch_add(1, Ordering::SeqCst)
+        );
 
-        let mut guard = self
-            .connection
+        let mut connections = self
+            .connections
             .lock()
             .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
 
-        *guard = Some(ActiveConnection {
-            host: host.to_string(),
-            username: username.to_string(),
-            port,
-            auth_method: auth_method.clone(),
-            session,
-            shells: HashMap::new(),
-            cached_identity: Mutex::new(None),
-        });
+        connections.insert(
+            connection_id.clone(),
+            ActiveConnection {
+                host: host.to_string(),
+                username: username.to_string(),
+                port,
+                auth_method: auth_method.clone(),
+                session,
+                auth,
+                shells: HashMap::new(),
+                cached_identity: Mutex::new(None),
+            },
+        );
+        drop(connections);
+
+        {
+            let mut active = self
+                .active_id
+                .lock()
+                .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+            *active = Some(connection_id.clone());
+        }
+
+        self.reconnect_enabled.store(true, Ordering::SeqCst);
+        if let Ok(mut tick) = self.last_keepalive_tick.lock() {
+            *tick = Some(Instant::now());
+        }
+
+        if let Ok(app_guard) = self.app.lock() {
+            if let Some(app) = app_guard.as_ref() {
+                ensure_shell_reader(app.clone());
+            }
+        }
 
         Ok((
+            connection_id,
             host.to_string(),
             username.to_string(),
             port,
@@ -124,129 +209,387 @@ impl SshConnectionManager {
         ))
     }
 
+    /// 활성 세션만 종료. 남은 세션이 있으면 그중 하나로 active를 옮긴다.
     pub fn disconnect(&self) -> Result<(), String> {
-        let mut guard = self
-            .connection
+        let active_id = {
+            let active = self
+                .active_id
+                .lock()
+                .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+            active.clone()
+        };
+
+        let Some(id) = active_id else {
+            return Ok(());
+        };
+
+        self.disconnect_session(&id)
+    }
+
+    pub fn disconnect_session(&self, connection_id: &str) -> Result<(), String> {
+        let (closed_shells, next_active, empty) = {
+            let mut connections = self
+                .connections
+                .lock()
+                .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+            let Some(mut connection) = connections.remove(connection_id) else {
+                return Ok(());
+            };
+
+            let shell_ids: Vec<String> = connection.shells.keys().cloned().collect();
+            for shell_id in &shell_ids {
+                if let Some(mut channel) = connection.shells.remove(shell_id) {
+                    let _ = channel.close();
+                    let _ = channel.wait_close();
+                }
+            }
+
+            let next_active = connections.keys().next().cloned();
+            let empty = connections.is_empty();
+            (shell_ids, next_active, empty)
+        };
+
+        {
+            let mut active = self
+                .active_id
+                .lock()
+                .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+            if active.as_deref() == Some(connection_id) {
+                *active = next_active;
+            }
+        }
+
+        if empty {
+            self.reconnect_enabled.store(false, Ordering::SeqCst);
+        }
+
+        if let Ok(app_guard) = self.app.lock() {
+            if let Some(app) = app_guard.as_ref() {
+                for shell_id in closed_shells {
+                    let _ = app.emit(
+                        "ssh-terminal-closed",
+                        SshTerminalClosedEvent { shell_id },
+                    );
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn set_active_session(&self, connection_id: &str) -> Result<(), String> {
+        let connections = self
+            .connections
             .lock()
             .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
 
-        if let Some(connection) = guard.as_mut() {
-            connection.shells.clear();
+        if !connections.contains_key(connection_id) {
+            return Err("해당 SSH 세션을 찾을 수 없습니다.".to_string());
         }
 
-        *guard = None;
+        let mut active = self
+            .active_id
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+        *active = Some(connection_id.to_string());
         Ok(())
+    }
+
+    pub fn active_session_id(&self) -> Result<Option<String>, String> {
+        let active = self
+            .active_id
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+        Ok(active.clone())
+    }
+
+    /// 세션이 끊겼으면 즉시 재접속한 뒤 작업을 수행한다. 실패 시 1회 재시도.
+    fn with_connection<R>(
+        &self,
+        mut op: impl FnMut(&ActiveConnection) -> Result<R, String>,
+    ) -> Result<R, String> {
+        let mut last_error = None;
+
+        for attempt in 0..2 {
+            let active_id = {
+                let active = self
+                    .active_id
+                    .lock()
+                    .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+                active.clone()
+            };
+
+            let Some(active_id) = active_id else {
+                return Err("SSH 호스트에 연결되어 있지 않습니다.".to_string());
+            };
+
+            let mut connections = self
+                .connections
+                .lock()
+                .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+            let Some(connection) = connections.get_mut(&active_id) else {
+                return Err("SSH 호스트에 연결되어 있지 않습니다.".to_string());
+            };
+
+            if attempt == 0 {
+                if !session_is_alive(&connection.session) {
+                    self.reconnect_locked(connection)?;
+                }
+            } else {
+                self.reconnect_locked(connection)?;
+            }
+
+            match op(connection) {
+                Ok(value) => return Ok(value),
+                Err(error) if attempt == 0 && looks_like_disconnect(&error) => {
+                    last_error = Some(error);
+                }
+                Err(error) => return Err(error),
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| "SSH 재접속에 실패했습니다.".to_string()))
+    }
+
+    fn reconnect_locked(&self, connection: &mut ActiveConnection) -> Result<(), String> {
+        if !self.reconnect_enabled.load(Ordering::SeqCst) {
+            return Err("SSH 호스트에 연결되어 있지 않습니다.".to_string());
+        }
+
+        let closed_shells: Vec<String> = connection.shells.keys().cloned().collect();
+        connection.shells.clear();
+        if let Ok(mut cache) = connection.cached_identity.lock() {
+            *cache = None;
+        }
+
+        let session = open_ssh_session_from_auth(
+            &connection.host,
+            connection.port,
+            &connection.username,
+            &connection.auth,
+        )?;
+        connection.session = session;
+
+        let app = self
+            .app
+            .lock()
+            .ok()
+            .and_then(|guard| guard.clone());
+
+        if let Some(app) = app {
+            for shell_id in closed_shells {
+                let _ = app.emit(
+                    "ssh-terminal-closed",
+                    SshTerminalClosedEvent { shell_id },
+                );
+            }
+            let _ = app.emit(
+                "ssh-session-reconnected",
+                SshSessionReconnectedEvent {
+                    host: connection.host.clone(),
+                    username: connection.username.clone(),
+                },
+            );
+        }
+
+        Ok(())
+    }
+
+    /// 백그라운드 keepalive. 끊김 감지 시 즉시 재접속.
+    pub fn tick_keepalive(&self) {
+        if !self.reconnect_enabled.load(Ordering::SeqCst) {
+            return;
+        }
+
+        {
+            let Ok(mut last) = self.last_keepalive_tick.lock() else {
+                return;
+            };
+            if let Some(prev) = *last {
+                if prev.elapsed() < KEEPALIVE_TICK_INTERVAL {
+                    return;
+                }
+            }
+            *last = Some(Instant::now());
+        }
+
+        let Ok(mut connections) = self.connections.lock() else {
+            return;
+        };
+
+        let ids: Vec<String> = connections.keys().cloned().collect();
+        for id in ids {
+            let Some(connection) = connections.get_mut(&id) else {
+                continue;
+            };
+            match connection.session.keepalive_send() {
+                Ok(_) => {}
+                Err(_) => {
+                    let _ = self.reconnect_locked(connection);
+                }
+            }
+        }
     }
 
     pub fn open_shell(&self, cols: u32, rows: u32, app: &AppHandle) -> Result<String, String> {
-        let mut guard = self
-            .connection
+        self.bind_app(app.clone());
+
+        let mut last_error: Option<String> = None;
+        for attempt in 0..2 {
+            let active_id = {
+                let active = self
+                    .active_id
+                    .lock()
+                    .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+                active.clone()
+            };
+
+            let Some(active_id) = active_id else {
+                return Err("SSH 호스트에 연결되어 있지 않습니다.".to_string());
+            };
+
+            let mut connections = self
+                .connections
+                .lock()
+                .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+
+            let Some(connection) = connections.get_mut(&active_id) else {
+                return Err("SSH 호스트에 연결되어 있지 않습니다.".to_string());
+            };
+
+            if attempt == 0 {
+                if !session_is_alive(&connection.session) {
+                    self.reconnect_locked(connection)?;
+                }
+            } else {
+                self.reconnect_locked(connection)?;
+            }
+
+            let cols = cols.max(1);
+            let rows = rows.max(1);
+
+            let channel_result = connection.session.channel_session();
+            let mut channel = match channel_result {
+                Ok(channel) => channel,
+                Err(error) => {
+                    let message = format!("터미널 채널을 열지 못했습니다: {error}");
+                    if attempt == 0 && looks_like_disconnect(&message) {
+                        last_error = Some(message);
+                        continue;
+                    }
+                    return Err(message);
+                }
+            };
+
+            if let Err(error) =
+                channel.request_pty("xterm-256color", None, Some((cols, rows, 0, 0)))
+            {
+                let message = format!("PTY 요청에 실패했습니다: {error}");
+                if attempt == 0 && looks_like_disconnect(&message) {
+                    last_error = Some(message);
+                    continue;
+                }
+                return Err(message);
+            }
+
+            if let Err(error) = channel.shell() {
+                let message = format!("원격 셸을 시작하지 못했습니다: {error}");
+                if attempt == 0 && looks_like_disconnect(&message) {
+                    last_error = Some(message);
+                    continue;
+                }
+                return Err(message);
+            }
+
+            let shell_id = format!("shell-{}", NEXT_SHELL_ID.fetch_add(1, Ordering::SeqCst));
+            connection.shells.insert(shell_id.clone(), channel);
+            ensure_shell_reader(app.clone());
+            return Ok(shell_id);
+        }
+
+        Err(last_error.unwrap_or_else(|| "터미널 세션을 열지 못했습니다.".to_string()))
+    }
+
+    fn with_shell_mut<R>(
+        &self,
+        shell_id: &str,
+        mut op: impl FnMut(&mut Channel) -> Result<R, String>,
+    ) -> Result<R, String> {
+        let mut connections = self
+            .connections
             .lock()
             .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
 
-        let connection = guard
-            .as_mut()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+        for connection in connections.values_mut() {
+            if let Some(channel) = connection.shells.get_mut(shell_id) {
+                return op(channel);
+            }
+        }
 
-        let cols = cols.max(1);
-        let rows = rows.max(1);
-
-        let mut channel = connection
-            .session
-            .channel_session()
-            .map_err(|error| format!("터미널 채널을 열지 못했습니다: {error}"))?;
-
-        channel
-            .request_pty("xterm-256color", None, Some((cols, rows, 0, 0)))
-            .map_err(|error| format!("PTY 요청에 실패했습니다: {error}"))?;
-
-        channel
-            .shell()
-            .map_err(|error| format!("원격 셸을 시작하지 못했습니다: {error}"))?;
-
-        let shell_id = format!("shell-{}", NEXT_SHELL_ID.fetch_add(1, Ordering::SeqCst));
-        connection.shells.insert(shell_id.clone(), channel);
-
-        ensure_shell_reader(app.clone());
-
-        Ok(shell_id)
+        Err("터미널 세션을 찾을 수 없습니다.".to_string())
     }
 
     pub fn write_shell(&self, shell_id: &str, data: &str) -> Result<(), String> {
-        let mut guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_mut()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        let channel = connection
-            .shells
-            .get_mut(shell_id)
-            .ok_or_else(|| "터미널 세션을 찾을 수 없습니다.".to_string())?;
-
-        channel
-            .write_all(data.as_bytes())
-            .map_err(|error| format!("터미널 입력 전송에 실패했습니다: {error}"))?;
-        channel
-            .flush()
-            .map_err(|error| format!("터미널 입력 플러시에 실패했습니다: {error}"))?;
-
-        Ok(())
+        self.with_shell_mut(shell_id, |channel| {
+            channel
+                .write_all(data.as_bytes())
+                .map_err(|error| format!("터미널 입력 전송에 실패했습니다: {error}"))?;
+            channel
+                .flush()
+                .map_err(|error| format!("터미널 입력 플러시에 실패했습니다: {error}"))?;
+            Ok(())
+        })
     }
 
     pub fn resize_shell(&self, shell_id: &str, cols: u32, rows: u32) -> Result<(), String> {
-        let mut guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_mut()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        let channel = connection
-            .shells
-            .get_mut(shell_id)
-            .ok_or_else(|| "터미널 세션을 찾을 수 없습니다.".to_string())?;
-
         let cols = cols.max(1);
         let rows = rows.max(1);
-
-        channel
-            .request_pty_size(cols, rows, Some(0), Some(0))
-            .map_err(|error| format!("터미널 크기 변경에 실패했습니다: {error}"))?;
-
-        Ok(())
+        self.with_shell_mut(shell_id, |channel| {
+            channel
+                .request_pty_size(cols, rows, Some(0), Some(0))
+                .map_err(|error| format!("터미널 크기 변경에 실패했습니다: {error}"))?;
+            Ok(())
+        })
     }
 
     pub fn close_shell(&self, shell_id: &str) -> Result<(), String> {
-        let mut guard = self
-            .connection
+        let mut connections = self
+            .connections
             .lock()
             .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
 
-        let connection = guard
-            .as_mut()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        if let Some(mut channel) = connection.shells.remove(shell_id) {
-            let _ = channel.close();
-            let _ = channel.wait_close();
+        for connection in connections.values_mut() {
+            if let Some(mut channel) = connection.shells.remove(shell_id) {
+                let _ = channel.close();
+                let _ = channel.wait_close();
+                return Ok(());
+            }
         }
 
         Ok(())
     }
 
     pub fn close_all_shells(&self) -> Result<(), String> {
-        let mut guard = self
-            .connection
+        let active_id = {
+            let active = self
+                .active_id
+                .lock()
+                .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+            active.clone()
+        };
+
+        let Some(active_id) = active_id else {
+            return Ok(());
+        };
+
+        let mut connections = self
+            .connections
             .lock()
             .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
 
-        let Some(connection) = guard.as_mut() else {
+        let Some(connection) = connections.get_mut(&active_id) else {
             return Ok(());
         };
 
@@ -262,81 +605,88 @@ impl SshConnectionManager {
     }
 
     pub fn poll_shells(&self, app: &AppHandle) -> Result<(), String> {
-        let mut guard = self
-            .connection
+        let mut connections = self
+            .connections
             .lock()
             .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
 
-        let Some(connection) = guard.as_mut() else {
-            return Ok(());
-        };
-
-        if connection.shells.is_empty() {
+        if connections.is_empty() {
             return Ok(());
         }
-
-        connection.session.set_blocking(false);
 
         let mut outputs: Vec<(String, String)> = Vec::new();
-        let mut closed: Vec<String> = Vec::new();
-        let shell_ids: Vec<String> = connection.shells.keys().cloned().collect();
+        let mut closed: Vec<(String, String)> = Vec::new();
 
-        for shell_id in shell_ids {
-            let Some(channel) = connection.shells.get_mut(&shell_id) else {
+        let connection_ids: Vec<String> = connections.keys().cloned().collect();
+        for connection_id in connection_ids {
+            let Some(connection) = connections.get_mut(&connection_id) else {
                 continue;
             };
+            if connection.shells.is_empty() {
+                continue;
+            }
 
-            let mut chunk = String::new();
-            let mut buf = [0u8; SHELL_READ_BUF_SIZE];
+            connection.session.set_blocking(false);
 
-            loop {
-                match channel.read(&mut buf) {
-                    Ok(0) => {
-                        if channel.eof() {
-                            closed.push(shell_id.clone());
+            let shell_ids: Vec<String> = connection.shells.keys().cloned().collect();
+            for shell_id in shell_ids {
+                let Some(channel) = connection.shells.get_mut(&shell_id) else {
+                    continue;
+                };
+
+                let mut chunk = String::new();
+                let mut buf = [0u8; SHELL_READ_BUF_SIZE];
+
+                loop {
+                    match channel.read(&mut buf) {
+                        Ok(0) => {
+                            if channel.eof() {
+                                closed.push((connection_id.clone(), shell_id.clone()));
+                            }
+                            break;
                         }
-                        break;
+                        Ok(n) => {
+                            chunk.push_str(&String::from_utf8_lossy(&buf[..n]));
+                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
+                        Err(error) if error.kind() == std::io::ErrorKind::TimedOut => break,
+                        Err(_) => {
+                            closed.push((connection_id.clone(), shell_id.clone()));
+                            break;
+                        }
                     }
-                    Ok(n) => {
-                        chunk.push_str(&String::from_utf8_lossy(&buf[..n]));
+                }
+
+                loop {
+                    match channel.stderr().read(&mut buf) {
+                        Ok(0) => break,
+                        Ok(n) => {
+                            chunk.push_str(&String::from_utf8_lossy(&buf[..n]));
+                        }
+                        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
+                        Err(error) if error.kind() == std::io::ErrorKind::TimedOut => break,
+                        Err(_) => break,
                     }
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
-                    Err(error) if error.kind() == std::io::ErrorKind::TimedOut => break,
-                    Err(_) => {
-                        closed.push(shell_id.clone());
-                        break;
-                    }
+                }
+
+                if !chunk.is_empty() {
+                    outputs.push((shell_id, chunk));
                 }
             }
 
-            // stderr stream (may also carry PTY output on some servers)
-            loop {
-                match channel.stderr().read(&mut buf) {
-                    Ok(0) => break,
-                    Ok(n) => {
-                        chunk.push_str(&String::from_utf8_lossy(&buf[..n]));
-                    }
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => break,
-                    Err(error) if error.kind() == std::io::ErrorKind::TimedOut => break,
-                    Err(_) => break,
+            connection.session.set_blocking(true);
+        }
+
+        for (connection_id, shell_id) in &closed {
+            if let Some(connection) = connections.get_mut(connection_id) {
+                if let Some(mut channel) = connection.shells.remove(shell_id) {
+                    let _ = channel.close();
+                    let _ = channel.wait_close();
                 }
             }
-
-            if !chunk.is_empty() {
-                outputs.push((shell_id, chunk));
-            }
         }
 
-        connection.session.set_blocking(true);
-
-        for shell_id in &closed {
-            if let Some(mut channel) = connection.shells.remove(shell_id) {
-                let _ = channel.close();
-                let _ = channel.wait_close();
-            }
-        }
-
-        drop(guard);
+        drop(connections);
 
         for (shell_id, data) in outputs {
             let _ = app.emit(
@@ -345,7 +695,7 @@ impl SshConnectionManager {
             );
         }
 
-        for shell_id in closed {
+        for (_connection_id, shell_id) in closed {
             let _ = app.emit(
                 "ssh-terminal-closed",
                 SshTerminalClosedEvent { shell_id },
@@ -356,189 +706,98 @@ impl SshConnectionManager {
     }
 
     pub fn get_home_directory(&self) -> Result<String, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_fs::resolve_home_directory(&connection.session, &connection.username)
+        self.with_connection(|connection| {
+            super::remote_fs::resolve_home_directory(&connection.session, &connection.username)
+        })
     }
 
     pub fn list_directory(&self, path: &str) -> Result<super::remote_fs::RemoteDirectoryListing, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+        self.with_connection(|connection| {
+            let identity = {
+                let mut cache = connection
+                    .cached_identity
+                    .lock()
+                    .map_err(|_| "원격 사용자 정보 잠금에 실패했습니다.".to_string())?;
 
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+                if cache.is_none() {
+                    *cache = Some(super::remote_fs::resolve_remote_identity(
+                        &connection.session,
+                    )?);
+                }
 
-        let identity = {
-            let mut cache = connection
-                .cached_identity
-                .lock()
-                .map_err(|_| "원격 사용자 정보 잠금에 실패했습니다.".to_string())?;
+                cache
+                    .clone()
+                    .ok_or_else(|| "원격 사용자 정보를 불러오지 못했습니다.".to_string())?
+            };
 
-            if cache.is_none() {
-                *cache = Some(super::remote_fs::resolve_remote_identity(
-                    &connection.session,
-                )?);
-            }
-
-            cache
-                .clone()
-                .ok_or_else(|| "원격 사용자 정보를 불러오지 못했습니다.".to_string())?
-        };
-
-        super::remote_fs::list_directory(&connection.session, path, &identity)
+            super::remote_fs::list_directory(&connection.session, path, &identity)
+        })
     }
 
     pub fn create_directory(&self, path: &str) -> Result<(), String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_fs::create_directory(&connection.session, path)
+        self.with_connection(|connection| {
+            super::remote_fs::create_directory(&connection.session, path)
+        })
     }
 
     pub fn create_file(&self, path: &str) -> Result<(), String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_fs::create_file(&connection.session, path)
+        self.with_connection(|connection| {
+            super::remote_fs::create_file(&connection.session, path)
+        })
     }
 
     pub fn delete_path(&self, path: &str) -> Result<(), String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_fs::delete_path(&connection.session, path)
+        self.with_connection(|connection| {
+            super::remote_fs::delete_path(&connection.session, path)
+        })
     }
 
     pub fn read_file(&self, path: &str) -> Result<super::remote_fs::RemoteFileContent, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_fs::read_file(&connection.session, path)
+        self.with_connection(|connection| {
+            super::remote_fs::read_file(&connection.session, path)
+        })
     }
 
     pub fn write_file(&self, path: &str, content: &str) -> Result<(), String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_fs::write_file(&connection.session, path, content)
+        self.with_connection(|connection| {
+            super::remote_fs::write_file(&connection.session, path, content)
+        })
     }
 
     pub fn is_docker_installed(&self) -> Result<bool, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::is_docker_installed(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_docker::is_docker_installed(&connection.session)
+        })
     }
 
     pub fn list_docker_containers(&self) -> Result<Vec<super::remote_docker::DockerContainer>, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::list_containers(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_docker::list_containers(&connection.session)
+        })
     }
 
     pub fn list_docker_images(&self) -> Result<Vec<super::remote_docker::DockerImage>, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::list_images(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_docker::list_images(&connection.session)
+        })
     }
 
     pub fn list_docker_networks(&self) -> Result<Vec<super::remote_docker::DockerNetwork>, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::list_networks(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_docker::list_networks(&connection.session)
+        })
     }
 
     pub fn list_docker_volumes(&self) -> Result<Vec<super::remote_docker::DockerVolume>, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::list_volumes(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_docker::list_volumes(&connection.session)
+        })
     }
 
     pub fn get_docker_overview(&self) -> Result<super::remote_docker::DockerOverview, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::get_docker_overview(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_docker::get_docker_overview(&connection.session)
+        })
     }
 
     pub fn docker_container_action(
@@ -546,16 +805,9 @@ impl SshConnectionManager {
         container_id: &str,
         action: &str,
     ) -> Result<String, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::container_action(&connection.session, container_id, action)
+        self.with_connection(|connection| {
+            super::remote_docker::container_action(&connection.session, container_id, action)
+        })
     }
 
     pub fn docker_image_action(
@@ -563,16 +815,9 @@ impl SshConnectionManager {
         image_ref: &str,
         action: &str,
     ) -> Result<String, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::image_action(&connection.session, image_ref, action)
+        self.with_connection(|connection| {
+            super::remote_docker::image_action(&connection.session, image_ref, action)
+        })
     }
 
     pub fn docker_volume_action(
@@ -580,16 +825,9 @@ impl SshConnectionManager {
         volume_name: &str,
         action: &str,
     ) -> Result<String, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::volume_action(&connection.session, volume_name, action)
+        self.with_connection(|connection| {
+            super::remote_docker::volume_action(&connection.session, volume_name, action)
+        })
     }
 
     pub fn docker_network_action(
@@ -597,45 +835,24 @@ impl SshConnectionManager {
         network_ref: &str,
         action: &str,
     ) -> Result<String, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::network_action(&connection.session, network_ref, action)
+        self.with_connection(|connection| {
+            super::remote_docker::network_action(&connection.session, network_ref, action)
+        })
     }
 
     pub fn docker_system_action(&self, action: &str) -> Result<String, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::system_action(&connection.session, action)
+        self.with_connection(|connection| {
+            super::remote_docker::system_action(&connection.session, action)
+        })
     }
 
     pub fn docker_container_details(
         &self,
         container_id: &str,
     ) -> Result<super::remote_docker::DockerContainerDetails, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::container_details(&connection.session, container_id)
+        self.with_connection(|connection| {
+            super::remote_docker::container_details(&connection.session, container_id)
+        })
     }
 
     pub fn docker_container_logs(
@@ -644,119 +861,88 @@ impl SshConnectionManager {
         tail: u32,
         since: &str,
     ) -> Result<String, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_docker::container_logs(&connection.session, container_id, tail, since)
+        self.with_connection(|connection| {
+            super::remote_docker::container_logs(&connection.session, container_id, tail, since)
+        })
     }
 
     pub fn get_disk_overview(&self) -> Result<super::remote_disk::DiskOverview, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_disk::get_disk_overview(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_disk::get_disk_overview(&connection.session)
+        })
     }
 
     pub fn get_large_directories(
         &self,
     ) -> Result<Vec<super::remote_disk::LargeDirectory>, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_disk::get_large_directories(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_disk::get_large_directories(&connection.session)
+        })
     }
 
     pub fn get_system_resources(&self) -> Result<super::remote_system::SystemResources, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_system::get_system_resources(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_system::get_system_resources(&connection.session)
+        })
     }
 
     pub fn list_ssh_sessions(&self) -> Result<Vec<super::remote_ssh_sessions::RemoteSshSession>, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_ssh_sessions::list_ssh_sessions(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_ssh_sessions::list_ssh_sessions(&connection.session)
+        })
     }
 
     pub fn get_permission_overview(
         &self,
     ) -> Result<super::remote_permissions::RemotePermissionOverview, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_permissions::get_permission_overview(&connection.session)
+        self.with_connection(|connection| {
+            super::remote_permissions::get_permission_overview(&connection.session)
+        })
     }
 
     pub fn ensure_disk_history_collector(&self) -> Result<(), String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
-
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
-
-        super::remote_disk_history::ensure_disk_history_collector(
-            &connection.session,
-            &connection.username,
-        )
+        self.with_connection(|connection| {
+            super::remote_disk_history::ensure_disk_history_collector(
+                &connection.session,
+                &connection.username,
+            )
+        })
     }
 
     pub fn get_disk_history(
         &self,
     ) -> Result<Vec<super::remote_disk_history::DiskUsageSample>, String> {
-        let guard = self
-            .connection
-            .lock()
-            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+        self.with_connection(|connection| {
+            super::remote_disk_history::read_disk_history(
+                &connection.session,
+                &connection.username,
+            )
+        })
+    }
 
-        let connection = guard
-            .as_ref()
-            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+    pub fn list_block_devices(
+        &self,
+    ) -> Result<Vec<super::remote_disk::BlockDevice>, String> {
+        self.with_connection(|connection| {
+            super::remote_disk::list_block_devices(&connection.session)
+        })
+    }
 
-        super::remote_disk_history::read_disk_history(
-            &connection.session,
-            &connection.username,
-        )
+    pub fn get_disk_expand_status(
+        &self,
+    ) -> Result<super::remote_disk::DiskExpandStatus, String> {
+        self.with_connection(|connection| {
+            super::remote_disk::get_expand_status(&connection.session)
+        })
+    }
+
+    pub fn expand_remote_disk(
+        &self,
+        target_size_gb: Option<u64>,
+    ) -> Result<super::remote_disk::DiskExpandResult, String> {
+        self.with_connection(|connection| {
+            super::remote_disk::expand_disk(&connection.session, target_size_gb)
+        })
     }
 }
 
@@ -774,10 +960,17 @@ fn connect_tcp(host: &str, port: u16) -> Result<TcpStream, String> {
             )
         })?;
 
+    tcp.set_nodelay(true).map_err(|error| error.to_string())?;
     tcp.set_read_timeout(Some(Duration::from_secs(CONNECT_TIMEOUT_SECS)))
         .map_err(|error| error.to_string())?;
     tcp.set_write_timeout(Some(Duration::from_secs(CONNECT_TIMEOUT_SECS)))
         .map_err(|error| error.to_string())?;
+
+    let sock = SockRef::from(&tcp);
+    let keepalive = TcpKeepalive::new()
+        .with_time(TCP_KEEPALIVE_TIME)
+        .with_interval(TCP_KEEPALIVE_INTERVAL);
+    let _ = sock.set_tcp_keepalive(&keepalive);
 
     Ok(tcp)
 }
@@ -789,6 +982,34 @@ fn handshake_session(tcp: TcpStream) -> Result<Session, String> {
         .handshake()
         .map_err(|error| format!("SSH 핸드셰이크에 실패했습니다: {error}"))?;
     Ok(session)
+}
+
+fn configure_session_keepalive(session: &Session) {
+    // want_reply=true: 서버 응답 없으면 끊김으로 감지 가능
+    session.set_keepalive(true, SSH_KEEPALIVE_INTERVAL_SECS);
+}
+
+fn open_ssh_session_from_auth(
+    host: &str,
+    port: u16,
+    username: &str,
+    auth: &StoredAuth,
+) -> Result<Session, String> {
+    match auth {
+        StoredAuth::Pem {
+            private_key_path,
+            key_passphrase,
+        } => open_ssh_session_with_key(
+            host,
+            port,
+            username,
+            private_key_path,
+            key_passphrase.as_deref(),
+        ),
+        StoredAuth::Password { password } => {
+            open_ssh_session_with_password(host, port, username, password)
+        }
+    }
 }
 
 fn open_ssh_session_with_key(
@@ -813,6 +1034,7 @@ fn open_ssh_session_with_key(
         })?;
 
     ensure_authenticated(&session)?;
+    configure_session_keepalive(&session);
     Ok(session)
 }
 
@@ -830,6 +1052,7 @@ fn open_ssh_session_with_password(
     })?;
 
     ensure_authenticated(&session)?;
+    configure_session_keepalive(&session);
     Ok(session)
 }
 
@@ -838,6 +1061,35 @@ fn ensure_authenticated(session: &Session) -> Result<(), String> {
         return Err("SSH 인증에 실패했습니다.".to_string());
     }
     Ok(())
+}
+
+fn session_is_alive(session: &Session) -> bool {
+    session.keepalive_send().is_ok()
+}
+
+fn looks_like_disconnect(error: &str) -> bool {
+    let e = error.to_ascii_lowercase();
+    [
+        "ssh 호스트에 연결되어 있지 않습니다",
+        "broken pipe",
+        "connection reset",
+        "connection refused",
+        "network is unreachable",
+        "session has been closed",
+        "unable to send",
+        "failed receiving",
+        "channel eof",
+        "disconnected",
+        "socket error",
+        "wait_socket",
+        "timed out",
+        "timeout",
+        "channel open failure",
+        "채널을 열지 못했습니다",
+        "원격 셸을 시작하지 못했습니다",
+    ]
+    .iter()
+    .any(|needle| e.contains(needle))
 }
 
 fn ensure_shell_reader(app: AppHandle) {
@@ -856,6 +1108,7 @@ fn ensure_shell_reader(app: AppHandle) {
                 continue;
             };
 
+            manager.tick_keepalive();
             let _ = manager.poll_shells(&app);
         }
     });

@@ -14,6 +14,7 @@ import "./css/file-icon-grid.css";
 interface FileIconGridProps {
   entries: RemoteEntry[];
   isLoading: boolean;
+  isLetterFocused?: (entry: RemoteEntry) => boolean;
   onOpenEntry: (entry: RemoteEntry) => void;
   onEntryContextMenu?: (event: MouseEvent, entry: RemoteEntry | null) => void;
 }
@@ -30,6 +31,7 @@ function GridIcon({ kind }: { kind: ExplorerFileIconKind }) {
 export function FileIconGrid({
   entries,
   isLoading,
+  isLetterFocused,
   onOpenEntry,
   onEntryContextMenu,
 }: FileIconGridProps) {
@@ -77,6 +79,7 @@ export function FileIconGrid({
     >
       {filteredEntries.map((entry) => {
         const selected = selectedKey === entry.path;
+        const letterFocused = isLetterFocused?.(entry) ?? false;
 
         return (
           <button
@@ -86,6 +89,7 @@ export function FileIconGrid({
             className={[
               "explorer-icon-grid__item",
               selected ? "explorer-icon-grid__item--selected" : "",
+              letterFocused ? "explorer-icon-grid__item--letter-focus" : "",
             ]
               .filter(Boolean)
               .join(" ")}

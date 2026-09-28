@@ -184,7 +184,7 @@ export function SystemResourcesSection({
           />
         </div>
         <div className="dashboard-resource__footer">
-          <span>1분 평균 로드</span>
+          {/* <span>1분 평균 로드</span> */}
           <span>{cpu.load1.toFixed(2)}</span>
         </div>
       </div>

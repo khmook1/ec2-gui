@@ -9,6 +9,8 @@ interface ConnectionState {
   showServerSyncOverlay: boolean;
   setConnecting: () => void;
   setConnected: (connection: SshConnectionInfo) => void;
+  /** 세션 전환 시 오버레이 없이 연결 정보만 반영 */
+  mirrorConnection: (connection: SshConnectionInfo) => void;
   setError: (message: string) => void;
   completeServerSync: () => void;
   reset: () => void;
@@ -30,6 +32,13 @@ export const useConnectionStore = create<ConnectionState>((set) => ({
       connection,
       errorMessage: null,
       showServerSyncOverlay: true,
+    }),
+  mirrorConnection: (connection) =>
+    set({
+      status: "connected",
+      connection,
+      errorMessage: null,
+      showServerSyncOverlay: false,
     }),
   setError: (message) =>
     set({

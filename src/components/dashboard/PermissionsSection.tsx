@@ -61,14 +61,6 @@ function buildCapabilities(
         : "Docker 소켓 접근 불가",
       tone: permissions.dockerAccess ? "granted" : "denied",
     },
-    {
-      id: "home",
-      label: "홈 디렉터리",
-      detail: permissions.canWriteHome
-        ? `${permissions.home || "—"} · 쓰기 가능`
-        : `${permissions.home || "—"} · 쓰기 불가`,
-      tone: permissions.canWriteHome ? "granted" : "denied",
-    },
   ];
 }
 

@@ -48,12 +48,55 @@
   font-weight: 600;
 }
 
+.header__refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
 .header__meta {
   display: flex;
   align-items: center;
   gap: 12px;
   color: var(--text-secondary);
   font-size: 0.8125rem;
+}
+
+.header__refresh-label {
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.header__refresh-select {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%)
+      calc(100% - 12px) / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%)
+      calc(100% - 7px) / 5px 5px no-repeat,
+    color-mix(in srgb, var(--surface) 92%, var(--bg));
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 540;
+  line-height: 1.25;
+  padding: 4px 24px 4px 10px;
+  cursor: pointer;
+}
+
+.header__refresh-select:hover {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.header__refresh-select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
 }
 
 .chips__item {

@@ -6,6 +6,7 @@ import { useRouteUrlSync } from "@/hooks/useRouteUrlSync";
 import { useSettingsBootstrap } from "@/hooks/useSettingsBootstrap";
 import { LoginPage } from "@/pages/Login";
 import { useConnectionStore } from "@/stores/connectionStore";
+import { useSshSessionStore } from "@/stores/sshSessionStore";
 
 function ConnectedMainView() {
   useRouteUrlSync();
@@ -22,14 +23,18 @@ function App() {
   const showServerSyncOverlay = useConnectionStore(
     (state) => state.showServerSyncOverlay,
   );
+  const isAddingSession = useSshSessionStore((state) => state.isAddingSession);
+  const sessionCount = useSshSessionStore((state) => state.sessions.length);
 
-  if (!isConnected) {
+  const showLogin = !isConnected || isAddingSession;
+
+  if (showLogin) {
     return <LoginPage />;
   }
 
   return (
     <>
-      <AppLayout>
+      <AppLayout showSessionTabs={sessionCount > 1}>
         <ConnectedMainView />
       </AppLayout>
       {showServerSyncOverlay ? <ServerSyncOverlay /> : null}

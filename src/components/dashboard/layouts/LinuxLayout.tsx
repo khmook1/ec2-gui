@@ -1,4 +1,5 @@
 import {
+  BlockDevicesCard,
   DockerOverviewCard,
   LargeDirectoriesCard,
   PermissionsCard,
@@ -6,11 +7,13 @@ import {
   StorageCard,
   SystemResourcesCard,
 } from "./SectionCards";
+import { DashboardArea } from "@/components/dashboard/atoms/DashboardArea";
+import { DockerSectionIcon } from "@/components/icons/DashboardSectionIcons";
 import type { DashboardLayoutProps } from "./types";
 
 /**
  * Linux 원격 호스트용 대시보드.
- * `/proc` 시스템 리소스 · 루트 `du` 대용량 디렉터리 등 Linux 전용 명령을 포함합니다.
+ * 호스트 리소스·스토리지와 Docker 영역을 분리해 관리합니다.
  */
 export function LinuxLayout({
   showDocker,
@@ -25,21 +28,28 @@ export function LinuxLayout({
           systemError={props.systemError}
         />
 
-        {showDocker ? (
-          <DockerOverviewCard
-            dockerCounts={props.dockerCounts}
-            recentContainers={props.recentContainers}
-            dockerLoading={props.dockerLoading}
-            dockerError={props.dockerError}
-            dockerBadge={props.dockerBadge}
-          />
-        ) : null}
-
         <LargeDirectoriesCard
           directories={props.directories}
           directoriesLoading={props.directoriesLoading}
           directoriesError={props.directoriesError}
         />
+
+        {showDocker ? (
+          <DashboardArea
+            title="Docker"
+            subtitle="컨테이너 · 이미지 · 볼륨"
+            icon={<DockerSectionIcon />}
+            className="dashboard-area--docker"
+          >
+            <DockerOverviewCard
+              dockerCounts={props.dockerCounts}
+              recentContainers={props.recentContainers}
+              dockerLoading={props.dockerLoading}
+              dockerError={props.dockerError}
+              dockerBadge={props.dockerBadge}
+            />
+          </DashboardArea>
+        ) : null}
       </div>
 
       <div className="dashboard-grid__right">
@@ -57,6 +67,12 @@ export function LinuxLayout({
           diskError={props.diskError}
           storageBadge={props.storageBadge}
           os={props.os}
+        />
+        <BlockDevicesCard
+          blockDevices={props.blockDevices}
+          blockDevicesLoading={props.blockDevicesLoading}
+          blockDevicesError={props.blockDevicesError}
+          onExpandDisk={props.onExpandDisk}
         />
         <SshSessionsCard
           sshSessions={props.sshSessions}

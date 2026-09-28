@@ -9,7 +9,11 @@ import {
   useFilteredDockerContainers,
 } from "@/lib/useFilteredDockerContainers";
 import { useListSelection } from "@/providers/ListSelectionProvider";
-import { isNginxContainer, type DockerContainer } from "@/types/docker";
+import {
+  getDockerContainerState,
+  isNginxContainer,
+  type DockerContainer,
+} from "@/types/docker";
 import "../css/docker-list.css";
 
 interface ContainerListProps {
@@ -54,9 +58,27 @@ export function ContainerList({
       {
         name: "STATUS",
         className: "table-list__cell-muted",
-        render: (container) => (
-          <SearchHighlight text={container.status} query={query} />
-        ),
+        render: (container) => {
+          const restarting =
+            getDockerContainerState(container.status) === "restarting";
+          return (
+            <span
+              className={
+                restarting ? "docker-list__status--restarting" : undefined
+              }
+            >
+              {restarting ? (
+                <span
+                  className="docker-list__restart-badge"
+                  aria-label="재시작 중"
+                >
+                  RESTART
+                </span>
+              ) : null}
+              <SearchHighlight text={container.status} query={query} />
+            </span>
+          );
+        },
       },
       {
         name: "NAMES",
@@ -99,6 +121,9 @@ export function ContainerList({
         [
           selectedKey === container.id ? "table-list__row--selected" : "",
           isNginxContainer(container) ? "table-list__row--nginx" : "",
+          getDockerContainerState(container.status) === "restarting"
+            ? "table-list__row--restarting"
+            : "",
         ]
           .filter(Boolean)
           .join(" ") || undefined

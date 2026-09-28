@@ -1,5 +1,6 @@
 import { ActivityPlaceholder } from "@/components/dashboard/ActivityPlaceholder";
 import { FeatureComingSoon } from "@/components/dashboard/FeatureComingSoon";
+import { BlockDevicesSection } from "@/components/dashboard/atoms/BlockDevicesSection";
 import { SectionCard } from "@/components/dashboard/atoms/SectionCard";
 import { DiskCapacitySection } from "@/components/dashboard/DiskCapacitySection";
 import { DockerOverviewSection } from "@/components/dashboard/DockerOverviewSection";
@@ -7,13 +8,28 @@ import { LargeDirectoriesSection } from "@/components/dashboard/LargeDirectories
 import { PermissionsSection } from "@/components/dashboard/PermissionsSection";
 import { SshSessionsSection } from "@/components/dashboard/SshSessionsSection";
 import { SystemResourcesSection } from "@/components/dashboard/SystemResourcesSection";
+import {
+  ActivitySectionIcon,
+  BlockDevicesSectionIcon,
+  ComingSoonSectionIcon,
+  DockerSectionIcon,
+  LargeDirectoriesSectionIcon,
+  PermissionsSectionIcon,
+  SshSessionsSectionIcon,
+  StorageSectionIcon,
+  SystemResourcesSectionIcon,
+} from "@/components/icons/DashboardSectionIcons";
 import type { DashboardLayoutProps } from "./types";
 
 /** 레이아웃에서 재사용하는 섹션 카드 (OS별 조합용) */
 
 export function ComingSoonCard({ label }: { label: string }) {
   return (
-    <SectionCard title="기능 준비 중" badge="준비 중">
+    <SectionCard
+      title="기능 준비 중"
+      badge="준비 중"
+      icon={<ComingSoonSectionIcon />}
+    >
       <FeatureComingSoon label={label} />
     </SectionCard>
   );
@@ -32,6 +48,7 @@ export function SystemResourcesCard({
       title="시스템 리소스"
       subtitle="실시간"
       badge={systemResources && !systemError ? "0.3s 샘플" : "준비 중"}
+      icon={<SystemResourcesSectionIcon />}
     >
       <SystemResourcesSection
         resources={systemResources}
@@ -57,7 +74,12 @@ export function DockerOverviewCard({
   | "dockerBadge"
 >) {
   return (
-    <SectionCard title="Docker 컨테이너" subtitle="최근 활동" badge={dockerBadge}>
+    <SectionCard
+      title="컨테이너"
+      subtitle="최근 활동"
+      badge={dockerBadge}
+      icon={<DockerSectionIcon />}
+    >
       <DockerOverviewSection
         counts={dockerCounts}
         recentContainers={recentContainers}
@@ -88,6 +110,7 @@ export function LargeDirectoriesCard({
           ? directories.length
           : null
       }
+      icon={<LargeDirectoriesSectionIcon />}
     >
       <LargeDirectoriesSection
         directories={directories}
@@ -115,6 +138,7 @@ export function PermissionsCard({
       title="내 권한"
       subtitle="접속 계정"
       badge={permissionsBadge}
+      icon={<PermissionsSectionIcon />}
     >
       <PermissionsSection
         permissions={permissions}
@@ -144,13 +168,51 @@ export function StorageCard({
   | "os"
 >) {
   return (
-    <SectionCard title="스토리지" subtitle="마운트 포인트" badge={storageBadge}>
+    <SectionCard
+      title="스토리지"
+      subtitle="마운트 포인트"
+      badge={storageBadge}
+      icon={<StorageSectionIcon />}
+    >
       <DiskCapacitySection
         filesystems={filesystems}
         history={diskHistory}
         loading={diskLoading || diskHistoryLoading}
         error={diskError}
         os={os}
+      />
+    </SectionCard>
+  );
+}
+
+export function BlockDevicesCard({
+  blockDevices,
+  blockDevicesLoading,
+  blockDevicesError,
+  onExpandDisk,
+}: Pick<
+  DashboardLayoutProps,
+  | "blockDevices"
+  | "blockDevicesLoading"
+  | "blockDevicesError"
+  | "onExpandDisk"
+>) {
+  return (
+    <SectionCard
+      title="블록 디바이스"
+      subtitle="lsblk"
+      badge={
+        !blockDevicesLoading && !blockDevicesError && blockDevices.length > 0
+          ? `${blockDevices.length}개`
+          : null
+      }
+      icon={<BlockDevicesSectionIcon />}
+    >
+      <BlockDevicesSection
+        devices={blockDevices}
+        loading={blockDevicesLoading}
+        error={blockDevicesError}
+        onExpand={onExpandDisk}
       />
     </SectionCard>
   );
@@ -170,6 +232,7 @@ export function SshSessionsCard({
           ? `${sshSessions.length}개 활성`
           : "준비 중"
       }
+      icon={<SshSessionsSectionIcon />}
     >
       <SshSessionsSection
         sessions={sshSessions}
@@ -182,7 +245,11 @@ export function SshSessionsCard({
 
 export function ActivityCard() {
   return (
-    <SectionCard title="최근 활동" badge="최신">
+    <SectionCard
+      title="최근 활동"
+      badge="최신"
+      icon={<ActivitySectionIcon />}
+    >
       <ActivityPlaceholder />
     </SectionCard>
   );

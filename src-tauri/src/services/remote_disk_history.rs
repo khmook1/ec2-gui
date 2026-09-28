@@ -7,7 +7,9 @@ use super::remote_fs::{
 
 const DIR_NAME: &str = ".ec2-gui";
 const SCRIPT_NAME: &str = "record-disk.sh";
-const STORAGE_NAME: &str = "storage.json";
+const HISTORY_DIR_NAME: &str = "disk-history";
+const DAY_FILE_GLOB: &str = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json";
+const MAX_DAY_FILES: usize = 30;
 const CRON_MARKER: &str = "# ec2-gui-disk-history";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,15 +29,16 @@ fn script_path(home: &str) -> String {
     format!("{}/{}", app_dir(home), SCRIPT_NAME)
 }
 
-fn storage_path(home: &str) -> String {
-    format!("{}/{}", app_dir(home), STORAGE_NAME)
+fn history_dir(home: &str) -> String {
+    format!("{}/{}", app_dir(home), HISTORY_DIR_NAME)
 }
 
 fn shell_single_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', r#"'\''"#))
 }
 
-/// 원격에 배포하는 10분 주기 수집 스크립트 (python3 + df).
+/// 원격에 배포하는 1일 주기 수집 스크립트 (python3 + df).
+/// 하루 1파일(`disk-history/YYYY-MM-DD.json`)에 그날 최신 샘플을 덮어쓰고, 30개 초과분은 오래된 순으로 삭제한다.
 fn record_disk_script() -> &'static str {
     r#"#!/usr/bin/env bash
 # ec2-gui disk history collector — do not edit by hand
@@ -43,22 +46,76 @@ set -euo pipefail
 exec python3 - <<'PY'
 import json
 import platform
+import re
 import subprocess
 import time
 from pathlib import Path
 
 HOME = Path.home()
-DIR = HOME / ".ec2-gui"
-FILE = DIR / "storage.json"
+BASE = HOME / ".ec2-gui"
+DIR = BASE / "disk-history"
+LEGACY_FILE = BASE / "storage.json"
+MAX_FILES = 30
+DAY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}\.json$")
 DIR.mkdir(parents=True, exist_ok=True)
 
 SKIP = {
     "tmpfs", "devtmpfs", "squashfs", "overlay", "devfs",
     "proc", "sysfs", "cgroup", "cgroup2", "autofs",
 }
-HOUR_MS = 60 * 60 * 1000
-BUCKET_MS = 10 * 60 * 1000
-KEEP_MS = 24 * HOUR_MS
+
+def day_start_ms(ts_sec):
+    lt = time.localtime(ts_sec)
+    return int(time.mktime((lt.tm_year, lt.tm_mon, lt.tm_mday, 0, 0, 0, 0, 0, -1)) * 1000)
+
+def day_file(ts_sec):
+    return DIR / (time.strftime("%Y-%m-%d", time.localtime(ts_sec)) + ".json")
+
+def write_day(ts_sec, sample, overwrite=True):
+    path = day_file(ts_sec)
+    if not overwrite and path.exists():
+        return
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(path)
+
+def prune():
+    files = sorted(p for p in DIR.iterdir() if p.is_file() and DAY_RE.match(p.name))
+    for path in files[:max(0, len(files) - MAX_FILES)]:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
+def migrate_legacy():
+    if not LEGACY_FILE.exists():
+        return
+    try:
+        raw = json.loads(LEGACY_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        raw = []
+    latest = {}
+    for s in raw if isinstance(raw, list) else []:
+        if not isinstance(s, dict) or not isinstance(s.get("ts"), (int, float)):
+            continue
+        ts_sec = int(s["ts"]) // 1000
+        key = time.strftime("%Y-%m-%d", time.localtime(ts_sec))
+        if key not in latest or int(latest[key]["ts"]) < int(s["ts"]):
+            latest[key] = s
+    for s in latest.values():
+        ts_sec = int(s["ts"]) // 1000
+        write_day(ts_sec, {
+            "ts": day_start_ms(ts_sec),
+            "usePercent": int(s.get("usePercent", 0)),
+            "usedBytes": int(s.get("usedBytes", 0)),
+            "mountedOn": str(s.get("mountedOn", "")),
+        }, overwrite=False)
+    try:
+        LEGACY_FILE.unlink()
+    except OSError:
+        pass
+
+migrate_legacy()
 
 is_darwin = platform.system() == "Darwin"
 try:
@@ -69,6 +126,7 @@ try:
         out = subprocess.check_output(["df", "-B1", "-P", "-l"], text=True, stderr=subprocess.DEVNULL)
         block = 1
 except Exception:
+    prune()
     raise SystemExit(0)
 
 rows = []
@@ -115,45 +173,24 @@ def rank(row):
 
 rows.sort(key=lambda r: (rank(r), -r["sizeBytes"]))
 if not rows:
+    prune()
     raise SystemExit(0)
 
 primary = rows[0]
-now = int(time.time() * 1000)
-bucket = (now // BUCKET_MS) * BUCKET_MS
-sample = {
-    "ts": bucket,
+now_sec = int(time.time())
+write_day(now_sec, {
+    "ts": day_start_ms(now_sec),
     "usePercent": int(primary["usePercent"]),
     "usedBytes": int(primary["usedBytes"]),
     "mountedOn": primary["mountedOn"],
-}
-
-samples = []
-if FILE.exists():
-    try:
-        raw = json.loads(FILE.read_text(encoding="utf-8"))
-        if isinstance(raw, list):
-            samples = raw
-    except Exception:
-        samples = []
-
-samples = [
-    s for s in samples
-    if isinstance(s, dict) and isinstance(s.get("ts"), (int, float)) and int(s["ts"]) != bucket
-]
-samples.append(sample)
-cutoff = now - KEEP_MS
-samples = [
-    s for s in samples
-    if isinstance(s, dict) and isinstance(s.get("ts"), (int, float)) and int(s["ts"]) >= cutoff
-]
-samples.sort(key=lambda s: int(s.get("ts", 0)))
-FILE.write_text(json.dumps(samples, ensure_ascii=False), encoding="utf-8")
+})
+prune()
 PY
 "#
 }
 
 fn install_cron(session: &Session, script: &str) -> Result<(), String> {
-    let line = format!("*/10 * * * * {script} {CRON_MARKER}");
+    let line = format!("55 23 * * * {script} {CRON_MARKER}");
     let quoted_line = shell_single_quote(&line);
     let marker = shell_single_quote(CRON_MARKER);
     let cmd = format!(
@@ -197,50 +234,72 @@ pub fn read_disk_history(
     username: &str,
 ) -> Result<Vec<DiskUsageSample>, String> {
     let home = resolve_home_directory(session, username)?;
-    let path = storage_path(&home);
+    let dir = shell_single_quote(&history_dir(&home));
     let raw = exec_remote_command(
         session,
-        &format!("cat '{path}' 2>/dev/null || echo '[]'"),
+        &format!(
+            "for f in {dir}/{DAY_FILE_GLOB}; do [ -f \"$f\" ] && {{ cat \"$f\"; echo; }}; done; true"
+        ),
     )?;
 
-    if raw.is_empty() || raw == "[]" {
-        return Ok(Vec::new());
-    }
+    Ok(parse_day_samples(&raw))
+}
 
-    let parsed: serde_json::Value = serde_json::from_str(&raw)
-        .map_err(|error| format!("storage.json 파싱 실패: {error}"))?;
-
-    let Some(arr) = parsed.as_array() else {
-        return Ok(Vec::new());
-    };
-
-    let mut samples = Vec::new();
-    for item in arr {
-        let ts = item
-            .get("ts")
-            .and_then(|v| v.as_u64().or_else(|| v.as_i64().map(|n| n as u64)));
-        let use_percent = item
-            .get("usePercent")
-            .and_then(|v| v.as_u64())
-            .map(|n| n as u32);
-        let used_bytes = item.get("usedBytes").and_then(|v| v.as_u64());
-        let mounted_on = item
-            .get("mountedOn")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        if let (Some(ts), Some(use_percent), Some(used_bytes), Some(mounted_on)) =
-            (ts, use_percent, used_bytes, mounted_on)
-        {
-            samples.push(DiskUsageSample {
-                ts,
-                use_percent,
-                used_bytes,
-                mounted_on,
-            });
-        }
-    }
+/// 일별 파일 내용(한 줄에 JSON 객체 1개)을 날짜순으로 정렬해 최근 30일만 반환한다.
+fn parse_day_samples(raw: &str) -> Vec<DiskUsageSample> {
+    let mut samples: Vec<DiskUsageSample> = raw
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .filter_map(|line| serde_json::from_str::<serde_json::Value>(line).ok())
+        .filter_map(|item| parse_sample(&item))
+        .collect();
 
     samples.sort_by_key(|s| s.ts);
-    Ok(samples)
+    samples.dedup_by_key(|s| s.ts);
+    if samples.len() > MAX_DAY_FILES {
+        samples.drain(..samples.len() - MAX_DAY_FILES);
+    }
+    samples
+}
+
+fn parse_sample(item: &serde_json::Value) -> Option<DiskUsageSample> {
+    let ts = item
+        .get("ts")
+        .and_then(|v| v.as_u64().or_else(|| v.as_i64().map(|n| n as u64)))?;
+    let use_percent = item.get("usePercent").and_then(|v| v.as_u64())? as u32;
+    let used_bytes = item.get("usedBytes").and_then(|v| v.as_u64())?;
+    let mounted_on = item.get("mountedOn").and_then(|v| v.as_str())?.to_string();
+
+    Some(DiskUsageSample {
+        ts,
+        use_percent,
+        used_bytes,
+        mounted_on,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_day_files_sorted_and_capped() {
+        let raw = (0..35)
+            .rev()
+            .map(|day| {
+                format!(
+                    r#"{{"ts":{},"usePercent":{},"usedBytes":100,"mountedOn":"/"}}"#,
+                    day * 86_400_000u64,
+                    day
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        let samples = parse_day_samples(&format!("{raw}\n\nnot-json\n"));
+        assert_eq!(samples.len(), MAX_DAY_FILES);
+        assert_eq!(samples.first().map(|s| s.use_percent), Some(5));
+        assert_eq!(samples.last().map(|s| s.use_percent), Some(34));
+    }
 }

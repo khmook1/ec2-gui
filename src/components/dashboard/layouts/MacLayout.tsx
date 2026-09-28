@@ -6,6 +6,8 @@ import {
   StorageCard,
   SystemResourcesCard,
 } from "./SectionCards";
+import { DashboardArea } from "@/components/dashboard/atoms/DashboardArea";
+import { DockerSectionIcon } from "@/components/icons/DashboardSectionIcons";
 import type { DashboardLayoutProps } from "./types";
 
 /**
@@ -22,22 +24,29 @@ export function MacLayout({ showDocker, ...props }: DashboardLayoutProps) {
           systemError={props.systemError}
         />
 
-        {showDocker ? (
-          <DockerOverviewCard
-            dockerCounts={props.dockerCounts}
-            recentContainers={props.recentContainers}
-            dockerLoading={props.dockerLoading}
-            dockerError={props.dockerError}
-            dockerBadge={props.dockerBadge}
-          />
-        ) : null}
-
         <LargeDirectoriesCard
           directories={props.directories}
           directoriesLoading={props.directoriesLoading}
           directoriesError={props.directoriesError}
           subtitle="Users · Apps · Library"
         />
+
+        {showDocker ? (
+          <DashboardArea
+            title="Docker"
+            subtitle="컨테이너 · 이미지 · 볼륨"
+            icon={<DockerSectionIcon />}
+            className="dashboard-area--docker"
+          >
+            <DockerOverviewCard
+              dockerCounts={props.dockerCounts}
+              recentContainers={props.recentContainers}
+              dockerLoading={props.dockerLoading}
+              dockerError={props.dockerError}
+              dockerBadge={props.dockerBadge}
+            />
+          </DashboardArea>
+        ) : null}
       </div>
 
       <div className="dashboard-grid__right">

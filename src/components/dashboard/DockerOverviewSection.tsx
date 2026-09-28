@@ -29,6 +29,7 @@ const RESOURCE_ITEMS = [
 
 const STATE_LABEL: Record<DockerContainerState, string> = {
   running: "실행 중",
+  restarting: "재시작 중",
   paused: "일시정지",
   stopped: "중지",
   unknown: "기타",
@@ -94,12 +95,14 @@ export function DockerOverviewSection({
           {recentContainers.map((container) => {
             const state = getDockerContainerState(container.status);
             const nginx = isNginxContainer(container);
+            const restarting = state === "restarting";
             return (
               <li
                 key={container.id}
                 className={[
                   "dashboard-container",
                   nginx ? "dashboard-container--nginx" : "",
+                  restarting ? "dashboard-container--restarting" : "",
                 ]
                   .filter(Boolean)
                   .join(" ")}

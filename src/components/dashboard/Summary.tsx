@@ -13,7 +13,6 @@ import { formatLabel } from "@/utils/format";
 import "./css/dashboard.css";
 
 interface DashboardSummaryProps {
-  appReady: boolean;
   filesystems: DiskFilesystem[];
   dockerCounts: DockerOverviewCounts | null;
   sshSessionCount: number;
@@ -30,7 +29,6 @@ function toPanelTone(tone: ReturnType<typeof toneForPercent>): InfoPanelTone {
 }
 
 export function DashboardSummary({
-  appReady,
   filesystems,
   dockerCounts,
   sshSessionCount,
@@ -63,13 +61,6 @@ export function DashboardSummary({
       }
       aria-label="핵심 지표"
     >
-      <InfoPanel
-        title="서버 상태"
-        value={appReady ? "정상" : "확인 중"}
-        description={appReady ? "앱 연결 정상" : "호스트 상태 확인 중"}
-        tone={appReady ? "success" : "warning"}
-        loading={loading}
-      />
       <InfoPanel
         title="디스크 사용률"
         value={primary ? `${primary.usePercent}%` : "—"}

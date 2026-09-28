@@ -35,6 +35,10 @@ export const queryKeys = {
     ["dashboard", "largeDirectories", session] as const,
   diskHistory: (session: string) =>
     ["dashboard", "diskHistory", session] as const,
+  blockDevices: (session: string) =>
+    ["dashboard", "blockDevices", session] as const,
+  diskExpandStatus: (session: string) =>
+    ["dashboard", "diskExpandStatus", session] as const,
   systemResources: (session: string) =>
     ["dashboard", "system", session] as const,
   sshSessions: (session: string) =>

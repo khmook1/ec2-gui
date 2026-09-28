@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { getRoutePage } from "@/config/routeUtils";
+import { getRoutePage } from "@/config/routePages";
 import { useNavStore } from "@/stores/navStore";
 
 export function RouteOutlet() {

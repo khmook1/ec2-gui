@@ -54,6 +54,20 @@ html[data-theme="dark"] .explorer-icon-grid__item--nginx {
   border-color: color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
+.explorer-icon-grid__item--letter-focus:not(
+    .explorer-icon-grid__item--selected
+  ) {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.explorer-icon-grid__item--letter-focus:not(
+    .explorer-icon-grid__item--selected
+  ):hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
 .explorer-icon-grid__item:disabled {
   opacity: 0.6;
   cursor: not-allowed;

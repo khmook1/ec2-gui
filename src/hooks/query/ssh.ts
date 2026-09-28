@@ -3,6 +3,7 @@ import {
   closeAllSshShells,
   connectSsh,
   disconnectSsh,
+  disconnectSshSession,
 } from "@/services/tauri";
 import type { SshCredentials } from "@/types/connection";
 
@@ -31,5 +32,11 @@ export function useDisconnectSshMutation() {
     onSettled: () => {
       queryClient.clear();
     },
+  });
+}
+
+export function useDisconnectSshSessionMutation() {
+  return useMutation({
+    mutationFn: (connectionId: string) => disconnectSshSession(connectionId),
   });
 }

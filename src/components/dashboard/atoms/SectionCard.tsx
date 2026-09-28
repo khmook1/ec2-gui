@@ -5,6 +5,7 @@ interface SectionCardProps {
   title: string;
   subtitle?: string;
   badge?: ReactNode;
+  icon?: ReactNode;
   children: ReactNode;
   fill?: boolean;
   className?: string;
@@ -14,6 +15,7 @@ export function SectionCard({
   title,
   subtitle,
   badge,
+  icon,
   children,
   fill = true,
   className,
@@ -31,7 +33,10 @@ export function SectionCard({
       <header className="dashboard-section__header">
         <div className="dashboard-section__heading">
           <h2 className="dashboard-section__title">
-            {title}
+            {icon ? (
+              <span className="dashboard-section__icon-wrap">{icon}</span>
+            ) : null}
+            <span className="dashboard-section__title-text">{title}</span>
             {subtitle ? (
               <span className="dashboard-section__subtitle">{subtitle}</span>
             ) : null}

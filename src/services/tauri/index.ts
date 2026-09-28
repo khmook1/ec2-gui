@@ -22,8 +22,11 @@ export {
   getRemotePermissionOverview,
   ensureRemoteDiskHistory,
   getRemoteDiskHistory,
+  getRemoteBlockDevices,
+  getRemoteDiskExpandStatus,
+  expandRemoteDisk,
 } from "./disk";
-export { connectSsh, disconnectSsh } from "./ssh";
+export { connectSsh, disconnectSsh, disconnectSshSession, setActiveSshSession } from "./ssh";
 export {
   getRemoteHome,
   listRemoteDirectory,
@@ -42,6 +45,7 @@ export {
 export {
   closeAllSshShells,
   closeSshShell,
+  listenSshSessionReconnected,
   listenSshTerminalClosed,
   listenSshTerminalData,
   openSshShell,
@@ -49,6 +53,7 @@ export {
   writeSshShell,
 } from "./sshShell";
 export type {
+  SshSessionReconnectedPayload,
   SshTerminalClosedPayload,
   SshTerminalDataPayload,
 } from "./sshShell";

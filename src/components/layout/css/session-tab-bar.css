@@ -1,0 +1,77 @@
+.session-tab-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  min-width: 0;
+  height: var(--session-tab-bar-height, 34px);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--toolbar-bg) 70%, var(--bg));
+}
+
+.session-tab-bar__list {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.session-tab-bar__item {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  height: 28px;
+  border-radius: 6px 6px 0 0;
+  border: 1px solid transparent;
+  border-bottom: none;
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.session-tab-bar__item--active {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text);
+}
+
+.session-tab-bar__button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.75rem;
+  padding: 0 10px;
+  height: 100%;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.session-tab-bar__close {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  width: 22px;
+  height: 22px;
+  margin-right: 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.session-tab-bar__close:hover {
+  opacity: 1;
+  background: var(--overlay-soft);
+}
+
+.session-tab-bar__add {
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}

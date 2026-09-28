@@ -113,6 +113,7 @@ export type DockerSystemAction =
 
 export type DockerContainerState =
   | "running"
+  | "restarting"
   | "paused"
   | "stopped"
   | "unknown";
@@ -161,12 +162,13 @@ export function getDockerContainerState(
     return "paused";
   }
 
-  // docker ps: "Up …" / inspect: "running", "restarting"
-  if (
-    normalized.startsWith("up") ||
-    normalized.startsWith("running") ||
-    normalized.startsWith("restarting")
-  ) {
+  // docker ps: "Restarting (1) …" / inspect: "restarting"
+  if (normalized.includes("restarting")) {
+    return "restarting";
+  }
+
+  // docker ps: "Up …" / inspect: "running"
+  if (normalized.startsWith("up") || normalized.startsWith("running")) {
     return "running";
   }
 
@@ -184,9 +186,11 @@ export function getDockerContainerState(
   return "unknown";
 }
 
-/** 실행 중이거나 일시정지된 컨테이너(중지·kill 등에 사용) */
+/** 실행·재시작·일시정지 중 컨테이너(중지·kill 등에 사용) */
 export function isDockerContainerActive(state: DockerContainerState): boolean {
-  return state === "running" || state === "paused";
+  return (
+    state === "running" || state === "restarting" || state === "paused"
+  );
 }
 
 /** 이름·이미지에 nginx(또는 오타 ngnix)가 포함된 컨테이너인지 판별 */

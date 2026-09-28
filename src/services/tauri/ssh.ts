@@ -18,3 +18,11 @@ export async function connectSsh(
 export async function disconnectSsh(): Promise<void> {
   await invoke<void>("disconnect_ssh");
 }
+
+export async function disconnectSshSession(connectionId: string): Promise<void> {
+  await invoke<void>("disconnect_ssh_session", { connectionId });
+}
+
+export async function setActiveSshSession(connectionId: string): Promise<void> {
+  await invoke<void>("set_active_ssh_session", { connectionId });
+}

@@ -10,16 +10,6 @@ import {
   FileExplorerNavIcon,
   SettingsNavIcon,
 } from "@/components/icons/NavIcons";
-import { DashboardPage } from "@/pages/Dashboard";
-import {
-  DockerContainersPage,
-  DockerImagesPage,
-  DockerNetworksPage,
-  DockerSystemPage,
-  DockerVolumesPage,
-} from "@/pages/docker";
-import { FileExplorerPage } from "@/pages/FileExplorer";
-import { SettingsPage } from "@/pages/Settings";
 
 export const ROUTE_ID = {
   dashboard: "dashboard",
@@ -39,8 +29,8 @@ export type RouteId = (typeof ROUTE_ID)[keyof typeof ROUTE_ID];
 export type RouteHiddenCondition = "docker-unavailable";
 
 export type RouteIcon = ComponentType<SVGProps<SVGSVGElement>>;
-export type RoutePage = ComponentType;
 
+/** 페이지 컴포넌트는 `routePages.ts`에서 매핑한다 (store → Route → 페이지 순환 import 방지). */
 export interface AppRoute {
   id: RouteId;
   /** 브라우저/앱 URL path */
@@ -48,14 +38,12 @@ export interface AppRoute {
   label: string;
   headerTitle: string;
   icon: RouteIcon;
-  /** 그룹 전용 항목은 생략 가능 (클릭 시 defaultChildId로 이동) */
-  component?: RoutePage;
   /** 사이드바 메뉴에 표시 여부 */
   showInSidebar?: boolean;
   hiddenWhen?: RouteHiddenCondition;
   /** 하위 메뉴 (예: Docker) */
   children?: readonly AppRoute[];
-  /** 그룹 클릭 시 이동할 기본 자식 */
+  /** 그룹 전용 항목: 클릭 시 이동할 기본 자식 */
   defaultChildId?: RouteId;
 }
 
@@ -66,7 +54,6 @@ export const ROUTES: readonly AppRoute[] = [
     label: "대시보드",
     headerTitle: "대시보드",
     icon: DashboardNavIcon,
-    component: DashboardPage,
     showInSidebar: true,
   },
   {
@@ -75,7 +62,6 @@ export const ROUTES: readonly AppRoute[] = [
     label: "파일 탐색기",
     headerTitle: "파일",
     icon: FileExplorerNavIcon,
-    component: FileExplorerPage,
     showInSidebar: true,
   },
   {
@@ -94,7 +80,6 @@ export const ROUTES: readonly AppRoute[] = [
         label: "컨테이너",
         headerTitle: "Docker · 컨테이너",
         icon: DockerContainersNavIcon,
-        component: DockerContainersPage,
         showInSidebar: true,
         hiddenWhen: "docker-unavailable",
       },
@@ -104,7 +89,6 @@ export const ROUTES: readonly AppRoute[] = [
         label: "이미지",
         headerTitle: "Docker · 이미지",
         icon: DockerImagesNavIcon,
-        component: DockerImagesPage,
         showInSidebar: true,
         hiddenWhen: "docker-unavailable",
       },
@@ -114,7 +98,6 @@ export const ROUTES: readonly AppRoute[] = [
         label: "네트워크",
         headerTitle: "Docker · 네트워크",
         icon: DockerNetworksNavIcon,
-        component: DockerNetworksPage,
         showInSidebar: true,
         hiddenWhen: "docker-unavailable",
       },
@@ -124,7 +107,6 @@ export const ROUTES: readonly AppRoute[] = [
         label: "볼륨",
         headerTitle: "Docker · 볼륨",
         icon: DockerVolumesNavIcon,
-        component: DockerVolumesPage,
         showInSidebar: true,
         hiddenWhen: "docker-unavailable",
       },
@@ -134,7 +116,6 @@ export const ROUTES: readonly AppRoute[] = [
         label: "시스템",
         headerTitle: "Docker · 시스템",
         icon: DockerSystemNavIcon,
-        component: DockerSystemPage,
         showInSidebar: true,
         hiddenWhen: "docker-unavailable",
       },
@@ -146,7 +127,6 @@ export const ROUTES: readonly AppRoute[] = [
     label: "설정",
     headerTitle: "설정",
     icon: SettingsNavIcon,
-    component: SettingsPage,
     showInSidebar: true,
   },
 ] as const;

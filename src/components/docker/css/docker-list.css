@@ -6,7 +6,9 @@
 }
 
 .docker-list__nginx-badge,
-.docker-grid__nginx-badge {
+.docker-grid__nginx-badge,
+.docker-list__restart-badge,
+.docker-grid__restart-badge {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
@@ -18,6 +20,20 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   line-height: 1.2;
+}
+
+.docker-list__restart-badge,
+.docker-grid__restart-badge {
+  background: var(--danger);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 40%, transparent);
+}
+
+.docker-list__status--restarting {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: color-mix(in srgb, var(--danger) 72%, var(--text));
+  font-weight: 600;
 }
 
 .docker-list .explorer-list__header,
@@ -39,4 +55,29 @@
 
 .explorer-icon-grid__item--nginx .docker-grid__icon {
   color: #009639;
+}
+
+.table-list__row--restarting .table-list__td {
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+
+.table-list__row--restarting .table-list__td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+.table-list__row--restarting:hover .table-list__td {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+.table-list__row--restarting.table-list__row--selected .table-list__td,
+.table-list__row--restarting.table-list__row--selected:hover .table-list__td {
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+}
+
+.table-list__row--restarting.table-list__row--nginx .table-list__td:first-child {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+
+html[data-theme="dark"] .table-list__row--restarting .table-list__td {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
 }

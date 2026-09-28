@@ -12,6 +12,7 @@ import { FileExplorerToolbar } from "@/components/explorer/FileExplorerToolbar";
 import { FileIconGrid } from "@/components/explorer/FileIconGrid";
 import { FileList } from "@/components/explorer/FileList";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
+import { useExplorerLetterFocus } from "@/hooks/useExplorerLetterFocus";
 import { useRemoteFileSystem } from "@/hooks/useRemoteFileSystem";
 import {
   useContextMenu,
@@ -47,6 +48,13 @@ export function FileExplorerPage() {
   const [createKind, setCreateKind] = useState<CreateEntryKind | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const { isLetterFocused, handleSelectedKeyChange } = useExplorerLetterFocus({
+    entries,
+    selectedPath,
+    selectEntry,
+    currentPath,
+    enabled: previewPath == null && createKind == null,
+  });
 
   const canGoUp = splitPathSegments(currentPath).length > 0;
 
@@ -99,10 +107,10 @@ export function FileExplorerPage() {
         void openEntry(entry);
         return;
       }
-      selectEntry(entry.path);
+      handleSelectedKeyChange(entry.path);
       setPreviewPath(entry.path);
     },
-    [openEntry, selectEntry],
+    [handleSelectedKeyChange, openEntry],
   );
 
   const buildMenuItems = useCallback(
@@ -155,7 +163,7 @@ export function FileExplorerPage() {
       event.stopPropagation();
 
       if (entry) {
-        selectEntry(entry.path);
+        handleSelectedKeyChange(entry.path);
       }
 
       openContextMenu({
@@ -164,7 +172,7 @@ export function FileExplorerPage() {
         items: buildMenuItems(entry ? entry.path : null),
       });
     },
-    [buildMenuItems, openContextMenu, selectEntry],
+    [buildMenuItems, handleSelectedKeyChange, openContextMenu],
   );
 
   const menuItemsForBackground = useMemo(
@@ -176,7 +184,7 @@ export function FileExplorerPage() {
     <PageViewModeProvider>
       <ListSelectionProvider
         selectedKey={selectedPath}
-        onSelectedKeyChange={selectEntry}
+        onSelectedKeyChange={handleSelectedKeyChange}
       >
         <section
           className="explorer"
@@ -210,6 +218,7 @@ export function FileExplorerPage() {
                 <FileList
                   entries={entries}
                   isLoading={isLoading}
+                  isLetterFocused={isLetterFocused}
                   onOpenEntry={handleOpenEntry}
                   onEntryContextMenu={openExplorerContextMenu}
                 />
@@ -218,6 +227,7 @@ export function FileExplorerPage() {
                 <FileIconGrid
                   entries={entries}
                   isLoading={isLoading}
+                  isLetterFocused={isLetterFocused}
                   onOpenEntry={handleOpenEntry}
                   onEntryContextMenu={openExplorerContextMenu}
                 />

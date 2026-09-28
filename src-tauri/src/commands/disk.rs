@@ -1,5 +1,8 @@
 use tauri::State;
 
+use crate::services::BlockDevice;
+use crate::services::DiskExpandResult;
+use crate::services::DiskExpandStatus;
 use crate::services::DiskOverview;
 use crate::services::DiskUsageSample;
 use crate::services::LargeDirectory;
@@ -55,4 +58,26 @@ pub fn get_remote_disk_history(
     state: State<'_, SshConnectionManager>,
 ) -> Result<Vec<DiskUsageSample>, String> {
     state.get_disk_history()
+}
+
+#[tauri::command(async)]
+pub fn get_remote_block_devices(
+    state: State<'_, SshConnectionManager>,
+) -> Result<Vec<BlockDevice>, String> {
+    state.list_block_devices()
+}
+
+#[tauri::command(async)]
+pub fn get_remote_disk_expand_status(
+    state: State<'_, SshConnectionManager>,
+) -> Result<DiskExpandStatus, String> {
+    state.get_disk_expand_status()
+}
+
+#[tauri::command(async)]
+pub fn expand_remote_disk(
+    state: State<'_, SshConnectionManager>,
+    target_size_gb: Option<u64>,
+) -> Result<DiskExpandResult, String> {
+    state.expand_remote_disk(target_size_gb)
 }

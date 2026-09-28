@@ -2,7 +2,10 @@ import {
   pickPrimaryFilesystem,
   toneForPercent,
 } from "@/components/dashboard/utils/diskUi";
-import type { DiskUsageSample } from "@/lib/diskUsageHistory";
+import {
+  MAX_DAILY_SAMPLES,
+  type DiskUsageSample,
+} from "@/lib/diskUsageHistory";
 import type { DiskFilesystem, RemoteOs } from "@/types/disk";
 import { formatFileSize } from "@/utils/file";
 import "./css/dashboard.css";
@@ -15,25 +18,13 @@ interface DiskCapacitySectionProps {
   os?: RemoteOs | null;
 }
 
-function formatChartTime(ts: number, prevTs: number | null): string {
+function formatChartDate(ts: number, prevTs: number | null): string {
   const date = new Date(ts);
-  const time = date.toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  if (prevTs == null) {
-    return time;
+  const day = `${date.getMonth() + 1}/${date.getDate()}`;
+  if (prevTs != null && new Date(prevTs).getFullYear() !== date.getFullYear()) {
+    return `${String(date.getFullYear()).slice(-2)}.${day}`;
   }
-  const prev = new Date(prevTs);
-  if (
-    prev.getFullYear() !== date.getFullYear() ||
-    prev.getMonth() !== date.getMonth() ||
-    prev.getDate() !== date.getDate()
-  ) {
-    return `${date.getMonth() + 1}/${date.getDate()} ${time}`;
-  }
-  return time;
+  return day;
 }
 
 /** 막대 수에 맞춰 축 라벨을 간격을 두고 표시 (양끝 포함) */
@@ -162,11 +153,10 @@ export function DiskCapacitySection({
             return (
               <i
                 key={sample.ts}
-                title={`${sample.usePercent}% · ${new Date(sample.ts).toLocaleString("ko-KR", {
+                title={`${sample.usePercent}% · ${new Date(sample.ts).toLocaleDateString("ko-KR", {
+                  year: "numeric",
                   month: "numeric",
                   day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
                 })}`}
                 style={{ height: `${height}%` }}
               />
@@ -180,15 +170,15 @@ export function DiskCapacitySection({
             const show = shouldShowAxisLabel(index, chartSamples.length);
             return (
               <span key={sample.ts} className="dashboard-storage__chart-tick">
-                {show ? formatChartTime(sample.ts, prevTs) : null}
+                {show ? formatChartDate(sample.ts, prevTs) : null}
               </span>
             );
           })}
         </div>
       </div>
       <div className="dashboard-resource__footer">
-        <span>시간별 {history.length}개</span>
-        <span>최대 24시간</span>
+        <span>일별 {history.length}개</span>
+        <span>최대 {MAX_DAILY_SAMPLES}일</span>
       </div>
 
       {others.length > 0 ? (

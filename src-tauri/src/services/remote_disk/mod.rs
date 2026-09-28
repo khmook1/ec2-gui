@@ -1,9 +1,11 @@
+mod block_devices;
 mod common;
 mod linux;
 mod macos;
 
 use ssh2::Session;
 
+pub use block_devices::{BlockDevice, DiskExpandResult, DiskExpandStatus};
 pub use common::{DiskOverview, LargeDirectory};
 
 use super::remote_fs::exec_remote_command;
@@ -40,4 +42,19 @@ pub fn get_large_directories(session: &Session) -> Result<Vec<LargeDirectory>, S
         "linux" => linux::list_large_directories(session),
         _ => Ok(Vec::new()),
     }
+}
+
+pub fn list_block_devices(session: &Session) -> Result<Vec<BlockDevice>, String> {
+    block_devices::list_block_devices(session)
+}
+
+pub fn get_expand_status(session: &Session) -> Result<DiskExpandStatus, String> {
+    block_devices::get_expand_status(session)
+}
+
+pub fn expand_disk(
+    session: &Session,
+    target_size_gb: Option<u64>,
+) -> Result<DiskExpandResult, String> {
+    block_devices::expand_disk(session, target_size_gb)
 }

@@ -221,6 +221,16 @@
   background: color-mix(in srgb, var(--accent) 16%, transparent);
 }
 
+.table-list__row--letter-focus:not(.table-list__row--selected) .table-list__td {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+
+.table-list__row--letter-focus:not(.table-list__row--selected):hover
+  .table-list__td {
+  background: color-mix(in srgb, var(--accent) 11%, transparent);
+}
+
 .table-list__row--nginx .table-list__td {
   background: color-mix(in srgb, #009639 10%, transparent);
 }
