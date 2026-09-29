@@ -1,11 +1,10 @@
+import { pickPrimaryFilesystem } from "@/components/dashboard/utils/diskUi";
+import { InfoPanel } from "@/components/dashboard/atoms/InfoPanel";
 import {
-  pickPrimaryFilesystem,
-  toneForPercent,
-} from "@/components/dashboard/utils/diskUi";
-import {
-  InfoPanel,
-  type InfoPanelTone,
-} from "@/components/dashboard/atoms/InfoPanel";
+  DockerSectionIcon,
+  SshSessionsSectionIcon,
+  StorageSectionIcon,
+} from "@/components/icons/DashboardSectionIcons";
 import type { DockerOverviewCounts } from "@/components/dashboard/DockerOverviewSection";
 import type { DiskFilesystem, RemoteOs } from "@/types/disk";
 import { formatFileSize } from "@/utils/file";
@@ -21,13 +20,6 @@ interface DashboardSummaryProps {
   os?: RemoteOs | null;
 }
 
-function toPanelTone(tone: ReturnType<typeof toneForPercent>): InfoPanelTone {
-  if (tone === "neutral") {
-    return "neutral";
-  }
-  return tone;
-}
-
 export function DashboardSummary({
   filesystems,
   dockerCounts,
@@ -37,20 +29,9 @@ export function DashboardSummary({
   os,
 }: DashboardSummaryProps) {
   const primary = pickPrimaryFilesystem(filesystems, os);
-  const diskTone = primary
-    ? toPanelTone(toneForPercent(primary.usePercent))
-    : "neutral";
   const running = dockerCounts?.containers.running ?? 0;
   const total = dockerCounts?.containers.total ?? 0;
   const stopped = dockerCounts?.containers.stopped ?? 0;
-  const dockerTone: InfoPanelTone =
-    !loading && dockerCounts
-      ? running > 0
-        ? "success"
-        : total > 0
-          ? "warning"
-          : "neutral"
-      : "accent";
 
   return (
     <section
@@ -63,37 +44,37 @@ export function DashboardSummary({
     >
       <InfoPanel
         title="디스크 사용률"
+        icon={<StorageSectionIcon />}
         value={primary ? `${primary.usePercent}%` : "—"}
         description={
           primary
             ? `${formatFileSize(primary.usedBytes)} 사용 · ${formatFileSize(primary.availableBytes)} 여유`
             : "디스크 정보 대기 중"
         }
-        tone={diskTone === "success" ? "accent" : diskTone}
         loading={loading}
       />
       {showDocker ? (
         <InfoPanel
           title="Docker 컨테이너"
+          icon={<DockerSectionIcon />}
           value={dockerCounts ? `${running}` : "—"}
           description={
             dockerCounts
               ? `실행 ${running} · 중지 ${stopped} · 전체 ${total}`
               : "Docker 정보 대기 중"
           }
-          tone={dockerTone}
           loading={loading}
         />
       ) : null}
       <InfoPanel
         title="SSH 세션"
+        icon={<SshSessionsSectionIcon />}
         value={String(sshSessionCount)}
         description={
           sshSessionCount > 0
             ? `원격 로그인 ${sshSessionCount}개`
             : "원격 로그인 없음"
         }
-        tone="accent"
         loading={loading}
       />
     </section>

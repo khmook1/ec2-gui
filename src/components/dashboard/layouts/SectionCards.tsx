@@ -5,7 +5,7 @@ import { SectionCard } from "@/components/dashboard/atoms/SectionCard";
 import { DiskCapacitySection } from "@/components/dashboard/DiskCapacitySection";
 import { DockerOverviewSection } from "@/components/dashboard/DockerOverviewSection";
 import { LargeDirectoriesSection } from "@/components/dashboard/LargeDirectoriesSection";
-import { PermissionsSection } from "@/components/dashboard/PermissionsSection";
+import { ResourceOverviewSection } from "@/components/dashboard/ResourceOverviewSection";
 import { SshSessionsSection } from "@/components/dashboard/SshSessionsSection";
 import { SystemResourcesSection } from "@/components/dashboard/SystemResourcesSection";
 import {
@@ -14,11 +14,11 @@ import {
   ComingSoonSectionIcon,
   DockerSectionIcon,
   LargeDirectoriesSectionIcon,
-  PermissionsSectionIcon,
   SshSessionsSectionIcon,
   StorageSectionIcon,
   SystemResourcesSectionIcon,
 } from "@/components/icons/DashboardSectionIcons";
+import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import type { DashboardLayoutProps } from "./types";
 
 /** 레이아웃에서 재사용하는 섹션 카드 (OS별 조합용) */
@@ -54,6 +54,54 @@ export function SystemResourcesCard({
         resources={systemResources}
         loading={systemLoading}
         error={systemError}
+      />
+    </SectionCard>
+  );
+}
+
+export function ResourceOverviewCard({
+  systemResources,
+  systemUpdatedAt,
+  systemLoading,
+  systemError,
+  filesystems,
+  diskLoading,
+  diskError,
+  storageBadge,
+  os,
+}: Pick<
+  DashboardLayoutProps,
+  | "systemResources"
+  | "systemUpdatedAt"
+  | "systemLoading"
+  | "systemError"
+  | "filesystems"
+  | "diskLoading"
+  | "diskError"
+  | "storageBadge"
+  | "os"
+>) {
+  const error = [systemError, diskError].filter(Boolean).join(" · ") || null;
+  const { interval, options } = useAutoRefresh();
+  const intervalLabel = options.find((o) => o.value === interval)?.label;
+  const subtitle =
+    interval === "off" ? "수동 새로고침" : `${intervalLabel} 단위`;
+
+  return (
+    <SectionCard
+      title="리소스 개요"
+      subtitle={subtitle}
+      badge={storageBadge}
+      icon={<SystemResourcesSectionIcon />}
+      className="dashboard-section--overview"
+    >
+      <ResourceOverviewSection
+        resources={systemResources}
+        updatedAt={systemUpdatedAt}
+        filesystems={filesystems}
+        os={os}
+        loading={systemLoading || diskLoading}
+        error={error}
       />
     </SectionCard>
   );
@@ -116,34 +164,6 @@ export function LargeDirectoriesCard({
         directories={directories}
         loading={directoriesLoading}
         error={directoriesError}
-      />
-    </SectionCard>
-  );
-}
-
-export function PermissionsCard({
-  permissions,
-  permissionsLoading,
-  permissionError,
-  permissionsBadge,
-}: Pick<
-  DashboardLayoutProps,
-  | "permissions"
-  | "permissionsLoading"
-  | "permissionError"
-  | "permissionsBadge"
->) {
-  return (
-    <SectionCard
-      title="내 권한"
-      subtitle="접속 계정"
-      badge={permissionsBadge}
-      icon={<PermissionsSectionIcon />}
-    >
-      <PermissionsSection
-        permissions={permissions}
-        loading={permissionsLoading}
-        error={permissionError}
       />
     </SectionCard>
   );

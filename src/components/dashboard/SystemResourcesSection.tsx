@@ -1,4 +1,5 @@
 import { toneForPercent } from "@/components/dashboard/utils/diskUi";
+import { formatMbps } from "@/components/dashboard/utils/resourceUi";
 import type { SystemResources } from "@/types/system";
 import { formatFileSize } from "@/utils/file";
 import "./css/dashboard.css";
@@ -7,17 +8,6 @@ interface SystemResourcesSectionProps {
   resources: SystemResources | null;
   loading: boolean;
   error: string | null;
-}
-
-function formatMbps(bytesPerSec: number): string {
-  const mbps = (bytesPerSec * 8) / 1_000_000;
-  if (mbps < 0.1) {
-    return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
-  }
-  if (mbps < 10) {
-    return `${mbps.toFixed(1)} Mbps`;
-  }
-  return `${Math.round(mbps)} Mbps`;
 }
 
 /** 1 Gbps 기준 대략적 막대 비율 */

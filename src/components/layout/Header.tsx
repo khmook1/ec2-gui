@@ -3,6 +3,7 @@ import { LogoIcon } from "@/components/common/LogoIcon";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { MenuNavIcon } from "@/components/icons/NavIcons";
 import { TerminalIcon } from "@/components/icons/ToolbarIcons";
+import { PermissionBadge } from "@/components/layout/PermissionBadge";
 import { getRouteById } from "@/config/routeUtils";
 import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useConnectionStore } from "@/stores/connectionStore";
@@ -84,9 +85,12 @@ export function Header({ status }: HeaderProps) {
       </div>
       <div className="header__meta">
         {connection ? (
-          <span className="chips__item chips__item--connection">
-            {connection.username}@{connection.host}
-          </span>
+          <>
+            <span className="chips__item chips__item--connection">
+              {connection.username}@{connection.host}
+            </span>
+            <PermissionBadge />
+          </>
         ) : null}
         <IconButton
           tone="neutral"

@@ -137,6 +137,169 @@ html[data-theme="dark"] .chips__item--connection {
   --chip-edge: #334961;
 }
 
+.header__permission {
+  --perm-from: #8e8e96;
+  --perm-to: #6b6b73;
+  --perm-glow: rgba(107, 107, 115, 0.35);
+  --perm-ink: var(--perm-to);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 8px 0 4px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 160ms ease;
+}
+
+.header__permission:hover {
+  transform: translateY(-1px);
+}
+
+.header__permission:active {
+  transform: translateY(0);
+}
+
+.header__permission--active .header__permission-icon-wrap {
+  box-shadow: 0 0 0 2px var(--perm-glow);
+}
+
+.header__permission:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--perm-ink) 70%, #fff);
+  outline-offset: 2px;
+}
+
+.header__permission-icon-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--perm-ink) 14%, transparent);
+  color: var(--perm-ink);
+}
+
+.header__permission-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.header__permission-label {
+  line-height: 1;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.header__permission-chevron {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  opacity: 0.75;
+  transition:
+    transform 160ms ease,
+    opacity 160ms ease;
+}
+
+.header__permission:hover .header__permission-chevron {
+  transform: translateX(2px);
+  opacity: 1;
+}
+
+.header__permission--root {
+  --perm-from: #ff6a5c;
+  --perm-to: #e0284f;
+  --perm-glow: rgba(224, 40, 79, 0.5);
+}
+
+/* root 는 가장 강한 권한이라 살짝 맥박 효과로 강조 */
+.header__permission--root .header__permission-icon-wrap::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--perm-ink) 55%, transparent);
+  animation: header-permission-pulse 2.4s ease-out infinite;
+}
+
+.header__permission--sudo {
+  --perm-from: #34d399;
+  --perm-to: #059669;
+  --perm-glow: rgba(5, 150, 105, 0.45);
+}
+
+.header__permission--limited {
+  --perm-from: #fbbf24;
+  --perm-to: #ea8a0c;
+  --perm-glow: rgba(234, 138, 12, 0.45);
+}
+
+.header__permission--user {
+  --perm-from: #6aa8ff;
+  --perm-to: #4f6bed;
+  --perm-glow: rgba(79, 107, 237, 0.45);
+}
+
+.header__permission--pending {
+  --perm-from: #a1a1aa;
+  --perm-to: #71717a;
+  --perm-glow: rgba(113, 113, 122, 0.3);
+}
+
+.header__permission--pending .header__permission-icon {
+  animation: header-permission-blink 1.2s ease-in-out infinite;
+}
+
+.header__permission--error {
+  --perm-from: #f87171;
+  --perm-to: #b91c1c;
+  --perm-glow: rgba(185, 28, 28, 0.45);
+}
+
+html[data-theme="dark"] .header__permission {
+  --perm-ink: var(--perm-from);
+}
+
+@keyframes header-permission-pulse {
+  0% {
+    transform: scale(0.85);
+    opacity: 0.9;
+  }
+  70%,
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+@keyframes header-permission-blink {
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header__permission,
+  .header__permission-chevron {
+    transition: none;
+  }
+  .header__permission:hover {
+    transform: none;
+  }
+  .header__permission--root .header__permission-icon-wrap::after,
+  .header__permission--pending .header__permission-icon {
+    animation: none;
+  }
+}
+
 html[data-theme="dark"] .chips__item {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }

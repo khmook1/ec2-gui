@@ -7,7 +7,6 @@ import type {
   RemoteOs,
 } from "@/types/disk";
 import type { DockerContainer } from "@/types/docker";
-import type { RemotePermissionOverview } from "@/types/permissions";
 import type { RemoteSshSession } from "@/types/sshSession";
 import type { SystemResources } from "@/types/system";
 
@@ -32,6 +31,8 @@ export interface DashboardLayoutProps {
   onExpandDisk?: () => void;
 
   systemResources: SystemResources | null;
+  /** 마지막 시스템 리소스 조회 시각 (ms epoch, 미조회 시 0) */
+  systemUpdatedAt: number;
   systemLoading: boolean;
   systemError: string | null;
 
@@ -46,10 +47,5 @@ export interface DashboardLayoutProps {
   sshSessions: RemoteSshSession[];
   sshLoading: boolean;
   sshError: string | null;
-
-  permissions: RemotePermissionOverview | null;
-  permissionsLoading: boolean;
-  permissionError: string | null;
-  permissionsBadge: string | null;
 }
 

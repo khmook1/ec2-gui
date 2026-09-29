@@ -1,7 +1,6 @@
 import {
   ComingSoonCard,
   DockerOverviewCard,
-  PermissionsCard,
   SshSessionsCard,
   StorageCard,
 } from "./SectionCards";
@@ -48,12 +47,6 @@ export function UnknownLayout({
       </div>
 
       <div className="dashboard-grid__right">
-        <PermissionsCard
-          permissions={props.permissions}
-          permissionsLoading={props.permissionsLoading}
-          permissionError={props.permissionError}
-          permissionsBadge={props.permissionsBadge}
-        />
         <StorageCard
           filesystems={props.filesystems}
           diskHistory={props.diskHistory}

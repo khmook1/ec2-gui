@@ -45,6 +45,10 @@ export const queryKeys = {
     ["dashboard", "sshSessions", session] as const,
   permissions: (session: string) =>
     ["dashboard", "permissions", session] as const,
+  remoteUsers: (session: string) =>
+    ["permissions", "users", session] as const,
+  remoteGroups: (session: string) =>
+    ["permissions", "groups", session] as const,
 
   remoteHome: (session: string) => ["fs", "home", session] as const,
   remoteDir: (session: string, path: string) =>

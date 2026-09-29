@@ -10,7 +10,6 @@ import {
   getRemoteDiskOverview,
   getRemoteDockerOverview,
   getRemoteLargeDirectories,
-  getRemotePermissionOverview,
   getRemoteSystemResources,
   listRemoteSshSessions,
 } from "@/services/tauri";
@@ -114,6 +113,13 @@ export function useExpandDiskMutation() {
   });
 }
 
+/** 리소스 추이 차트 샘플 수집 간격 (SSH mutex를 점유하므로 너무 짧게 두지 않는다) */
+export const SYSTEM_RESOURCES_POLL_MS = 10_000;
+
+/** 첫 로딩 직후 차트를 바로 그릴 수 있도록 짧은 간격으로 모으는 샘플 수 */
+const SYSTEM_RESOURCES_WARMUP_SAMPLES = 3;
+const SYSTEM_RESOURCES_WARMUP_MS = 2000;
+
 export function useSystemResourcesQuery(options?: { enabled?: boolean }) {
   const sessionKey = useSessionKey();
   const enabled = Boolean(sessionKey) && (options?.enabled ?? true);
@@ -122,6 +128,11 @@ export function useSystemResourcesQuery(options?: { enabled?: boolean }) {
     queryKey: queryKeys.systemResources(sessionKey ?? ""),
     queryFn: getRemoteSystemResources,
     enabled,
+    refetchInterval: (query) =>
+      query.state.dataUpdateCount < SYSTEM_RESOURCES_WARMUP_SAMPLES
+        ? SYSTEM_RESOURCES_WARMUP_MS
+        : SYSTEM_RESOURCES_POLL_MS,
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -131,16 +142,6 @@ export function useSshSessionsQuery() {
   return useQuery({
     queryKey: queryKeys.sshSessions(sessionKey ?? ""),
     queryFn: listRemoteSshSessions,
-    enabled: Boolean(sessionKey),
-  });
-}
-
-export function usePermissionOverviewQuery() {
-  const sessionKey = useSessionKey();
-
-  return useQuery({
-    queryKey: queryKeys.permissions(sessionKey ?? ""),
-    queryFn: getRemotePermissionOverview,
     enabled: Boolean(sessionKey),
   });
 }

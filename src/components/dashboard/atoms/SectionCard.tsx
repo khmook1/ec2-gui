@@ -32,15 +32,15 @@ export function SectionCard({
     <article className={rootClass}>
       <header className="dashboard-section__header">
         <div className="dashboard-section__heading">
-          <h2 className="dashboard-section__title">
-            {icon ? (
-              <span className="dashboard-section__icon-wrap">{icon}</span>
-            ) : null}
-            <span className="dashboard-section__title-text">{title}</span>
+          {icon ? (
+            <span className="dashboard-section__icon-wrap">{icon}</span>
+          ) : null}
+          <div className="dashboard-section__heading-text">
+            <h2 className="dashboard-section__title">{title}</h2>
             {subtitle ? (
-              <span className="dashboard-section__subtitle">{subtitle}</span>
+              <p className="dashboard-section__subtitle">{subtitle}</p>
             ) : null}
-          </h2>
+          </div>
         </div>
         {badge != null ? (
           <span className="dashboard-section__badge">{badge}</span>

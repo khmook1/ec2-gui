@@ -21,15 +21,14 @@ import {
   useDockerInstalledQuery,
   useDockerOverviewQuery,
   useLargeDirectoriesQuery,
-  usePermissionOverviewQuery,
   useSshSessionsQuery,
   useSystemResourcesQuery,
 } from "@/hooks/query";
 import { useAppInfo } from "@/hooks/useAppInfo";
 import { collapseToDaily } from "@/lib/diskUsageHistory";
+import { useAutoRefreshStore } from "@/stores/autoRefreshStore";
 import { useConnectionStore } from "@/stores/connectionStore";
 import { useTerminalStore } from "@/stores/terminalStore";
-import type { RemotePermissionOverview } from "@/types/permissions";
 import { formatFileSize } from "@/utils/file";
 import "../components/dashboard/css/dashboard.css";
 
@@ -46,29 +45,12 @@ function errorMessage(error: unknown, fallback: string): string | null {
   return fallback;
 }
 
-function permissionBadge(
-  permissions: RemotePermissionOverview | null,
-): string | null {
-  if (!permissions) {
-    return null;
-  }
-  if (permissions.isRoot || permissions.sudo === "root") {
-    return "root";
-  }
-  if (permissions.sudo === "passwordless") {
-    return "sudo";
-  }
-  if (permissions.sudo === "group") {
-    return "제한 sudo";
-  }
-  return "일반";
-}
-
 export function DashboardPage() {
   const { isReady: appReady, appInfo } = useAppInfo();
   const { appName } = formatAppLabels(appInfo?.name, appInfo?.version);
 
   const setTerminalOpen = useTerminalStore((state) => state.setOpen);
+  const bumpUiTick = useAutoRefreshStore((state) => state.bumpUiTick);
   const showServerSyncOverlay = useConnectionStore(
     (state) => state.showServerSyncOverlay,
   );
@@ -92,7 +74,6 @@ export function DashboardPage() {
       Boolean(diskQuery.data),
   });
   const sshQuery = useSshSessionsQuery();
-  const permissionQuery = usePermissionOverviewQuery();
   const dockerInstalledQuery = useDockerInstalledQuery();
   const showDocker = dockerInstalledQuery.data === true;
   const dockerQuery = useDockerOverviewQuery({ enabled: showDocker });
@@ -105,7 +86,6 @@ export function DashboardPage() {
   const diskOverview = diskQuery.data ?? null;
   const systemResources = systemQuery.data ?? null;
   const sshSessions = sshQuery.data ?? [];
-  const permissions = permissionQuery.data ?? null;
   const dockerOverview = dockerQuery.data ?? null;
 
   const diskError = diskQuery.isError
@@ -124,9 +104,6 @@ export function DashboardPage() {
       : null;
   const sshError = sshQuery.isError
     ? errorMessage(sshQuery.error, "SSH 세션을 불러오지 못했습니다.")
-    : null;
-  const permissionError = permissionQuery.isError
-    ? errorMessage(permissionQuery.error, "권한 정보를 불러오지 못했습니다.")
     : null;
   const directoriesError =
     features.largeDirectories && largeDirsQuery.isError
@@ -156,7 +133,6 @@ export function DashboardPage() {
     diskHistoryQuery.isPending ||
     (features.systemResources && systemQuery.isPending) ||
     sshQuery.isPending ||
-    permissionQuery.isPending ||
     (showDocker && dockerQuery.isPending);
 
   const refreshing =
@@ -164,12 +140,11 @@ export function DashboardPage() {
     diskHistoryQuery.isFetching ||
     largeDirsQuery.isFetching ||
     blockDevicesQuery.isFetching ||
-    (features.systemResources && systemQuery.isFetching) ||
     sshQuery.isFetching ||
-    permissionQuery.isFetching ||
     (showDocker && dockerQuery.isFetching);
 
   const refreshAll = () => {
+    bumpUiTick();
     void diskQuery.refetch();
     void diskHistoryQuery.refetch();
     if (features.blockDevices) {
@@ -182,7 +157,6 @@ export function DashboardPage() {
       void systemQuery.refetch();
     }
     void sshQuery.refetch();
-    void permissionQuery.refetch();
     if (showDocker) {
       void dockerQuery.refetch();
     }
@@ -200,9 +174,6 @@ export function DashboardPage() {
     !loading && dockerCounts
       ? `${dockerCounts.containers.running} / ${dockerCounts.containers.total}`
       : null;
-  const permissionsBadge =
-    !loading && !permissionError ? permissionBadge(permissions) : "준비 중";
-
   const showDiskLowBanner =
     primary != null && primary.usePercent >= 90 && remoteOs === "linux";
 
@@ -223,6 +194,7 @@ export function DashboardPage() {
     blockDevicesError,
     onExpandDisk: features.blockDevices ? () => setExpandOpen(true) : undefined,
     systemResources,
+    systemUpdatedAt: systemQuery.dataUpdatedAt,
     systemLoading: systemQuery.isPending,
     systemError,
     showDocker,
@@ -235,10 +207,6 @@ export function DashboardPage() {
     sshSessions,
     sshLoading: sshQuery.isPending,
     sshError,
-    permissions,
-    permissionsLoading: permissionQuery.isPending,
-    permissionError,
-    permissionsBadge,
   };
 
   return (

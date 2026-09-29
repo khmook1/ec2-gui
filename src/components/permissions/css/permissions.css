@@ -1,0 +1,413 @@
+/* Main dialog */
+.perm-main-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  background: var(--surface);
+}
+
+.perm-main-dialog__section {
+  padding: 16px 20px 18px;
+}
+
+.perm-main-dialog__section + .perm-main-dialog__section {
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.perm-main-dialog__heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.user-admin__toolbar .perm-main-dialog__heading {
+  margin-bottom: 4px;
+}
+
+.perm-main-dialog__count {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 650;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--border) 35%, var(--surface));
+}
+
+/* Shared chip */
+.perm-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.702rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px dashed color-mix(in srgb, var(--border) 90%, transparent);
+  white-space: nowrap;
+}
+
+.perm-chip--primary {
+  color: color-mix(in srgb, var(--accent) 65%, var(--text));
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--accent) 22%, var(--border));
+}
+
+/* My permissions */
+.my-permissions {
+  display: grid;
+  gap: 12px;
+}
+
+.my-permissions__identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 0 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.my-permissions__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0.975rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.my-permissions__profile {
+  min-width: 0;
+  display: grid;
+  gap: 7px;
+}
+
+.my-permissions__user {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.my-permissions__username {
+  font-size: 1.092rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.my-permissions__uid {
+  padding: 3px 7px;
+  border-radius: 999px;
+  font-size: 0.702rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--border) 35%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.my-permissions__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.my-permissions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.perm-capability {
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--bg));
+}
+
+.perm-capability__label {
+  font-size: 0.858rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.perm-capability__detail {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 0.702rem;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.perm-capability__badge,
+.user-table__status {
+  padding: 5px 7px;
+  border-radius: 7px;
+  font-size: 0.702rem;
+  font-weight: 650;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.perm-capability--granted .perm-capability__badge,
+.user-table__status--granted {
+  background: color-mix(in srgb, var(--success) 12%, var(--surface));
+  color: color-mix(in srgb, var(--success) 72%, var(--text));
+  border-color: color-mix(in srgb, var(--success) 22%, var(--border));
+}
+
+.perm-capability--limited .perm-capability__badge,
+.user-table__status--limited {
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface));
+  color: color-mix(in srgb, var(--warning) 78%, var(--text));
+  border-color: color-mix(in srgb, var(--warning) 24%, var(--border));
+}
+
+.perm-capability--denied .perm-capability__badge,
+.user-table__status--denied {
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+  color: color-mix(in srgb, var(--danger) 72%, var(--text));
+  border-color: color-mix(in srgb, var(--danger) 22%, var(--border));
+}
+
+/* User admin */
+.user-admin__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.user-admin__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.user-table__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.user-table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--surface) 90%, var(--bg));
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.user-table td {
+  padding: 10px 12px;
+  vertical-align: top;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  color: var(--text);
+}
+
+.user-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.user-table__row--current td {
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+}
+
+.user-table__actions-head {
+  text-align: right;
+}
+
+.user-table__name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+}
+
+.user-table__tag {
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 0.66rem;
+  font-weight: 650;
+  color: color-mix(in srgb, var(--accent) 70%, var(--text));
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+}
+
+.user-table__home {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.user-table__mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.user-table__groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 320px;
+}
+
+.user-table__actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.user-table__muted {
+  display: block;
+  text-align: right;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+/* Dialogs */
+.perm-dialog__body {
+  padding: 0;
+  background: var(--surface);
+  overflow: visible;
+}
+
+.perm-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px 18px;
+}
+
+.perm-dialog .form-field select,
+.perm-dialog .form-field textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--toolbar-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+.perm-dialog .form-field textarea {
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  line-height: 1.5;
+}
+
+.perm-dialog .form-field select:focus,
+.perm-dialog .form-field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  background: var(--surface);
+}
+
+.perm-dialog__checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 4px 10px;
+  max-height: 260px;
+  overflow: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.perm-dialog__checklist--inline {
+  max-height: none;
+}
+
+.perm-dialog__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 0;
+  font-size: 0.8125rem;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.perm-dialog__check--priority {
+  font-weight: 650;
+}
+
+.perm-dialog__check--standalone {
+  align-self: flex-start;
+}
+
+.perm-dialog .perm-dialog__check input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.perm-dialog .perm-dialog__check span {
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.perm-dialog__check:has(input:disabled) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.perm-dialog__message {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.perm-dialog__hint {
+  margin: -4px 0 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.perm-dialog__error {
+  margin: -6px 0 0;
+  color: var(--danger);
+  font-size: 0.75rem;
+}
+
+.perm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

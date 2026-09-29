@@ -51,7 +51,8 @@ function AiChatbotToggle({
       aria-pressed={isOpen}
       onClick={onToggle}
     >
-      <span className="ai-chatbot-toggle__icons" aria-hidden>
+      {/* ai chatbot icon 기능 추가후 활성화 */}
+      {/* <span className="ai-chatbot-toggle__icons" aria-hidden>
         <img
           className="ai-chatbot-toggle__icon ai-chatbot-toggle__icon--idle"
           src="/ai-icon2.png"
@@ -64,7 +65,7 @@ function AiChatbotToggle({
           alt=""
           draggable={false}
         />
-      </span>
+      </span> */}
     </button>,
     document.body,
   );

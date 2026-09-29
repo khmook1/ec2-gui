@@ -900,6 +900,72 @@ impl SshConnectionManager {
         })
     }
 
+    pub fn list_remote_users(
+        &self,
+    ) -> Result<Vec<super::remote_user_admin::RemoteUser>, String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::list_users(&connection.session, &connection.username)
+        })
+    }
+
+    pub fn list_remote_groups(&self) -> Result<Vec<String>, String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::list_groups(&connection.session)
+        })
+    }
+
+    pub fn add_remote_user_group(&self, username: &str, group: &str) -> Result<(), String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::add_user_to_group(&connection.session, username, group)
+        })
+    }
+
+    pub fn remove_remote_user_group(&self, username: &str, group: &str) -> Result<(), String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::remove_user_from_group(
+                &connection.session,
+                &connection.username,
+                username,
+                group,
+            )
+        })
+    }
+
+    pub fn set_remote_user_passwordless_sudo(
+        &self,
+        username: &str,
+        enabled: bool,
+    ) -> Result<(), String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::set_passwordless_sudo(
+                &connection.session,
+                &connection.username,
+                username,
+                enabled,
+            )
+        })
+    }
+
+    pub fn create_remote_user(
+        &self,
+        input: &super::remote_user_admin::CreateRemoteUserInput,
+    ) -> Result<(), String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::create_user(&connection.session, input)
+        })
+    }
+
+    pub fn delete_remote_user(&self, username: &str, remove_home: bool) -> Result<(), String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::delete_user(
+                &connection.session,
+                &connection.username,
+                username,
+                remove_home,
+            )
+        })
+    }
+
     pub fn ensure_disk_history_collector(&self) -> Result<(), String> {
         self.with_connection(|connection| {
             super::remote_disk_history::ensure_disk_history_collector(

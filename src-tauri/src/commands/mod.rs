@@ -4,5 +4,6 @@ pub mod disk;
 pub mod docker;
 pub mod ssh;
 pub mod fs;
+pub mod permissions;
 pub mod settings;
 pub mod ssh_shell;

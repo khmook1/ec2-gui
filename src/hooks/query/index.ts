@@ -9,10 +9,19 @@ export {
   useDockerOverviewQuery,
   useExpandDiskMutation,
   useLargeDirectoriesQuery,
-  usePermissionOverviewQuery,
   useSshSessionsQuery,
   useSystemResourcesQuery,
 } from "./dashboard";
+export {
+  useCreateRemoteUserMutation,
+  useDeleteRemoteUserMutation,
+  usePermissionOverviewQuery,
+  useRemoteGroupsQuery,
+  useRemoteUsersQuery,
+  useSetRemoteUserPasswordlessSudoMutation,
+  useUpdateRemoteUserGroupsMutation,
+} from "./permissions";
+export type { UpdateUserGroupsInput } from "./permissions";
 export {
   useDockerContainerDetailsQuery,
   useDockerContainerLogsQuery,

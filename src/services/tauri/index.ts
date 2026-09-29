@@ -26,6 +26,15 @@ export {
   getRemoteDiskExpandStatus,
   expandRemoteDisk,
 } from "./disk";
+export {
+  addRemoteUserGroup,
+  createRemoteUser,
+  deleteRemoteUser,
+  listRemoteGroups,
+  listRemoteUsers,
+  removeRemoteUserGroup,
+  setRemoteUserPasswordlessSudo,
+} from "./permissions";
 export { connectSsh, disconnectSsh, disconnectSshSession, setActiveSshSession } from "./ssh";
 export {
   getRemoteHome,

@@ -1,6 +1,5 @@
 import {
   ComingSoonCard,
-  PermissionsCard,
   SshSessionsCard,
   StorageCard,
 } from "./SectionCards";
@@ -18,12 +17,6 @@ export function WindowsLayout(props: DashboardLayoutProps) {
       </div>
 
       <div className="dashboard-grid__right">
-        <PermissionsCard
-          permissions={props.permissions}
-          permissionsLoading={props.permissionsLoading}
-          permissionError={props.permissionError}
-          permissionsBadge={props.permissionsBadge}
-        />
         <StorageCard
           filesystems={props.filesystems}
           diskHistory={props.diskHistory}
