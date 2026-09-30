@@ -602,6 +602,58 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+.dashboard-overview__trend {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dashboard-overview__trend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dashboard-overview__trend-title {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 560;
+}
+
+.dashboard-overview__day-select {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, transparent 50%, var(--text-secondary) 50%)
+      calc(100% - 12px) / 5px 5px no-repeat,
+    linear-gradient(135deg, var(--text-secondary) 50%, transparent 50%)
+      calc(100% - 7px) / 5px 5px no-repeat,
+    color-mix(in srgb, var(--surface) 92%, var(--bg));
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 540;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.25;
+  padding: 5px 26px 5px 10px;
+  cursor: pointer;
+}
+
+.dashboard-overview__day-select:hover {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.dashboard-overview__day-select:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.dashboard-overview__day-select:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
 .dashboard-trend {
   height: 300px;
   min-width: 0;
@@ -1154,6 +1206,7 @@
 .dashboard-expand-disk {
   display: grid;
   gap: 14px;
+  padding: 16px 18px 18px;
 }
 
 .dashboard-expand-disk__notes {

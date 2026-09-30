@@ -152,7 +152,7 @@ export function TerminalPanel() {
       <div className="terminal-panel__body">
         {sessions.map((session) => (
           <TerminalSession
-            key={session.id}
+            key={session.key ?? session.id}
             shellId={session.id}
             active={session.id === activeSessionId}
           />

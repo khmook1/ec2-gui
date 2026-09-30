@@ -1,14 +1,37 @@
+.docker-grid__cell {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
+
+.docker-grid__cell > .explorer-icon-grid__item {
+  flex: 1;
+  min-width: 0;
+}
+
+.docker-grid__favorite {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+}
+
 .docker-grid__nginx-badge {
   position: absolute;
   top: 10px;
-  left: 10px;
+  left: 36px;
 }
 
 .docker-grid__restart-badge {
   position: absolute;
   top: 10px;
-  left: 10px;
+  left: 36px;
   z-index: 1;
+}
+
+.explorer-icon-grid__item--docker.explorer-icon-grid__item--nginx,
+.explorer-icon-grid__item--docker.explorer-icon-grid__item--restarting {
+  padding-top: 38px;
 }
 
 .explorer-icon-grid__item--nginx .docker-grid__restart-badge {

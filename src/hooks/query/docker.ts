@@ -7,6 +7,7 @@ import {
   getRemoteDockerContainerDetails,
   getRemoteDockerContainerLogs,
   listRemoteDockerContainers,
+  listRemoteDockerFavorites,
   listRemoteDockerImages,
   listRemoteDockerNetworks,
   listRemoteDockerVolumes,
@@ -35,6 +36,17 @@ export function useDockerContainersQuery(options?: { enabled?: boolean }) {
     queryKey: queryKeys.dockerContainers(sessionKey ?? ""),
     queryFn: listRemoteDockerContainers,
     enabled,
+  });
+}
+
+export function useDockerFavoritesQuery() {
+  const sessionKey = useSessionKey();
+
+  return useQuery({
+    queryKey: queryKeys.dockerFavorites(sessionKey ?? ""),
+    queryFn: listRemoteDockerFavorites,
+    enabled: Boolean(sessionKey),
+    staleTime: Infinity,
   });
 }
 

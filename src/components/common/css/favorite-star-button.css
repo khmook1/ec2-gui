@@ -1,0 +1,54 @@
+.favorite-star-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  opacity: 0.7;
+  transition:
+    color 0.12s ease,
+    opacity 0.12s ease,
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+
+.favorite-star-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linejoin: round;
+}
+
+.favorite-star-button:hover {
+  opacity: 1;
+  color: #f5b301;
+  background: color-mix(in srgb, #f5b301 12%, transparent);
+}
+
+.favorite-star-button:active {
+  transform: scale(0.9);
+}
+
+.favorite-star-button:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.favorite-star-button--active {
+  color: #f5b301;
+  opacity: 1;
+}
+
+.favorite-star-button--active svg {
+  fill: currentColor;
+}

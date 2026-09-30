@@ -1,8 +1,11 @@
 import { create } from "zustand";
 
 export interface TerminalSessionMeta {
+  /** 원격 셸 ID (재연결 시 바뀜) */
   id: string;
   title: string;
+  /** 탭 식별자. 재연결해도 유지되어 터미널 화면(스크롤백)을 보존한다. 없으면 `id` 사용 */
+  key?: string;
 }
 
 export interface TerminalSnapshot {
@@ -24,6 +27,7 @@ interface TerminalState {
   setHeight: (height: number) => void;
   addSession: (id: string, title?: string) => void;
   removeSession: (id: string) => void;
+  replaceSessionId: (oldId: string, newId: string) => void;
   setActiveSession: (id: string) => void;
   getSnapshot: () => TerminalSnapshot;
   hydrate: (snapshot: TerminalSnapshot) => void;
@@ -65,6 +69,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       const tabNumber = state.nextTabNumber;
       const session: TerminalSessionMeta = {
         id,
+        key: id,
         title: title ?? `터미널 ${tabNumber}`,
       };
       return {
@@ -87,6 +92,16 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         isOpen: sessions.length > 0 ? state.isOpen : false,
       };
     }),
+  replaceSessionId: (oldId, newId) =>
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === oldId
+          ? { ...session, id: newId, key: session.key ?? oldId }
+          : session,
+      ),
+      activeSessionId:
+        state.activeSessionId === oldId ? newId : state.activeSessionId,
+    })),
   setActiveSession: (id) => set({ activeSessionId: id }),
   getSnapshot: () => {
     const state = get();

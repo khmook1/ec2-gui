@@ -21,6 +21,20 @@ export function listRemoteDockerContainers(): Promise<DockerContainer[]> {
   return invoke<DockerContainer[]>("list_remote_docker_containers");
 }
 
+export function listRemoteDockerFavorites(): Promise<string[]> {
+  return invoke<string[]>("list_remote_docker_favorites");
+}
+
+export function setRemoteDockerFavorite(
+  containerName: string,
+  favorite: boolean,
+): Promise<string[]> {
+  return invoke<string[]>("set_remote_docker_favorite", {
+    containerName,
+    favorite,
+  });
+}
+
 export function listRemoteDockerImages(): Promise<DockerImage[]> {
   return invoke<DockerImage[]>("list_remote_docker_images");
 }

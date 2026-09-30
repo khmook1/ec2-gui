@@ -87,6 +87,93 @@ html[data-theme="dark"] .explorer-icon-grid__item--nginx {
   overflow: hidden;
 }
 
+.explorer-icon-grid--files {
+  grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+  gap: 10px;
+  padding: 16px;
+}
+
+.explorer-icon-grid__cell {
+  position: relative;
+  min-width: 0;
+}
+
+.explorer-icon-grid--files .explorer-icon-grid__item {
+  width: 100%;
+  height: 100%;
+  gap: 12px;
+  padding: 26px 12px 14px;
+  border-radius: 12px;
+}
+
+.explorer-icon-grid--files .explorer-icon-grid__name {
+  max-width: 120px;
+  font-size: 0.8125rem;
+}
+
+.explorer-icon-grid--files .explorer-icon--grid.explorer-icon--folder {
+  width: 64px;
+  height: 50px;
+  border-radius: 5px;
+}
+
+.explorer-icon-grid--files .explorer-icon--grid.explorer-icon--folder::before {
+  top: -8px;
+  left: 6px;
+  width: 24px;
+  height: 10px;
+  border-radius: 4px 4px 0 0;
+}
+
+.explorer-icon-grid--files .explorer-icon--grid.explorer-icon--file,
+.explorer-icon-grid--files .explorer-icon--grid.explorer-icon--unviewable {
+  width: 48px;
+  height: 60px;
+  border-radius: 3px 5px 5px 3px;
+}
+
+.explorer-icon-grid--files .explorer-icon--grid.explorer-icon--file::before,
+.explorer-icon-grid--files
+  .explorer-icon--grid.explorer-icon--unviewable::before {
+  width: 16px;
+  height: 16px;
+}
+
+.explorer-icon-grid--files .explorer-icon--grid.explorer-icon--file::after {
+  left: 8px;
+  right: 10px;
+  top: 20px;
+  box-shadow:
+    0 7px 0 #c9c9cf,
+    0 14px 0 #d5d5da,
+    0 21px 0 #d5d5da;
+}
+
+.explorer-icon-grid--files .explorer-icon--grid.explorer-icon--image {
+  width: 54px;
+  height: 46px;
+  border-radius: 5px;
+}
+
+.explorer-icon-grid__location {
+  width: 100%;
+  max-width: 120px;
+  margin-top: -8px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.explorer-icon-grid__favorite {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 1;
+}
+
 .explorer-icon-grid--docker {
   grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
 }

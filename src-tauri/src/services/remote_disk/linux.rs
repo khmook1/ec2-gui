@@ -14,16 +14,21 @@ pub fn list_filesystems(session: &Session) -> Result<Vec<DiskFilesystem>, String
 }
 
 /// 루트 1depth `du`. 가상 FS·권한 오류는 stderr로 버리고 상위 사용량만 수집.
-/// `timeout`이 있으면 12초 상한으로 SSH 세션 점유를 제한한다.
+/// `timeout`이 있으면 12초 상한으로 SSH 세션 점유를 제한하고,
+/// `nice`/`ionice`로 CPU·I/O 우선순위를 낮춰 서비스 워크로드를 방해하지 않게 한다.
 pub fn list_large_directories(session: &Session) -> Result<Vec<LargeDirectory>, String> {
     let output = exec_remote_command(
         session,
         r#"
 set +e
+LOWPRIO="nice -n 19"
+if command -v ionice >/dev/null 2>&1; then
+  LOWPRIO="$LOWPRIO ionice -c3"
+fi
 if command -v timeout >/dev/null 2>&1; then
-  timeout 12 du -xd1 -B1 / 2>/dev/null
+  $LOWPRIO timeout 12 du -xd1 -B1 / 2>/dev/null
 else
-  du -xd1 -B1 / 2>/dev/null
+  $LOWPRIO du -xd1 -B1 / 2>/dev/null
 fi | sort -nr | head -n 15
 "#,
     )?;

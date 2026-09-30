@@ -1,0 +1,115 @@
+.terminal-search {
+  position: absolute;
+  top: 8px;
+  right: 20px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 4px 4px 4px 6px;
+  border: 1px solid #3c3c3c;
+  border-radius: 8px;
+  background: #252526;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  color: #d4d4d4;
+  font-size: 0.8125rem;
+}
+
+.terminal-search__input {
+  width: 200px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid #3c3c3c;
+  border-radius: 5px;
+  outline: none;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  font: inherit;
+}
+
+.terminal-search__input:focus {
+  border-color: #007fd4;
+}
+
+.terminal-search__input--no-match,
+.terminal-search__input--no-match:focus {
+  border-color: #be1100;
+}
+
+.terminal-search__toggle {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #a0a0a0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.terminal-search__toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.terminal-search__toggle:hover {
+  background: #3a3d41;
+}
+
+.terminal-search__toggle:has(input:checked) {
+  border-color: #007fd4;
+  background: rgba(0, 127, 212, 0.25);
+  color: #ffffff;
+}
+
+.terminal-search__toggle:has(input:focus-visible) {
+  outline: 1px solid #007fd4;
+}
+
+.terminal-search__count {
+  min-width: 64px;
+  padding: 0 4px;
+  color: #a0a0a0;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.terminal-search__btn {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: #d4d4d4;
+  cursor: pointer;
+}
+
+.terminal-search__btn:hover:not(:disabled) {
+  background: #3a3d41;
+}
+
+.terminal-search__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.terminal-search__btn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}

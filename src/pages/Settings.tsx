@@ -5,11 +5,11 @@ import { Alert } from "@/components/common/Alert";
 import { Button } from "@/components/common/Button";
 import { FormField, FormSection } from "@/components/common/FormField";
 import { PageToolbar } from "@/components/common/PageToolbar";
+import { StorageLocations } from "@/components/settings/StorageLocations";
 import {
   useClearAppCacheMutation,
   useClearWallpaperImageMutation,
   useSetWallpaperImageMutation,
-  useStoragePathsQuery,
 } from "@/hooks/query";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
@@ -44,12 +44,10 @@ export function SettingsPage() {
     (state) => state.clearCustomWallpaper,
   );
 
-  const pathsQuery = useStoragePathsQuery();
   const clearCacheMutation = useClearAppCacheMutation();
   const setWallpaperMutation = useSetWallpaperImageMutation();
   const clearWallpaperMutation = useClearWallpaperImageMutation();
 
-  const paths = pathsQuery.data ?? null;
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +167,7 @@ export function SettingsPage() {
     <section className="explorer settings-page">
       <PageToolbar>
         <p className="page-toolbar__hint">
-          GUI 테마와 배경화면을 설정합니다. 설정은 OS 앱 데이터에 저장됩니다.
+          GUI 테마와 배경화면을 설정합니다. 저장소에서 데이터가 저장되는 위치를 확인하고 열 수 있습니다.
         </p>
       </PageToolbar>
 
@@ -283,23 +281,13 @@ export function SettingsPage() {
               캐시 비우기
             </Button>
           </div>
-          <div className="settings-info-list" aria-label="저장 경로">
-            <Alert variant="info" title="앱 데이터">
-              <p className="alert__mono">
-                {paths?.appData ?? "경로를 불러오는 중…"}
-              </p>
-            </Alert>
-            <Alert variant="info" title="캐시">
-              <p className="alert__mono">
-                {paths?.cache ?? "경로를 불러오는 중…"}
-              </p>
-            </Alert>
-            <Alert variant="info" title="로그">
-              <p className="alert__mono">
-                {paths?.logs ?? "경로를 불러오는 중…"}
-              </p>
-            </Alert>
-          </div>
+          <StorageLocations
+            disabled={mutationBusy}
+            onError={(nextError) => {
+              setMessage(null);
+              setError(nextError);
+            }}
+          />
         </FormSection>
 
         {message ? (

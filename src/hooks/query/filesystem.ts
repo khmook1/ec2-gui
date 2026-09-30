@@ -7,9 +7,12 @@ import {
   deleteRemotePath,
   getRemoteHome,
   listRemoteDirectory,
+  listRemoteFavorites,
   readRemoteFile,
+  setRemoteFavorite,
   writeRemoteFile,
 } from "@/services/tauri/filesystem";
+import type { RemoteEntry } from "@/types/filesystem";
 
 export function useRemoteHomeQuery(options?: { enabled?: boolean }) {
   const sessionKey = useSessionKey();
@@ -106,6 +109,73 @@ export function useDeleteRemotePathMutation() {
       await queryClient.removeQueries({
         queryKey: queryKeys.remoteFile(sessionKey, path),
       });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.remoteFavorites(sessionKey),
+      });
+    },
+  });
+}
+
+const SET_FAVORITE_MUTATION_KEY = ["fs", "setFavorite"] as const;
+
+export function useRemoteFavoritesQuery() {
+  const sessionKey = useSessionKey();
+
+  return useQuery({
+    queryKey: queryKeys.remoteFavorites(sessionKey ?? ""),
+    queryFn: listRemoteFavorites,
+    enabled: Boolean(sessionKey),
+    staleTime: Infinity,
+  });
+}
+
+export function useSetRemoteFavoriteMutation() {
+  const queryClient = useQueryClient();
+  const sessionKey = useSessionKey();
+
+  return useMutation({
+    mutationKey: SET_FAVORITE_MUTATION_KEY,
+    mutationFn: ({ entry, favorite }: { entry: RemoteEntry; favorite: boolean }) =>
+      setRemoteFavorite(entry.path, favorite),
+    onMutate: async ({ entry, favorite }) => {
+      if (!sessionKey) {
+        return { previous: undefined };
+      }
+      const key = queryKeys.remoteFavorites(sessionKey);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<RemoteEntry[]>(key);
+      const current = previous ?? [];
+      const exists = current.some((item) => item.path === entry.path);
+      queryClient.setQueryData<RemoteEntry[]>(
+        key,
+        favorite
+          ? exists
+            ? current
+            : [...current, entry]
+          : current.filter((item) => item.path !== entry.path),
+      );
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      if (!sessionKey) {
+        return;
+      }
+      queryClient.setQueryData(
+        queryKeys.remoteFavorites(sessionKey),
+        context?.previous,
+      );
+    },
+    onSuccess: (favorites) => {
+      if (!sessionKey) {
+        return;
+      }
+      // 연속 토글 중 먼저 끝난 응답이 뒤 토글의 낙관적 상태를 덮어쓰지 않도록 마지막 응답만 반영
+      if (
+        queryClient.isMutating({ mutationKey: SET_FAVORITE_MUTATION_KEY }) > 1
+      ) {
+        return;
+      }
+      queryClient.setQueryData(queryKeys.remoteFavorites(sessionKey), favorites);
     },
   });
 }

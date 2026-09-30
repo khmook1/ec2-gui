@@ -23,6 +23,22 @@ pub fn list_remote_docker_containers(
 }
 
 #[tauri::command(async)]
+pub fn list_remote_docker_favorites(
+    state: State<'_, SshConnectionManager>,
+) -> Result<Vec<String>, String> {
+    state.list_docker_favorites()
+}
+
+#[tauri::command(async)]
+pub fn set_remote_docker_favorite(
+    container_name: String,
+    favorite: bool,
+    state: State<'_, SshConnectionManager>,
+) -> Result<Vec<String>, String> {
+    state.set_docker_favorite(&container_name, favorite)
+}
+
+#[tauri::command(async)]
 pub fn list_remote_docker_images(
     state: State<'_, SshConnectionManager>,
 ) -> Result<Vec<DockerImage>, String> {

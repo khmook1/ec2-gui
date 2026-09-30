@@ -4,11 +4,15 @@ export { useAppInfoQuery } from "./app";
 export {
   useBlockDevicesQuery,
   useDiskExpandStatusQuery,
+  useDiskHistoryCollectorQuery,
   useDiskHistoryQuery,
   useDiskOverviewQuery,
   useDockerOverviewQuery,
   useExpandDiskMutation,
   useLargeDirectoriesQuery,
+  useResourceHistoryCollectorQuery,
+  useResourceHistoryDaysQuery,
+  useResourceHistoryQuery,
   useSshSessionsQuery,
   useSystemResourcesQuery,
 } from "./dashboard";
@@ -26,6 +30,7 @@ export {
   useDockerContainerDetailsQuery,
   useDockerContainerLogsQuery,
   useDockerContainersQuery,
+  useDockerFavoritesQuery,
   useDockerImageHistoryQuery,
   useDockerImageInspectQuery,
   useDockerImagesQuery,
@@ -43,19 +48,23 @@ export {
   useDockerNetworkActionMutation,
   useDockerSystemActionMutation,
   useDockerVolumeActionMutation,
+  useSetDockerFavoriteMutation,
 } from "./dockerMutations";
 export {
   useCreateRemoteDirectoryMutation,
   useCreateRemoteFileMutation,
   useDeleteRemotePathMutation,
   useRemoteDirectoryQuery,
+  useRemoteFavoritesQuery,
   useRemoteFileQuery,
   useRemoteHomeQuery,
+  useSetRemoteFavoriteMutation,
   useWriteRemoteFileMutation,
 } from "./filesystem";
 export {
   useClearAppCacheMutation,
   useClearWallpaperImageMutation,
+  useOpenStorageLocationMutation,
   useSetWallpaperImageMutation,
   useStoragePathsQuery,
 } from "./settings";

@@ -34,7 +34,7 @@ export function TerminalTabs({ onAddSession }: TerminalTabsProps) {
           const isActive = session.id === activeSessionId;
           return (
             <div
-              key={session.id}
+              key={session.key ?? session.id}
               className={[
                 "terminal-tabs__item",
                 isActive ? "terminal-tabs__item--active" : "",

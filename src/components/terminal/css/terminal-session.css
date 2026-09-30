@@ -22,3 +22,80 @@
 .terminal-session__xterm .xterm-viewport {
   overflow-y: auto !important;
 }
+
+.terminal-session__reconnect {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 8px 8px 8px 14px;
+  border: 1px solid #5a1d1d;
+  border-radius: 10px;
+  background: #2d1f1f;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  color: #f0b4b4;
+  font-size: 0.8125rem;
+  transform: translateX(-50%);
+  animation: terminal-reconnect-in 180ms ease-out;
+}
+
+.terminal-session__reconnect-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.terminal-session__reconnect-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 6px;
+  background: #0e639c;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.terminal-session__reconnect-btn:hover:not(:disabled) {
+  background: #1177bb;
+}
+
+.terminal-session__reconnect-btn:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.terminal-session__reconnect-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.terminal-session__reconnect-spin {
+  animation: terminal-reconnect-spin 0.9s linear infinite;
+}
+
+@keyframes terminal-reconnect-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@keyframes terminal-reconnect-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,13 +1,10 @@
 import {
-  useDiskHistoryQuery,
-  useDiskOverviewQuery,
   useDockerInstalledQuery,
   useDockerOverviewQuery,
   usePermissionOverviewQuery,
   useSshSessionsQuery,
-  useSystemResourcesQuery,
 } from "@/hooks/query";
-import { dashboardFeatureSupport } from "@/components/dashboard/utils/featureSupport";
+import { useDashboardStages } from "@/hooks/useDashboardStages";
 
 export interface ServerSyncProgress {
   /** 0~1 */
@@ -21,17 +18,15 @@ export interface ServerSyncProgress {
 
 /** 대시보드와 동일 쿼리 키를 공유해, 오버레이에서 미리 로드한 데이터가 재사용됩니다. */
 export function useServerSyncProgress(): ServerSyncProgress {
-  const diskQuery = useDiskOverviewQuery();
-  const diskHistoryQuery = useDiskHistoryQuery();
-  const features = dashboardFeatureSupport(diskQuery.data?.os);
-  const systemQuery = useSystemResourcesQuery({
-    enabled: features.systemResources,
-  });
-  const sshQuery = useSshSessionsQuery();
+  const { diskQuery, diskHistoryQuery, systemQuery, features, stage3Ready } =
+    useDashboardStages();
+  const sshQuery = useSshSessionsQuery({ enabled: stage3Ready });
   const permissionQuery = usePermissionOverviewQuery();
   const dockerInstalledQuery = useDockerInstalledQuery();
   const showDocker = dockerInstalledQuery.data === true;
-  const dockerQuery = useDockerOverviewQuery({ enabled: showDocker });
+  const dockerQuery = useDockerOverviewQuery({
+    enabled: showDocker && stage3Ready,
+  });
 
   const pendingFlags = [
     diskQuery.isPending,

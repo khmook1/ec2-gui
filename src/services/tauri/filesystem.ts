@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   RemoteDirectoryListing,
+  RemoteEntry,
   RemoteFileContent,
 } from "@/types/filesystem";
 
@@ -28,6 +29,17 @@ export async function deleteRemotePath(path: string): Promise<void> {
 
 export async function readRemoteFile(path: string): Promise<RemoteFileContent> {
   return invoke<RemoteFileContent>("read_remote_file", { path });
+}
+
+export async function listRemoteFavorites(): Promise<RemoteEntry[]> {
+  return invoke<RemoteEntry[]>("list_remote_favorites");
+}
+
+export async function setRemoteFavorite(
+  path: string,
+  favorite: boolean,
+): Promise<RemoteEntry[]> {
+  return invoke<RemoteEntry[]>("set_remote_favorite", { path, favorite });
 }
 
 export async function writeRemoteFile(

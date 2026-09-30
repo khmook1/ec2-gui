@@ -86,9 +86,9 @@ export function Header({ status }: HeaderProps) {
       <div className="header__meta">
         {connection ? (
           <>
-            <span className="chips__item chips__item--connection">
+            {/* <span className="chips__item chips__item--connection">
               {connection.username}@{connection.host}
-            </span>
+            </span> */}
             <PermissionBadge />
           </>
         ) : null}

@@ -1,9 +1,7 @@
 use serde::{Deserialize, Serialize};
 use ssh2::Session;
 
-use super::remote_fs::{
-    exec_remote_command, exec_remote_command_checked, resolve_home_directory, write_file,
-};
+use super::remote_fs::{exec_remote_command, exec_remote_command_checked, write_file};
 
 const DIR_NAME: &str = ".ec2-gui";
 const SCRIPT_NAME: &str = "record-disk.sh";
@@ -33,7 +31,7 @@ fn history_dir(home: &str) -> String {
     format!("{}/{}", app_dir(home), HISTORY_DIR_NAME)
 }
 
-fn shell_single_quote(value: &str) -> String {
+pub(super) fn shell_single_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', r#"'\''"#))
 }
 
@@ -189,52 +187,82 @@ PY
 "#
 }
 
-fn install_cron(session: &Session, script: &str) -> Result<(), String> {
-    let line = format!("55 23 * * * {script} {CRON_MARKER}");
-    let quoted_line = shell_single_quote(&line);
-    let marker = shell_single_quote(CRON_MARKER);
-    let cmd = format!(
-        "TMP=$(mktemp 2>/dev/null || echo /tmp/ec2-gui-cron.$$); \
-crontab -l 2>/dev/null | grep -vF {marker} > \"$TMP\" || true; \
-printf '%s\\n' {quoted_line} >> \"$TMP\"; \
-crontab \"$TMP\"; STATUS=$?; rm -f \"$TMP\"; exit $STATUS"
-    );
-    exec_remote_command_checked(session, &cmd).map_err(|error| {
-        format!("crontab 설치에 실패했습니다. (권한·cron 서비스 확인): {error}")
-    })?;
-    Ok(())
+pub(super) struct CollectorInstall<'a> {
+    /// 에러 메시지용 이름 (예: "디스크 히스토리")
+    pub label: &'a str,
+    pub dir: &'a str,
+    pub script: &'a str,
+    pub script_body: &'a str,
+    /// 끝에 `marker`를 포함한 crontab 한 줄
+    pub cron_line: &'a str,
+    pub marker: &'a str,
+    /// 설치 직후 실행할 셸 명령. 실패해도 설치는 성공으로 본다.
+    pub post_cmd: &'a str,
 }
 
-pub fn ensure_disk_history_collector(
-    session: &Session,
-    username: &str,
-) -> Result<(), String> {
-    let home = resolve_home_directory(session, username)?;
-    let dir = app_dir(&home);
-    let script = script_path(&home);
-
-    let py = exec_remote_command(session, "command -v python3 2>/dev/null")?;
-    if py.is_empty() {
-        return Err("디스크 히스토리 수집에 python3가 필요합니다.".to_string());
+/// python3 확인·디렉터리 생성(exec 1) → 스크립트 업로드(sftp) → chmod·crontab·후처리(exec 2).
+/// 같은 crontab 줄이 이미 있으면 crontab은 다시 쓰지 않는다.
+pub(super) fn install_collector(session: &Session, spec: &CollectorInstall) -> Result<(), String> {
+    let dir = shell_single_quote(spec.dir);
+    let preflight = exec_remote_command(
+        session,
+        &format!(
+            "command -v python3 >/dev/null 2>&1 || {{ echo NO_PYTHON3; exit 0; }}; \
+mkdir -p {dir} && echo OK"
+        ),
+    )?;
+    if preflight.contains("NO_PYTHON3") {
+        return Err(format!("{} 수집에 python3가 필요합니다.", spec.label));
+    }
+    if preflight.trim() != "OK" {
+        return Err(format!("{} 디렉터리를 만들지 못했습니다: {}", spec.label, spec.dir));
     }
 
-    exec_remote_command_checked(session, &format!("mkdir -p '{dir}'"))?;
-    write_file(session, &script, record_disk_script())?;
-    exec_remote_command_checked(session, &format!("chmod +x '{script}'"))?;
-    install_cron(session, &script)?;
+    write_file(session, spec.script, spec.script_body)?;
 
-    // 시드 실패해도 cron은 유지
-    let _ = exec_remote_command_checked(session, &format!("'{script}'"));
-
+    let script = shell_single_quote(spec.script);
+    let line = shell_single_quote(spec.cron_line);
+    let marker = shell_single_quote(spec.marker);
+    let post_cmd = spec.post_cmd;
+    let install = format!(
+        "chmod +x {script} || {{ echo 'chmod 실패'; exit 1; }}
+if ! crontab -l 2>/dev/null | grep -qxF {line}; then
+  TMP=$(mktemp 2>/dev/null || echo /tmp/ec2-gui-cron.$$)
+  crontab -l 2>/dev/null | grep -vF {marker} > \"$TMP\" || true
+  printf '%s\\n' {line} >> \"$TMP\"
+  crontab \"$TMP\"; STATUS=$?; rm -f \"$TMP\"
+  [ \"$STATUS\" -eq 0 ] || {{ echo 'crontab 설치에 실패했습니다. (권한·cron 서비스 확인)'; exit 2; }}
+fi
+{{ {post_cmd}
+}} || true
+exit 0"
+    );
+    exec_remote_command_checked(session, &install)?;
     Ok(())
 }
 
-pub fn read_disk_history(
-    session: &Session,
-    username: &str,
-) -> Result<Vec<DiskUsageSample>, String> {
-    let home = resolve_home_directory(session, username)?;
-    let dir = shell_single_quote(&history_dir(&home));
+pub fn ensure_disk_history_collector(session: &Session, home: &str) -> Result<(), String> {
+    let dir = app_dir(home);
+    let script = script_path(home);
+    let cron_line = format!("55 23 * * * {script} {CRON_MARKER}");
+    let post_cmd = format!("{} >/dev/null 2>&1", shell_single_quote(&script));
+
+    install_collector(
+        session,
+        &CollectorInstall {
+            label: "디스크 히스토리",
+            dir: &dir,
+            script: &script,
+            script_body: record_disk_script(),
+            cron_line: &cron_line,
+            marker: CRON_MARKER,
+            post_cmd: &post_cmd,
+        },
+    )
+}
+
+pub fn read_disk_history(session: &Session, home: &str) -> Result<Vec<DiskUsageSample>, String> {
+    let dir = shell_single_quote(&history_dir(home));
     let raw = exec_remote_command(
         session,
         &format!(

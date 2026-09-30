@@ -31,8 +31,6 @@ export interface DashboardLayoutProps {
   onExpandDisk?: () => void;
 
   systemResources: SystemResources | null;
-  /** 마지막 시스템 리소스 조회 시각 (ms epoch, 미조회 시 0) */
-  systemUpdatedAt: number;
   systemLoading: boolean;
   systemError: string | null;
 

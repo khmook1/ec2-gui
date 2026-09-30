@@ -1,3 +1,10 @@
+.docker-list__id-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .docker-list__name-cell {
   display: inline-flex;
   align-items: center;

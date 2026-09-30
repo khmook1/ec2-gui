@@ -1,5 +1,6 @@
 import { useMemo, type MouseEvent } from "react";
 import { SearchHighlight } from "@/components/common/SearchHighlight";
+import { FavoriteStarButton } from "@/components/common/FavoriteStarButton";
 import {
   TableList,
   type TableColumnSetting,
@@ -12,6 +13,7 @@ import {
   formatModifiedTime,
   getEntryKindLabel,
   getExplorerFileIconKind,
+  getParentPath,
   type ExplorerFileIconKind,
 } from "@/utils/file";
 import "./css/file-list.css";
@@ -20,18 +22,35 @@ interface FileListProps {
   entries: RemoteEntry[];
   isLoading: boolean;
   isLetterFocused?: (entry: RemoteEntry) => boolean;
+  isFavorite?: (path: string) => boolean;
+  isShortcut?: (entry: RemoteEntry) => boolean;
+  onToggleFavorite?: (entry: RemoteEntry) => void;
   onOpenEntry: (entry: RemoteEntry) => void;
   onEntryContextMenu?: (event: MouseEvent, entry: RemoteEntry | null) => void;
 }
 
-function FileIcon({ kind }: { kind: ExplorerFileIconKind }) {
-  return <span className={`explorer-icon explorer-icon--${kind}`} aria-hidden />;
+function FileIcon({
+  kind,
+  shortcut,
+}: {
+  kind: ExplorerFileIconKind;
+  shortcut: boolean;
+}) {
+  return (
+    <span className="explorer-icon-wrap">
+      <span className={`explorer-icon explorer-icon--${kind}`} aria-hidden />
+      {shortcut ? <span className="explorer-shortcut-badge" aria-hidden /> : null}
+    </span>
+  );
 }
 
 export function FileList({
   entries,
   isLoading,
   isLetterFocused,
+  isFavorite,
+  isShortcut,
+  onToggleFavorite,
   onOpenEntry,
   onEntryContextMenu,
 }: FileListProps) {
@@ -44,16 +63,35 @@ export function FileList({
       {
         name: "이름",
         colProp: { align: "left" },
-        render: (entry) => (
-          <span className="table-list__name-cell">
-            <FileIcon
-              kind={getExplorerFileIconKind(entry.isDirectory, entry.name)}
-            />
-            <span className="table-list__name-text">
-              <SearchHighlight text={entry.name} query={query} />
+        render: (entry) => {
+          const shortcut = isShortcut?.(entry) ?? false;
+          return (
+            <span
+              className="table-list__name-cell"
+              title={shortcut ? entry.path : undefined}
+            >
+              {onToggleFavorite ? (
+                <FavoriteStarButton
+                  active={isFavorite?.(entry.path) ?? false}
+                  name={entry.name}
+                  onToggle={() => onToggleFavorite(entry)}
+                />
+              ) : null}
+              <FileIcon
+                kind={getExplorerFileIconKind(entry.isDirectory, entry.name)}
+                shortcut={shortcut}
+              />
+              <span className="table-list__name-text">
+                <SearchHighlight text={entry.name} query={query} />
+              </span>
+              {shortcut ? (
+                <span className="explorer-shortcut-location">
+                  {getParentPath(entry.path)}
+                </span>
+              ) : null}
             </span>
-          </span>
-        ),
+          );
+        },
       },
       {
         name: "수정일",
@@ -92,7 +130,7 @@ export function FileList({
         ),
       },
     ],
-    [query],
+    [isFavorite, isShortcut, onToggleFavorite, query],
   );
 
   return (

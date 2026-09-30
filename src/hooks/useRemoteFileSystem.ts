@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useCreateRemoteDirectoryMutation,
   useCreateRemoteFileMutation,
@@ -7,6 +7,7 @@ import {
   useRemoteHomeQuery,
   useWriteRemoteFileMutation,
 } from "@/hooks/query";
+import { useExplorerNavStore } from "@/stores/explorerNavStore";
 import type { RemoteEntry } from "@/types/filesystem";
 import {
   buildPathFromSegments,
@@ -42,9 +43,21 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function useRemoteFileSystem(): UseRemoteFileSystemResult {
-  const [currentPath, setCurrentPath] = useState<string | null>(null);
+  const [initialTarget] = useState(
+    () => useExplorerNavStore.getState().pendingTarget,
+  );
+  const pendingSelectRef = useRef(initialTarget?.selectPath ?? null);
+  const [currentPath, setCurrentPath] = useState<string | null>(
+    initialTarget?.directory ?? null,
+  );
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialTarget) {
+      useExplorerNavStore.getState().clearPendingTarget();
+    }
+  }, [initialTarget]);
 
   const homeQuery = useRemoteHomeQuery({ enabled: currentPath == null });
   const directoryQuery = useRemoteDirectoryQuery(currentPath, {
@@ -68,7 +81,8 @@ export function useRemoteFileSystem(): UseRemoteFileSystemResult {
   useEffect(() => {
     if (directoryQuery.data) {
       setCurrentPath(directoryQuery.data.path);
-      setSelectedPath(null);
+      setSelectedPath(pendingSelectRef.current);
+      pendingSelectRef.current = null;
       setLocalError(null);
     }
   }, [directoryQuery.data]);

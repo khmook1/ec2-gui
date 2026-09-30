@@ -8,13 +8,17 @@ import {
   formatMbps,
   type ResourceSeriesKey,
 } from "@/components/dashboard/utils/resourceUi";
-import { useResourceHistory } from "@/components/dashboard/utils/useResourceHistory";
+import {
+  dayRange,
+  useResourceHistory,
+} from "@/components/dashboard/utils/useResourceHistory";
 import {
   CpuIcon,
   DiskIcon,
   MemoryIcon,
   NetworkIcon,
 } from "@/components/icons/ResourceIcons";
+import { useResourceHistoryDaysQuery } from "@/hooks/query/dashboard";
 import { useState, type CSSProperties, type ReactNode } from "react";
 import type { DiskFilesystem, RemoteOs } from "@/types/disk";
 import type { SystemResources } from "@/types/system";
@@ -23,7 +27,6 @@ import "./css/dashboard.css";
 
 interface ResourceOverviewSectionProps {
   resources: SystemResources | null;
-  updatedAt: number;
   filesystems: DiskFilesystem[];
   os?: RemoteOs | null;
   loading: boolean;
@@ -36,21 +39,37 @@ interface ChipData {
   meta: string;
 }
 
+/** `YYYY-MM-DD` → 선택 목록 라벨 */
+function dayLabel(date: string, today: string | undefined): string {
+  const short = date.slice(5);
+  return date === today ? `오늘 (${short})` : short;
+}
+
 export function ResourceOverviewSection({
-  resources: liveResources,
-  updatedAt,
+  resources,
   filesystems,
   os,
   loading,
   error,
 }: ResourceOverviewSectionProps) {
   const [focused, setFocused] = useState<ResourceSeriesKey | null>(null);
+  const [pickedDate, setPickedDate] = useState<string | null>(null);
   const primary = pickPrimaryFilesystem(filesystems, os);
-  const { samples, resources } = useResourceHistory(
-    liveResources,
-    updatedAt,
-    primary?.usePercent ?? null,
-  );
+
+  const { data: daysInfo } = useResourceHistoryDaysQuery();
+  const today = daysInfo?.today;
+  const dayOptions = [
+    ...new Set([...(daysInfo?.days ?? []), ...(today ? [today] : [])]),
+  ].sort((a, b) => b.localeCompare(a));
+  const selectedDate =
+    pickedDate && dayOptions.includes(pickedDate) ? pickedDate : (today ?? null);
+  const isToday = selectedDate != null && selectedDate === today;
+
+  const history = useResourceHistory(selectedDate, isToday);
+  const chartDomain =
+    selectedDate && daysInfo && !isToday
+      ? dayRange(selectedDate, daysInfo.utcOffsetMinutes)
+      : null;
 
   if (loading && !resources && !primary) {
     return (
@@ -183,7 +202,44 @@ export function ResourceOverviewSection({
         </li>
       </ul>
 
-      <ResourceTrendChart samples={samples} focused={focused} />
+      <div className="dashboard-overview__trend">
+        <div className="dashboard-overview__trend-head">
+          <span className="dashboard-overview__trend-title">사용률 추이</span>
+          <select
+            className="dashboard-overview__day-select"
+            aria-label="날짜 선택"
+            value={selectedDate ?? ""}
+            disabled={dayOptions.length === 0}
+            onChange={(event) => setPickedDate(event.target.value)}
+          >
+            {dayOptions.map((date) => (
+              <option key={date} value={date}>
+                {dayLabel(date, today)}
+              </option>
+            ))}
+          </select>
+        </div>
+        {history.error ? (
+          <p
+            className="dashboard-section__status dashboard-section__status--error"
+            role="alert"
+          >
+            {history.error}
+          </p>
+        ) : null}
+        <ResourceTrendChart
+          samples={history.samples}
+          focused={focused}
+          domain={chartDomain}
+          emptyLabel={
+            history.loading
+              ? "불러오는 중…"
+              : isToday
+                ? "샘플 수집 중…"
+                : "저장된 샘플이 없습니다"
+          }
+        />
+      </div>
 
       {others.length > 0 ? (
         <ul className="dashboard-overview__mounts" aria-label="기타 마운트">

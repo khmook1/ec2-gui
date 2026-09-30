@@ -9,7 +9,11 @@ import type {
 import type { DiskUsageSample } from "@/lib/diskUsageHistory";
 import type { RemotePermissionOverview } from "@/types/permissions";
 import type { RemoteSshSession } from "@/types/sshSession";
-import type { SystemResources } from "@/types/system";
+import type {
+  ResourceHistoryDays,
+  ResourceHistorySample,
+  SystemResources,
+} from "@/types/system";
 
 export async function getRemoteDiskOverview(): Promise<DiskOverview> {
   return invoke<DiskOverview>("get_remote_disk_overview");
@@ -37,6 +41,24 @@ export async function ensureRemoteDiskHistory(): Promise<void> {
 
 export async function getRemoteDiskHistory(): Promise<DiskUsageSample[]> {
   return invoke<DiskUsageSample[]>("get_remote_disk_history");
+}
+
+export async function ensureRemoteResourceHistory(): Promise<void> {
+  return invoke("ensure_remote_resource_history");
+}
+
+export async function listRemoteResourceHistoryDays(): Promise<ResourceHistoryDays> {
+  return invoke<ResourceHistoryDays>("list_remote_resource_history_days");
+}
+
+export async function getRemoteResourceHistory(
+  date: string,
+  sinceTs?: number | null,
+): Promise<ResourceHistorySample[]> {
+  return invoke<ResourceHistorySample[]>("get_remote_resource_history", {
+    date,
+    sinceTs: sinceTs ?? null,
+  });
 }
 
 export async function getRemoteBlockDevices(): Promise<BlockDevice[]> {

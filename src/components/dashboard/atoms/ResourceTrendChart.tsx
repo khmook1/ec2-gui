@@ -22,6 +22,10 @@ interface ResourceTrendChartProps {
   samples: ResourceSample[];
   /** 지정 시 해당 시리즈만 표시, `null`이면 전체 */
   focused?: ResourceSeriesKey | null;
+  /** X축 범위 고정 (지난 날짜의 00:00~24:00). `null`이면 데이터 범위 */
+  domain?: [number, number] | null;
+  /** 점이 2개 미만일 때 표시할 문구 */
+  emptyLabel?: string;
 }
 
 function TrendTooltip({
@@ -37,7 +41,7 @@ function TrendTooltip({
   return (
     <div className="dashboard-trend__tooltip">
       <div className="dashboard-trend__tooltip-time">
-        {formatClock(sample.ts)}
+        {formatClock(sample.ts, false)}
       </div>
       {[...visibleSeries].reverse().map((series) => {
         const value = sample[series.key];
@@ -60,11 +64,13 @@ function TrendTooltip({
 export const ResourceTrendChart = memo(function ResourceTrendChart({
   samples,
   focused = null,
+  domain = null,
+  emptyLabel = "샘플 수집 중…",
 }: ResourceTrendChartProps) {
   if (samples.length < 2) {
     return (
       <div className="dashboard-trend dashboard-trend--empty" role="status">
-        샘플 수집 중…
+        {emptyLabel}
       </div>
     );
   }
@@ -113,7 +119,8 @@ export const ResourceTrendChart = memo(function ResourceTrendChart({
             dataKey="ts"
             type="number"
             scale="time"
-            domain={["dataMin", "dataMax"]}
+            domain={domain ?? ["dataMin", "dataMax"]}
+            allowDataOverflow={domain != null}
             tickFormatter={(ts: number) => formatClock(ts, false)}
             tickLine={false}
             axisLine={false}

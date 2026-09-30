@@ -28,7 +28,7 @@ set +e
 run_du() {
   root="$1"
   [ -d "$root" ] || return 0
-  perl -e 'alarm 4; exec @ARGV' du -x -d 1 -k "$root" 2>/dev/null || true
+  perl -e 'alarm 4; exec @ARGV' nice -n 19 du -x -d 1 -k "$root" 2>/dev/null || true
 }
 
 # Applications 먼저(상대적으로 작음), Users·Library는 타임아웃에 걸릴 수 있음

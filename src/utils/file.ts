@@ -165,6 +165,10 @@ export function buildPathFromSegments(segments: string[]): string {
   return `/${segments.join("/")}`;
 }
 
+export function getParentPath(path: string): string {
+  return buildPathFromSegments(splitPathSegments(path).slice(0, -1));
+}
+
 export function joinRemotePath(base: string, name: string): string {
   const trimmedName = name.trim();
   if (base === "/" || base === "") {

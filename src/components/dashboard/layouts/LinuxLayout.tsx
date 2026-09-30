@@ -21,7 +21,6 @@ export function LinuxLayout({
     <>
       <ResourceOverviewCard
         systemResources={props.systemResources}
-        systemUpdatedAt={props.systemUpdatedAt}
         systemLoading={props.systemLoading}
         systemError={props.systemError}
         filesystems={props.filesystems}

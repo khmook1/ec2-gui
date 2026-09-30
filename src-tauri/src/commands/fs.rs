@@ -2,7 +2,7 @@ use tauri::State;
 
 use crate::services::SshConnectionManager;
 use crate::services::RemoteDirectoryListing;
-use crate::services::remote_fs::RemoteFileContent;
+use crate::services::remote_fs::{RemoteEntry, RemoteFileContent};
 
 // `async`: SSH I/O가 웹뷰 메인 스레드를 막아 모달/목록 페인트가 지연되지 않도록 한다.
 #[tauri::command(async)]
@@ -48,6 +48,22 @@ pub fn read_remote_file(
     state: State<'_, SshConnectionManager>,
 ) -> Result<RemoteFileContent, String> {
     state.read_file(&path)
+}
+
+#[tauri::command(async)]
+pub fn list_remote_favorites(
+    state: State<'_, SshConnectionManager>,
+) -> Result<Vec<RemoteEntry>, String> {
+    state.list_favorites()
+}
+
+#[tauri::command(async)]
+pub fn set_remote_favorite(
+    path: String,
+    favorite: bool,
+    state: State<'_, SshConnectionManager>,
+) -> Result<Vec<RemoteEntry>, String> {
+    state.set_favorite(&path, favorite)
 }
 
 #[tauri::command(async)]

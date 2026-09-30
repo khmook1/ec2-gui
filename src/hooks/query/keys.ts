@@ -6,6 +6,8 @@ export const queryKeys = {
     ["docker", "installed", session] as const,
   dockerContainers: (session: string) =>
     ["docker", "containers", session] as const,
+  dockerFavorites: (session: string) =>
+    ["docker", "favorites", session] as const,
   dockerImages: (session: string) => ["docker", "images", session] as const,
   dockerVolumes: (session: string) => ["docker", "volumes", session] as const,
   dockerNetworks: (session: string) => ["docker", "networks", session] as const,
@@ -35,12 +37,20 @@ export const queryKeys = {
     ["dashboard", "largeDirectories", session] as const,
   diskHistory: (session: string) =>
     ["dashboard", "diskHistory", session] as const,
+  diskHistoryCollector: (session: string) =>
+    ["dashboard", "diskHistoryCollector", session] as const,
   blockDevices: (session: string) =>
     ["dashboard", "blockDevices", session] as const,
   diskExpandStatus: (session: string) =>
     ["dashboard", "diskExpandStatus", session] as const,
   systemResources: (session: string) =>
     ["dashboard", "system", session] as const,
+  resourceHistoryCollector: (session: string) =>
+    ["dashboard", "resourceHistoryCollector", session] as const,
+  resourceHistoryDays: (session: string) =>
+    ["dashboard", "resourceHistoryDays", session] as const,
+  resourceHistory: (session: string, date: string) =>
+    ["dashboard", "resourceHistory", session, date] as const,
   sshSessions: (session: string) =>
     ["dashboard", "sshSessions", session] as const,
   permissions: (session: string) =>
@@ -55,4 +65,5 @@ export const queryKeys = {
     ["fs", "dir", session, path] as const,
   remoteFile: (session: string, path: string) =>
     ["fs", "file", session, path] as const,
+  remoteFavorites: (session: string) => ["fs", "favorites", session] as const,
 } as const;

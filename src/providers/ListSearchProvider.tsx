@@ -115,6 +115,10 @@ export function ListSearchProvider({ children }: { children: ReactNode }) {
       const isFindShortcut = key === "f" && (event.metaKey || event.ctrlKey);
 
       if (isFindShortcut) {
+        // 터미널 찾기 등 하위 요소가 이미 처리한 단축키
+        if (event.defaultPrevented) {
+          return;
+        }
         event.preventDefault();
         openBar();
         return;

@@ -10,6 +10,14 @@ pub fn get_storage_paths(app: AppHandle) -> Result<storage_service::AppStoragePa
 }
 
 #[tauri::command]
+pub fn open_storage_location(
+    app: AppHandle,
+    location: storage_service::StorageLocation,
+) -> Result<(), String> {
+    storage_service::open_location(&app, location)
+}
+
+#[tauri::command]
 pub fn clear_app_cache(app: AppHandle) -> Result<(), String> {
     let paths = storage_service::resolve_and_ensure(&app)?;
     cache_service::clear_cache_dir(&PathBuf::from(paths.cache))

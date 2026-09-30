@@ -5,7 +5,6 @@ use std::time::Duration;
 
 use super::super::remote_fs::{exec_remote_command, exec_remote_command_checked};
 use super::super::remote_permissions::{get_permission_overview, SudoAccess};
-use super::detect_remote_os;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -299,8 +298,8 @@ aws ec2 describe-instances --region "$REGION" --instance-ids "$INSTANCE" \
 }
 
 /// Linux `lsblk -J` 블록 디바이스 트리.
-pub fn list_block_devices(session: &Session) -> Result<Vec<BlockDevice>, String> {
-    if detect_remote_os(session) != "linux" {
+pub fn list_block_devices(session: &Session, os: &str) -> Result<Vec<BlockDevice>, String> {
+    if os != "linux" {
         return Err("블록 디바이스 목록은 Linux에서만 지원합니다.".to_string());
     }
 
@@ -320,12 +319,12 @@ pub fn list_block_devices(session: &Session) -> Result<Vec<BlockDevice>, String>
 }
 
 /// 루트 디스크 확장 가능 여부·미할당·EBS 메타.
-pub fn get_expand_status(session: &Session) -> Result<DiskExpandStatus, String> {
-    if detect_remote_os(session) != "linux" {
+pub fn get_expand_status(session: &Session, os: &str) -> Result<DiskExpandStatus, String> {
+    if os != "linux" {
         return Err("디스크 확장은 Linux에서만 지원합니다.".to_string());
     }
 
-    let devices = list_block_devices(session)?;
+    let devices = list_block_devices(session, os)?;
     let permissions = get_permission_overview(session)?;
     let has_privileged = matches!(
         permissions.sudo,
@@ -600,13 +599,17 @@ fn grow_os_filesystem(
 }
 
 /// EBS ModifyVolume(선택) + growpart + 파일시스템 확장.
-pub fn expand_disk(session: &Session, target_size_gb: Option<u64>) -> Result<DiskExpandResult, String> {
-    if detect_remote_os(session) != "linux" {
+pub fn expand_disk(
+    session: &Session,
+    os: &str,
+    target_size_gb: Option<u64>,
+) -> Result<DiskExpandResult, String> {
+    if os != "linux" {
         return Err("디스크 확장은 Linux에서만 지원합니다.".to_string());
     }
 
     let mut steps = Vec::new();
-    let status = get_expand_status(session)?;
+    let status = get_expand_status(session, os)?;
 
     if !status.has_privileged_access {
         return Ok(DiskExpandResult {
@@ -696,7 +699,7 @@ pub fn expand_disk(session: &Session, target_size_gb: Option<u64>) -> Result<Dis
     }
 
     // 최신 상태로 다시 읽어 grow
-    let status_after = get_expand_status(session).unwrap_or(status);
+    let status_after = get_expand_status(session, os).unwrap_or(status);
     if let Err(err) = grow_os_filesystem(session, &status_after, prefix, &mut steps) {
         return Ok(DiskExpandResult {
             success: false,

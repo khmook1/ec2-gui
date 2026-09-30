@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -68,6 +68,72 @@ pub struct ActiveConnection {
     auth: StoredAuth,
     shells: HashMap<String, Channel>,
     cached_identity: Mutex<Option<super::remote_fs::RemoteIdentity>>,
+    cached_os: Mutex<Option<String>>,
+    cached_home: Mutex<Option<String>>,
+}
+
+impl ActiveConnection {
+    /// `uname -s`는 연결당 한 번만 실행한다. 감지 실패(`unknown`)는 캐시하지 않는다.
+    fn remote_os(&self) -> String {
+        if let Ok(cache) = self.cached_os.lock() {
+            if let Some(os) = cache.as_ref() {
+                return os.clone();
+            }
+        }
+
+        let os = super::remote_disk::detect_remote_os(&self.session);
+        if os != "unknown" {
+            if let Ok(mut cache) = self.cached_os.lock() {
+                *cache = Some(os.clone());
+            }
+        }
+        os
+    }
+
+    fn home_dir(&self) -> Result<String, String> {
+        let mut cache = self
+            .cached_home
+            .lock()
+            .map_err(|_| "원격 홈 디렉터리 잠금에 실패했습니다.".to_string())?;
+
+        if let Some(home) = cache.as_ref() {
+            return Ok(home.clone());
+        }
+
+        let home = super::remote_fs::resolve_home_directory(&self.session, &self.username)?;
+        *cache = Some(home.clone());
+        Ok(home)
+    }
+
+    fn server_key(&self) -> String {
+        format!("{}@{}:{}", self.username, self.host, self.port)
+    }
+
+    fn clear_caches(&self) {
+        if let Ok(mut cache) = self.cached_identity.lock() {
+            *cache = None;
+        }
+        if let Ok(mut cache) = self.cached_os.lock() {
+            *cache = None;
+        }
+        if let Ok(mut cache) = self.cached_home.lock() {
+            *cache = None;
+        }
+    }
+}
+
+fn favorites_target<'a>(
+    file: &'a Path,
+    server_key: &'a str,
+    connection: &'a ActiveConnection,
+    home: &'a str,
+) -> super::local_favorites::FavoritesTarget<'a> {
+    super::local_favorites::FavoritesTarget {
+        file,
+        server_key,
+        session: &connection.session,
+        home,
+    }
 }
 
 pub struct SshConnectionManager {
@@ -177,6 +243,8 @@ impl SshConnectionManager {
                 auth,
                 shells: HashMap::new(),
                 cached_identity: Mutex::new(None),
+                cached_os: Mutex::new(None),
+                cached_home: Mutex::new(None),
             },
         );
         drop(connections);
@@ -360,9 +428,7 @@ impl SshConnectionManager {
 
         let closed_shells: Vec<String> = connection.shells.keys().cloned().collect();
         connection.shells.clear();
-        if let Ok(mut cache) = connection.cached_identity.lock() {
-            *cache = None;
-        }
+        connection.clear_caches();
 
         let session = open_ssh_session_from_auth(
             &connection.host,
@@ -706,9 +772,7 @@ impl SshConnectionManager {
     }
 
     pub fn get_home_directory(&self) -> Result<String, String> {
-        self.with_connection(|connection| {
-            super::remote_fs::resolve_home_directory(&connection.session, &connection.username)
-        })
+        self.with_connection(|connection| connection.home_dir())
     }
 
     pub fn list_directory(&self, path: &str) -> Result<super::remote_fs::RemoteDirectoryListing, String> {
@@ -747,9 +811,67 @@ impl SshConnectionManager {
     }
 
     pub fn delete_path(&self, path: &str) -> Result<(), String> {
+        let favorites_file = self.favorites_file().ok();
         self.with_connection(|connection| {
-            super::remote_fs::delete_path(&connection.session, path)
+            super::remote_fs::delete_path(&connection.session, path)?;
+            // 삭제는 이미 끝났으므로 즐겨찾기 정리 실패로 재시도(재삭제)하지 않는다.
+            if let (Some(file), Ok(home)) = (favorites_file.as_deref(), connection.home_dir()) {
+                let server_key = connection.server_key();
+                let target = favorites_target(file, &server_key, connection, &home);
+                let _ = super::local_favorites::remove_favorites_under(&target, path);
+            }
+            Ok(())
         })
+    }
+
+    /// 즐겨찾기는 개인 데이터라 서버가 아닌 이 컴퓨터의 앱 데이터에 서버별로 저장한다.
+    fn favorites_file(&self) -> Result<PathBuf, String> {
+        let app = self
+            .app
+            .lock()
+            .map_err(|_| "앱 핸들 잠금에 실패했습니다.".to_string())?
+            .clone()
+            .ok_or_else(|| "앱이 아직 준비되지 않았습니다.".to_string())?;
+        let paths = super::storage_service::resolve_and_ensure(&app)?;
+        Ok(PathBuf::from(paths.favorites_file))
+    }
+
+    fn with_favorites<R>(
+        &self,
+        op: impl Fn(&super::local_favorites::FavoritesTarget) -> Result<R, String>,
+    ) -> Result<R, String> {
+        let file = self.favorites_file()?;
+        self.with_connection(|connection| {
+            let home = connection.home_dir()?;
+            let server_key = connection.server_key();
+            op(&favorites_target(&file, &server_key, connection, &home))
+        })
+    }
+
+    pub fn list_favorites(&self) -> Result<Vec<super::remote_fs::RemoteEntry>, String> {
+        self.with_favorites(super::local_favorites::list_favorites)
+    }
+
+    pub fn list_docker_favorites(&self) -> Result<Vec<String>, String> {
+        self.with_favorites(super::local_favorites::list_docker_favorites)
+    }
+
+    pub fn set_docker_favorite(
+        &self,
+        container_name: &str,
+        favorite: bool,
+    ) -> Result<Vec<String>, String> {
+        self.with_favorites(|target| {
+            super::local_favorites::set_docker_favorite(target, container_name, favorite)
+        })
+    }
+
+    pub fn set_favorite(
+        &self,
+        path: &str,
+        favorite: bool,
+    ) -> Result<Vec<super::remote_fs::RemoteEntry>, String> {
+        self.with_favorites(|target| super::local_favorites::set_favorite(target, path, favorite))
     }
 
     pub fn read_file(&self, path: &str) -> Result<super::remote_fs::RemoteFileContent, String> {
@@ -868,7 +990,8 @@ impl SshConnectionManager {
 
     pub fn get_disk_overview(&self) -> Result<super::remote_disk::DiskOverview, String> {
         self.with_connection(|connection| {
-            super::remote_disk::get_disk_overview(&connection.session)
+            let os = connection.remote_os();
+            super::remote_disk::get_disk_overview(&connection.session, &os)
         })
     }
 
@@ -876,13 +999,15 @@ impl SshConnectionManager {
         &self,
     ) -> Result<Vec<super::remote_disk::LargeDirectory>, String> {
         self.with_connection(|connection| {
-            super::remote_disk::get_large_directories(&connection.session)
+            let os = connection.remote_os();
+            super::remote_disk::get_large_directories(&connection.session, &os)
         })
     }
 
     pub fn get_system_resources(&self) -> Result<super::remote_system::SystemResources, String> {
         self.with_connection(|connection| {
-            super::remote_system::get_system_resources(&connection.session)
+            let os = connection.remote_os();
+            super::remote_system::get_system_resources(&connection.session, &os)
         })
     }
 
@@ -968,10 +1093,8 @@ impl SshConnectionManager {
 
     pub fn ensure_disk_history_collector(&self) -> Result<(), String> {
         self.with_connection(|connection| {
-            super::remote_disk_history::ensure_disk_history_collector(
-                &connection.session,
-                &connection.username,
-            )
+            let home = connection.home_dir()?;
+            super::remote_disk_history::ensure_disk_history_collector(&connection.session, &home)
         })
     }
 
@@ -979,9 +1102,42 @@ impl SshConnectionManager {
         &self,
     ) -> Result<Vec<super::remote_disk_history::DiskUsageSample>, String> {
         self.with_connection(|connection| {
-            super::remote_disk_history::read_disk_history(
+            let home = connection.home_dir()?;
+            super::remote_disk_history::read_disk_history(&connection.session, &home)
+        })
+    }
+
+    pub fn ensure_resource_history_collector(&self) -> Result<(), String> {
+        self.with_connection(|connection| {
+            let home = connection.home_dir()?;
+            super::remote_resource_history::ensure_resource_history_collector(
                 &connection.session,
-                &connection.username,
+                &home,
+            )
+        })
+    }
+
+    pub fn list_resource_history_days(
+        &self,
+    ) -> Result<super::remote_resource_history::ResourceHistoryDays, String> {
+        self.with_connection(|connection| {
+            let home = connection.home_dir()?;
+            super::remote_resource_history::list_resource_history_days(&connection.session, &home)
+        })
+    }
+
+    pub fn get_resource_history(
+        &self,
+        date: &str,
+        since_ts: Option<u64>,
+    ) -> Result<Vec<super::remote_resource_history::ResourceHistorySample>, String> {
+        self.with_connection(|connection| {
+            let home = connection.home_dir()?;
+            super::remote_resource_history::read_resource_history(
+                &connection.session,
+                &home,
+                date,
+                since_ts,
             )
         })
     }
@@ -990,7 +1146,8 @@ impl SshConnectionManager {
         &self,
     ) -> Result<Vec<super::remote_disk::BlockDevice>, String> {
         self.with_connection(|connection| {
-            super::remote_disk::list_block_devices(&connection.session)
+            let os = connection.remote_os();
+            super::remote_disk::list_block_devices(&connection.session, &os)
         })
     }
 
@@ -998,7 +1155,8 @@ impl SshConnectionManager {
         &self,
     ) -> Result<super::remote_disk::DiskExpandStatus, String> {
         self.with_connection(|connection| {
-            super::remote_disk::get_expand_status(&connection.session)
+            let os = connection.remote_os();
+            super::remote_disk::get_expand_status(&connection.session, &os)
         })
     }
 
@@ -1007,7 +1165,8 @@ impl SshConnectionManager {
         target_size_gb: Option<u64>,
     ) -> Result<super::remote_disk::DiskExpandResult, String> {
         self.with_connection(|connection| {
-            super::remote_disk::expand_disk(&connection.session, target_size_gb)
+            let os = connection.remote_os();
+            super::remote_disk::expand_disk(&connection.session, &os, target_size_gb)
         })
     }
 }

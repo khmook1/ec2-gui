@@ -13,7 +13,8 @@ export function QueryProvider({ children }: QueryProviderProps) {
           queries: {
             retry: 1,
             staleTime: 30_000,
-            refetchOnWindowFocus: true,
+            // 원격 조회는 SSH exec를 쓰므로 창 포커스마다 일괄 재요청하지 않는다.
+            refetchOnWindowFocus: false,
           },
         },
       }),

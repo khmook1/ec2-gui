@@ -12,6 +12,7 @@ import { FileExplorerToolbar } from "@/components/explorer/FileExplorerToolbar";
 import { FileIconGrid } from "@/components/explorer/FileIconGrid";
 import { FileList } from "@/components/explorer/FileList";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
+import { useExplorerFavorites } from "@/hooks/useExplorerFavorites";
 import { useExplorerLetterFocus } from "@/hooks/useExplorerLetterFocus";
 import { useRemoteFileSystem } from "@/hooks/useRemoteFileSystem";
 import {
@@ -23,7 +24,7 @@ import {
   ListSelectionSurface,
 } from "@/providers/ListSelectionProvider";
 import type { RemoteEntry } from "@/types/filesystem";
-import { splitPathSegments } from "@/utils/file";
+import { getParentPath, splitPathSegments } from "@/utils/file";
 import "./css/file-explorer.css";
 
 export function FileExplorerPage() {
@@ -48,8 +49,10 @@ export function FileExplorerPage() {
   const [createKind, setCreateKind] = useState<CreateEntryKind | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const { displayEntries, isFavorite, isShortcut, toggleFavorite } =
+    useExplorerFavorites(entries, currentPath);
   const { isLetterFocused, handleSelectedKeyChange } = useExplorerLetterFocus({
-    entries,
+    entries: displayEntries,
     selectedPath,
     selectEntry,
     currentPath,
@@ -114,7 +117,27 @@ export function FileExplorerPage() {
   );
 
   const buildMenuItems = useCallback(
-    (targetPath: string | null): ContextMenuItem[] => {
+    (target: RemoteEntry | null): ContextMenuItem[] => {
+      if (target && isShortcut(target)) {
+        return [
+          {
+            id: "open-original-location",
+            label: "원래 위치 열기",
+            disabled: isLoading,
+            onSelect: () => {
+              void openDirectory(getParentPath(target.path));
+            },
+          },
+          {
+            id: "remove-favorite",
+            label: "즐겨찾기 해제",
+            onSelect: () => {
+              toggleFavorite(target);
+            },
+          },
+        ];
+      }
+
       const items: ContextMenuItem[] = [
         {
           id: "create-folder",
@@ -134,7 +157,7 @@ export function FileExplorerPage() {
         },
       ];
 
-      if (targetPath) {
+      if (target) {
         items.push({
           id: "delete",
           label: "삭제",
@@ -142,11 +165,11 @@ export function FileExplorerPage() {
           disabled: isLoading,
           onSelect: () => {
             requestConfirm({
-              targetId: targetPath,
+              targetId: target.path,
               title: "삭제 확인",
               actionName: "삭제",
               confirmButtonLabel: "삭제",
-              onConfirm: () => deleteEntry(targetPath),
+              onConfirm: () => deleteEntry(target.path),
             });
           },
         });
@@ -154,7 +177,15 @@ export function FileExplorerPage() {
 
       return items;
     },
-    [deleteEntry, isLoading, openCreateDialog, requestConfirm],
+    [
+      deleteEntry,
+      isLoading,
+      isShortcut,
+      openCreateDialog,
+      openDirectory,
+      requestConfirm,
+      toggleFavorite,
+    ],
   );
 
   const openExplorerContextMenu = useCallback(
@@ -169,7 +200,7 @@ export function FileExplorerPage() {
       openContextMenu({
         x: event.clientX,
         y: event.clientY,
-        items: buildMenuItems(entry ? entry.path : null),
+        items: buildMenuItems(entry),
       });
     },
     [buildMenuItems, handleSelectedKeyChange, openContextMenu],
@@ -216,18 +247,24 @@ export function FileExplorerPage() {
             <PageViewSwitch
               tableList={
                 <FileList
-                  entries={entries}
+                  entries={displayEntries}
                   isLoading={isLoading}
                   isLetterFocused={isLetterFocused}
+                  isFavorite={isFavorite}
+                  isShortcut={isShortcut}
+                  onToggleFavorite={toggleFavorite}
                   onOpenEntry={handleOpenEntry}
                   onEntryContextMenu={openExplorerContextMenu}
                 />
               }
               gui={
                 <FileIconGrid
-                  entries={entries}
+                  entries={displayEntries}
                   isLoading={isLoading}
                   isLetterFocused={isLetterFocused}
+                  isFavorite={isFavorite}
+                  isShortcut={isShortcut}
+                  onToggleFavorite={toggleFavorite}
                   onOpenEntry={handleOpenEntry}
                   onEntryContextMenu={openExplorerContextMenu}
                 />

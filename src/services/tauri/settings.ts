@@ -2,12 +2,24 @@ import { invoke } from "@tauri-apps/api/core";
 
 export interface AppStoragePaths {
   appData: string;
+  settingsFile: string;
+  favoritesFile: string;
+  wallpapers: string;
   cache: string;
   logs: string;
+  webviewData: string;
 }
+
+export type StorageLocation = keyof AppStoragePaths;
 
 export async function getStoragePaths(): Promise<AppStoragePaths> {
   return invoke<AppStoragePaths>("get_storage_paths");
+}
+
+export async function openStorageLocation(
+  location: StorageLocation,
+): Promise<void> {
+  return invoke("open_storage_location", { location });
 }
 
 export async function clearAppCache(): Promise<void> {

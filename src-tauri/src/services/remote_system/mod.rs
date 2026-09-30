@@ -1,8 +1,6 @@
 use serde::Serialize;
 use ssh2::Session;
 
-use super::remote_disk::detect_remote_os;
-
 mod linux;
 mod macos;
 
@@ -62,9 +60,8 @@ pub struct SystemResources {
 }
 
 /// OS에 맞는 시스템 리소스 스냅샷을 조회한다.
-pub fn get_system_resources(session: &Session) -> Result<SystemResources, String> {
-    let os = detect_remote_os(session);
-    match os.as_str() {
+pub fn get_system_resources(session: &Session, os: &str) -> Result<SystemResources, String> {
+    match os {
         "linux" => linux::get_system_resources(session),
         "macos" => macos::get_system_resources(session),
         _ => Err("시스템 리소스는 Linux·macOS에서만 지원합니다.".to_string()),

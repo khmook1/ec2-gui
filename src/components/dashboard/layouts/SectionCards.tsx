@@ -18,7 +18,6 @@ import {
   StorageSectionIcon,
   SystemResourcesSectionIcon,
 } from "@/components/icons/DashboardSectionIcons";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import type { DashboardLayoutProps } from "./types";
 
 /** 레이아웃에서 재사용하는 섹션 카드 (OS별 조합용) */
@@ -61,7 +60,6 @@ export function SystemResourcesCard({
 
 export function ResourceOverviewCard({
   systemResources,
-  systemUpdatedAt,
   systemLoading,
   systemError,
   filesystems,
@@ -72,7 +70,6 @@ export function ResourceOverviewCard({
 }: Pick<
   DashboardLayoutProps,
   | "systemResources"
-  | "systemUpdatedAt"
   | "systemLoading"
   | "systemError"
   | "filesystems"
@@ -82,22 +79,17 @@ export function ResourceOverviewCard({
   | "os"
 >) {
   const error = [systemError, diskError].filter(Boolean).join(" · ") || null;
-  const { interval, options } = useAutoRefresh();
-  const intervalLabel = options.find((o) => o.value === interval)?.label;
-  const subtitle =
-    interval === "off" ? "수동 새로고침" : `${intervalLabel} 단위`;
 
   return (
     <SectionCard
       title="리소스 개요"
-      subtitle={subtitle}
+      subtitle="10초 샘플 · 최근 30일"
       badge={storageBadge}
       icon={<SystemResourcesSectionIcon />}
       className="dashboard-section--overview"
     >
       <ResourceOverviewSection
         resources={systemResources}
-        updatedAt={systemUpdatedAt}
         filesystems={filesystems}
         os={os}
         loading={systemLoading || diskLoading}

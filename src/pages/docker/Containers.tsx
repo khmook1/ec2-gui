@@ -15,6 +15,7 @@ import { ContainerGrid } from "@/components/docker/atoms/ContainerGrid";
 import { ContainerList } from "@/components/docker/atoms/ContainerList";
 import { RefreshIcon } from "@/components/icons/ToolbarIcons";
 import { useDestructiveConfirm } from "@/hooks/useDestructiveConfirm";
+import { useDockerFavorites } from "@/hooks/useDockerFavorites";
 import { useRemoteDocker } from "@/hooks/useRemoteDocker";
 import {
   useContextMenu,
@@ -42,6 +43,8 @@ export function DockerContainersPage() {
     refresh,
     runAction,
   } = useRemoteDocker();
+  const { sortedContainers, isFavorite, toggleFavorite } =
+    useDockerFavorites(containers);
   const { openContextMenu } = useContextMenu();
   const { requestConfirm, confirmDialog, isConfirming } =
     useDestructiveConfirm();
@@ -319,14 +322,18 @@ export function DockerContainersPage() {
               <PageViewSwitch
                 tableList={
                   <ContainerList
-                    containers={containers}
+                    containers={sortedContainers}
+                    isFavorite={isFavorite}
+                    onToggleFavorite={toggleFavorite}
                     onOpenContainer={openContainerDetails}
                     onContainerContextMenu={openDockerContextMenu}
                   />
                 }
                 gui={
                   <ContainerGrid
-                    containers={containers}
+                    containers={sortedContainers}
+                    isFavorite={isFavorite}
+                    onToggleFavorite={toggleFavorite}
                     onOpenContainer={openContainerDetails}
                     onContainerContextMenu={openDockerContextMenu}
                   />

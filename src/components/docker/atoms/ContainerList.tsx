@@ -1,4 +1,5 @@
 import { useMemo, type MouseEvent } from "react";
+import { FavoriteStarButton } from "@/components/common/FavoriteStarButton";
 import { SearchHighlight } from "@/components/common/SearchHighlight";
 import {
   TableList,
@@ -18,6 +19,8 @@ import "../css/docker-list.css";
 
 interface ContainerListProps {
   containers: DockerContainer[];
+  isFavorite?: (container: DockerContainer) => boolean;
+  onToggleFavorite?: (container: DockerContainer) => void;
   onOpenContainer?: (container: DockerContainer) => void;
   onContainerContextMenu?: (
     event: MouseEvent,
@@ -27,6 +30,8 @@ interface ContainerListProps {
 
 export function ContainerList({
   containers,
+  isFavorite,
+  onToggleFavorite,
   onOpenContainer,
   onContainerContextMenu,
 }: ContainerListProps) {
@@ -38,10 +43,17 @@ export function ContainerList({
     () => [
       {
         name: "CONTAINER ID",
-        width: 120,
+        width: onToggleFavorite ? 150 : 120,
         className: "table-list__mono",
         render: (container) => (
-          <span title={container.id}>
+          <span className="docker-list__id-cell" title={container.id}>
+            {onToggleFavorite ? (
+              <FavoriteStarButton
+                active={isFavorite?.(container) ?? false}
+                name={container.names}
+                onToggle={() => onToggleFavorite(container)}
+              />
+            ) : null}
             <SearchHighlight
               text={shortContainerId(container.id)}
               query={query}
@@ -101,7 +113,7 @@ export function ContainerList({
         ),
       },
     ],
-    [query],
+    [isFavorite, onToggleFavorite, query],
   );
 
   return (

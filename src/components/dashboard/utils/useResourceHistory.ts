@@ -1,35 +1,44 @@
-import { useMemo, useState } from "react";
-import { SYSTEM_RESOURCES_POLL_MS } from "@/hooks/query/dashboard";
-import { useSessionKey } from "@/hooks/query/useSessionKey";
-import { useAutoRefresh } from "@/hooks/useAutoRefresh";
-import { useAutoRefreshStore } from "@/stores/autoRefreshStore";
-import type { SystemResources } from "@/types/system";
+import { useMemo } from "react";
+import {
+  useResourceHistoryCollectorQuery,
+  useResourceHistoryQuery,
+} from "@/hooks/query/dashboard";
+import type { ResourceHistorySample } from "@/types/system";
 
 /** 리소스 추이 차트 샘플 (사용률 %) */
-export interface ResourceSample {
-  ts: number;
-  cpu: number;
-  memory: number;
-  disk: number | null;
-}
+export type ResourceSample = ResourceHistorySample;
 
-/** 화면에 반영된 시점의 스냅샷 */
 export interface ResourceHistoryView {
   samples: ResourceSample[];
-  resources: SystemResources | null;
+  loading: boolean;
+  error: string | null;
 }
 
-/** 차트에 표시할 최대 점 수 (점 1개 = 새로고침 주기 1칸) */
-export const MAX_DISPLAY_POINTS = 60;
+/** 하루치를 그릴 때 차트에 표시할 최대 점 수 */
+export const MAX_DISPLAY_POINTS = 288;
 
-/** 가장 긴 새로고침 주기(10분) × 표시 점 수를 10초 샘플로 담을 수 있는 크기 */
-export const MAX_RESOURCE_SAMPLES = 3600;
+/** 표시 구간 후보 (수집 간격 10초부터) */
+const BUCKET_STEPS_MS = [10_000, 60_000, 5 * 60_000];
+const MAX_BUCKET_MS = 10 * 60_000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function average(values: number[]): number | null {
   if (values.length === 0) {
     return null;
   }
   return Math.round(values.reduce((sum, v) => sum + v, 0) / values.length);
+}
+
+/** 샘플 범위가 `MAX_DISPLAY_POINTS` 이하로 들어가는 가장 작은 구간을 고릅니다. */
+export function pickBucketMs(samples: ResourceSample[]): number {
+  const first = samples[0];
+  const last = samples[samples.length - 1];
+  const span = first && last ? last.ts - first.ts : 0;
+  return (
+    BUCKET_STEPS_MS.find((step) => span / step <= MAX_DISPLAY_POINTS) ??
+    MAX_BUCKET_MS
+  );
 }
 
 /** 수집 샘플을 `bucketMs` 구간별 평균 점으로 묶습니다. */
@@ -50,7 +59,6 @@ export function bucketSamples(
 
   return [...buckets.entries()]
     .sort(([a], [b]) => a - b)
-    .slice(-MAX_DISPLAY_POINTS)
     .map(([ts, bucket]) => ({
       ts,
       cpu: average(bucket.map((s) => s.cpu)) ?? 0,
@@ -61,93 +69,48 @@ export function bucketSamples(
     }));
 }
 
-interface HistoryState {
-  sessionKey: string | null;
-  lastUpdatedAt: number;
-  samples: ResourceSample[];
-  seenTick: number;
-  /** 새로고침 신호를 받았고, 다음 샘플이 들어오면 화면에 반영해야 함 */
-  pending: boolean;
-  view: ResourceHistoryView;
+/** 원격 서버 기준 `YYYY-MM-DD` 하루의 [시작, 끝) 타임스탬프(ms) */
+export function dayRange(
+  date: string,
+  utcOffsetMinutes: number,
+): [number, number] | null {
+  const [y, m, d] = date.split("-").map(Number);
+  if (!y || !m || !d) {
+    return null;
+  }
+  const start = Date.UTC(y, m - 1, d) - utcOffsetMinutes * 60_000;
+  return [start, start + DAY_MS];
 }
 
-function initialState(sessionKey: string | null, tick: number): HistoryState {
-  return {
-    sessionKey,
-    lastUpdatedAt: 0,
-    samples: [],
-    seenTick: tick,
-    pending: false,
-    view: { samples: [], resources: null },
-  };
+function toMessage(error: unknown): string | null {
+  if (error == null) {
+    return null;
+  }
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
- * 시스템 리소스 조회 결과가 갱신될 때마다 샘플을 누적하되,
- * 화면용 스냅샷은 새로고침 주기(자동·수동) 이후 첫 샘플에서만 교체합니다.
- * 차트 점은 새로고침 주기 단위 평균이며, 주기가 "없음"이면 수집 간격(10초) 단위입니다.
- * 주기 단위 점이 2개 모이기 전까지는 수집 샘플을 그대로, 수집 즉시 반영합니다.
+ * 원격 `~/.ec2-gui/resource-history`에 쌓인 선택 날짜의 샘플을 차트용 점으로 묶어 반환합니다.
+ * `live`(오늘)이면 수집 간격마다 새 샘플을 이어 받습니다.
  */
 export function useResourceHistory(
-  resources: SystemResources | null,
-  updatedAt: number,
-  diskPercent: number | null,
+  date: string | null,
+  live: boolean,
 ): ResourceHistoryView {
-  const sessionKey = useSessionKey();
-  const uiTick = useAutoRefreshStore((state) => state.uiTick);
-  const { intervalMs } = useAutoRefresh();
-  const bucketMs = intervalMs ?? SYSTEM_RESOURCES_POLL_MS;
-  const [state, setState] = useState<HistoryState>(() =>
-    initialState(sessionKey, uiTick),
-  );
+  const collector = useResourceHistoryCollectorQuery();
+  const history = useResourceHistoryQuery(date, { live });
+  const raw = history.data;
 
-  let next =
-    state.sessionKey === sessionKey ? state : initialState(sessionKey, uiTick);
-
-  if (uiTick !== next.seenTick) {
-    next = { ...next, seenTick: uiTick, pending: true };
-  }
-
-  if (resources && updatedAt > 0 && updatedAt !== next.lastUpdatedAt) {
-    const samples = [
-      ...next.samples,
-      {
-        ts: updatedAt,
-        cpu: resources.cpu.usePercent,
-        memory: resources.memory.usePercent,
-        disk: diskPercent,
-      },
-    ].slice(-MAX_RESOURCE_SAMPLES);
-    next = { ...next, lastUpdatedAt: updatedAt, samples };
-
-    if (next.pending || !spansTwoBuckets(next.view.samples, bucketMs)) {
-      next = { ...next, pending: false, view: { samples, resources } };
+  const samples = useMemo(() => {
+    if (!raw || raw.length === 0) {
+      return [];
     }
-  }
+    return bucketSamples(raw, pickBucketMs(raw));
+  }, [raw]);
 
-  if (next !== state) {
-    setState(next);
-  }
-
-  const { samples: viewSamples, resources: viewResources } = next.view;
-  const points = useMemo(() => {
-    const bucketed = bucketSamples(viewSamples, bucketMs);
-    return bucketed.length >= 2
-      ? bucketed
-      : viewSamples.slice(-MAX_DISPLAY_POINTS);
-  }, [viewSamples, bucketMs]);
-
-  return { samples: points, resources: viewResources };
-}
-
-/** 주기 단위 점을 2개 이상 만들 수 있을 만큼 샘플이 모였는지 */
-function spansTwoBuckets(samples: ResourceSample[], bucketMs: number): boolean {
-  const first = samples[0];
-  const last = samples[samples.length - 1];
-  if (!first || !last) {
-    return false;
-  }
-  return (
-    Math.floor(first.ts / bucketMs) !== Math.floor(last.ts / bucketMs)
-  );
+  return {
+    samples,
+    loading: history.isLoading,
+    error: toMessage(collector.error) ?? toMessage(history.error),
+  };
 }

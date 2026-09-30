@@ -2,6 +2,8 @@ export { getAppInfo, getLocalLoginDefaults } from "./app";
 export {
   checkRemoteDocker,
   listRemoteDockerContainers,
+  listRemoteDockerFavorites,
+  setRemoteDockerFavorite,
   listRemoteDockerImages,
   listRemoteDockerNetworks,
   listRemoteDockerVolumes,
@@ -22,6 +24,9 @@ export {
   getRemotePermissionOverview,
   ensureRemoteDiskHistory,
   getRemoteDiskHistory,
+  ensureRemoteResourceHistory,
+  listRemoteResourceHistoryDays,
+  getRemoteResourceHistory,
   getRemoteBlockDevices,
   getRemoteDiskExpandStatus,
   expandRemoteDisk,
@@ -44,11 +49,14 @@ export {
   deleteRemotePath,
   readRemoteFile,
   writeRemoteFile,
+  listRemoteFavorites,
+  setRemoteFavorite,
 } from "./filesystem";
 export {
   clearAppCache,
   clearWallpaperImage,
   getStoragePaths,
+  openStorageLocation,
   setWallpaperImage,
 } from "./settings";
 export {

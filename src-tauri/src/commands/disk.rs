@@ -7,6 +7,8 @@ use crate::services::DiskOverview;
 use crate::services::DiskUsageSample;
 use crate::services::LargeDirectory;
 use crate::services::RemotePermissionOverview;
+use crate::services::ResourceHistoryDays;
+use crate::services::ResourceHistorySample;
 use crate::services::RemoteSshSession;
 use crate::services::SshConnectionManager;
 use crate::services::SystemResources;
@@ -58,6 +60,29 @@ pub fn get_remote_disk_history(
     state: State<'_, SshConnectionManager>,
 ) -> Result<Vec<DiskUsageSample>, String> {
     state.get_disk_history()
+}
+
+#[tauri::command(async)]
+pub fn ensure_remote_resource_history(
+    state: State<'_, SshConnectionManager>,
+) -> Result<(), String> {
+    state.ensure_resource_history_collector()
+}
+
+#[tauri::command(async)]
+pub fn list_remote_resource_history_days(
+    state: State<'_, SshConnectionManager>,
+) -> Result<ResourceHistoryDays, String> {
+    state.list_resource_history_days()
+}
+
+#[tauri::command(async)]
+pub fn get_remote_resource_history(
+    state: State<'_, SshConnectionManager>,
+    date: String,
+    since_ts: Option<u64>,
+) -> Result<Vec<ResourceHistorySample>, String> {
+    state.get_resource_history(&date, since_ts)
 }
 
 #[tauri::command(async)]

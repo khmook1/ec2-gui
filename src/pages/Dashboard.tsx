@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { IconButton } from "@/components/common/IconButton";
 import { RefreshIcon, TerminalIcon } from "@/components/icons/ToolbarIcons";
 import { pickPrimaryFilesystem } from "@/components/dashboard/utils/diskUi";
-import { dashboardFeatureSupport } from "@/components/dashboard/utils/featureSupport";
 import {
   DashboardSummary,
   formatAppLabels,
@@ -16,15 +15,13 @@ import {
 import type { DockerOverviewCounts } from "@/components/dashboard/DockerOverviewSection";
 import {
   useBlockDevicesQuery,
-  useDiskHistoryQuery,
-  useDiskOverviewQuery,
   useDockerInstalledQuery,
   useDockerOverviewQuery,
   useLargeDirectoriesQuery,
   useSshSessionsQuery,
-  useSystemResourcesQuery,
 } from "@/hooks/query";
 import { useAppInfo } from "@/hooks/useAppInfo";
+import { useDashboardStages } from "@/hooks/useDashboardStages";
 import { collapseToDaily } from "@/lib/diskUsageHistory";
 import { useAutoRefreshStore } from "@/stores/autoRefreshStore";
 import { useConnectionStore } from "@/stores/connectionStore";
@@ -57,26 +54,22 @@ export function DashboardPage() {
 
   const [expandOpen, setExpandOpen] = useState(false);
 
-  const diskQuery = useDiskOverviewQuery();
-  const diskHistoryQuery = useDiskHistoryQuery();
-  const features = dashboardFeatureSupport(diskQuery.data?.os);
+  const { diskQuery, diskHistoryQuery, systemQuery, features, stage3Ready } =
+    useDashboardStages();
   const blockDevicesQuery = useBlockDevicesQuery({
-    enabled: features.blockDevices,
-  });
-  const systemQuery = useSystemResourcesQuery({
-    enabled: features.systemResources,
+    enabled: features.blockDevices && stage3Ready,
   });
   const largeDirsQuery = useLargeDirectoriesQuery({
-    // du는 SSH mutex를 오래 점유 → 동기화 오버레이가 끝난 뒤 후순위로
+    // du는 SSH mutex를 오래 점유 → 동기화 오버레이와 앞 단계 조회가 끝난 뒤 후순위로
     enabled:
-      features.largeDirectories &&
-      !showServerSyncOverlay &&
-      Boolean(diskQuery.data),
+      features.largeDirectories && !showServerSyncOverlay && stage3Ready,
   });
-  const sshQuery = useSshSessionsQuery();
+  const sshQuery = useSshSessionsQuery({ enabled: stage3Ready });
   const dockerInstalledQuery = useDockerInstalledQuery();
   const showDocker = dockerInstalledQuery.data === true;
-  const dockerQuery = useDockerOverviewQuery({ enabled: showDocker });
+  const dockerQuery = useDockerOverviewQuery({
+    enabled: showDocker && stage3Ready,
+  });
 
   const diskHistory = useMemo(
     () => collapseToDaily(diskHistoryQuery.data ?? []),
@@ -194,7 +187,6 @@ export function DashboardPage() {
     blockDevicesError,
     onExpandDisk: features.blockDevices ? () => setExpandOpen(true) : undefined,
     systemResources,
-    systemUpdatedAt: systemQuery.dataUpdatedAt,
     systemLoading: systemQuery.isPending,
     systemError,
     showDocker,
