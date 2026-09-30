@@ -230,7 +230,7 @@ export function Sidebar() {
               );
             }
 
-            const isActive = activeId === item.id;
+            const isActive = isChildActive(item, activeId);
             return (
               <button
                 key={item.id}

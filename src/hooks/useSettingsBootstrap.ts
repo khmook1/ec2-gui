@@ -6,6 +6,7 @@ export function useSettingsBootstrap() {
   const hydrate = useSettingsStore((state) => state.hydrate);
   const theme = useSettingsStore((state) => state.theme);
   const wallpaper = useSettingsStore((state) => state.wallpaper);
+  const fontSize = useSettingsStore((state) => state.fontSize);
   const hydrated = useSettingsStore((state) => state.hydrated);
 
   useEffect(() => {
@@ -14,9 +15,9 @@ export function useSettingsBootstrap() {
 
   useEffect(() => {
     if (!hydrated) return;
-    applySettingsToDocument({ theme, wallpaper });
+    applySettingsToDocument({ theme, wallpaper, fontSize });
     return watchSystemTheme(theme, () => {
-      applySettingsToDocument({ theme, wallpaper });
+      applySettingsToDocument({ theme, wallpaper, fontSize });
     });
-  }, [hydrated, theme, wallpaper]);
+  }, [hydrated, theme, wallpaper, fontSize]);
 }

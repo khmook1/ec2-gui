@@ -22,7 +22,7 @@ interface ResourceTrendChartProps {
   samples: ResourceSample[];
   /** 지정 시 해당 시리즈만 표시, `null`이면 전체 */
   focused?: ResourceSeriesKey | null;
-  /** X축 범위 고정 (지난 날짜의 00:00~24:00). `null`이면 데이터 범위 */
+  /** X축 범위 고정 (선택한 표시 구간). `null`이면 데이터 범위 */
   domain?: [number, number] | null;
   /** 점이 2개 미만일 때 표시할 문구 */
   emptyLabel?: string;

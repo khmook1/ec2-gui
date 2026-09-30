@@ -13,6 +13,10 @@ import {
 } from "@/hooks/query";
 import { useSettingsStore } from "@/stores/settingsStore";
 import {
+  clampFontSize,
+  FONT_SIZE_DEFAULT,
+  FONT_SIZE_MAX,
+  FONT_SIZE_MIN,
   WALLPAPER_PRESET_OPTIONS,
   type ThemeMode,
   type WallpaperPreset,
@@ -22,6 +26,7 @@ import "./css/settings.css";
 interface SettingsFormValues {
   theme: ThemeMode;
   wallpaperPreset: WallpaperPreset;
+  fontSize: number;
 }
 
 const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
@@ -43,6 +48,8 @@ export function SettingsPage() {
   const clearCustomWallpaper = useSettingsStore(
     (state) => state.clearCustomWallpaper,
   );
+  const fontSize = useSettingsStore((state) => state.fontSize);
+  const setFontSize = useSettingsStore((state) => state.setFontSize);
 
   const clearCacheMutation = useClearAppCacheMutation();
   const setWallpaperMutation = useSetWallpaperImageMutation();
@@ -58,20 +65,36 @@ export function SettingsPage() {
     setWallpaperMutation.isPending ||
     clearWallpaperMutation.isPending;
 
-  const { watch, setValue } = useForm<SettingsFormValues>({
+  const { register, watch, setValue } = useForm<SettingsFormValues>({
     defaultValues: {
       theme,
       wallpaperPreset: wallpaper.preset,
+      fontSize,
     },
   });
 
   const formTheme = watch("theme");
   const formWallpaper = watch("wallpaperPreset");
+  const formFontSize = watch("fontSize");
 
   useEffect(() => {
     setValue("theme", theme);
     setValue("wallpaperPreset", wallpaper.preset);
   }, [setValue, theme, wallpaper.preset]);
+
+  useEffect(() => {
+    setValue("fontSize", fontSize);
+  }, [setValue, fontSize]);
+
+  function applyFontSize(value: number) {
+    if (value < FONT_SIZE_MIN || value > FONT_SIZE_MAX) {
+      return;
+    }
+    const next = clampFontSize(value);
+    if (next !== fontSize) {
+      void setFontSize(next);
+    }
+  }
 
   async function handleThemeChange(next: ThemeMode) {
     setValue("theme", next);
@@ -167,7 +190,7 @@ export function SettingsPage() {
     <section className="explorer settings-page">
       <PageToolbar>
         <p className="page-toolbar__hint">
-          GUI 테마와 배경화면을 설정합니다. 저장소에서 데이터가 저장되는 위치를 확인하고 열 수 있습니다.
+          GUI 테마, 글자 크기, 배경화면을 설정합니다. 저장소에서 데이터가 저장되는 위치를 확인하고 열 수 있습니다.
         </p>
       </PageToolbar>
 
@@ -201,6 +224,61 @@ export function SettingsPage() {
                 );
               })}
             </div>
+          </FormField>
+
+          <FormField label="글자 크기" as="div" width="wide">
+            <div className="settings-font-size">
+              <input
+                type="range"
+                className="settings-font-size__range"
+                min={FONT_SIZE_MIN}
+                max={FONT_SIZE_MAX}
+                step={1}
+                value={Number.isFinite(formFontSize) ? formFontSize : fontSize}
+                aria-label="글자 크기 슬라이더"
+                onChange={(event) => {
+                  const value = event.target.valueAsNumber;
+                  setValue("fontSize", value);
+                  applyFontSize(value);
+                }}
+              />
+              <label className="settings-font-size__input">
+                <input
+                  type="number"
+                  min={FONT_SIZE_MIN}
+                  max={FONT_SIZE_MAX}
+                  step={1}
+                  aria-label="글자 크기(px)"
+                  {...register("fontSize", {
+                    valueAsNumber: true,
+                    onChange: (event) =>
+                      applyFontSize(
+                        (event.target as HTMLInputElement).valueAsNumber,
+                      ),
+                    onBlur: () => {
+                      const next = clampFontSize(formFontSize);
+                      setValue("fontSize", next);
+                      applyFontSize(next);
+                    },
+                  })}
+                />
+                <span>px</span>
+              </label>
+              <Button
+                variant="ghost"
+                disabled={fontSize === FONT_SIZE_DEFAULT}
+                onClick={() => {
+                  setValue("fontSize", FONT_SIZE_DEFAULT);
+                  applyFontSize(FONT_SIZE_DEFAULT);
+                }}
+              >
+                기본값 ({FONT_SIZE_DEFAULT}px)
+              </Button>
+            </div>
+            <p className="settings-font-size__hint">
+              앱 전체 글자와 파일 탐색기·Docker·GitHub 목록 아이템(카드·리스트) 크기가 함께
+              바뀝니다. 기본값 {FONT_SIZE_DEFAULT}px이 파일 탐색기 기준 크기입니다.
+            </p>
           </FormField>
 
           <FormField label="배경화면" as="div" width="wide">

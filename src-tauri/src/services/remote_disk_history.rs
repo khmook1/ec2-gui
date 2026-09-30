@@ -5,6 +5,7 @@ use super::remote_fs::{exec_remote_command, exec_remote_command_checked, write_f
 
 const DIR_NAME: &str = ".ec2-gui";
 const SCRIPT_NAME: &str = "record-disk.sh";
+const SCRIPT_VERSION: u32 = 1;
 const HISTORY_DIR_NAME: &str = "disk-history";
 const DAY_FILE_GLOB: &str = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json";
 const MAX_DAY_FILES: usize = 30;
@@ -187,12 +188,16 @@ PY
 "#
 }
 
+const VERSION_TAG: &str = "# ec2-gui-script-version:";
+
 pub(super) struct CollectorInstall<'a> {
     /// 에러 메시지용 이름 (예: "디스크 히스토리")
     pub label: &'a str,
     pub dir: &'a str,
     pub script: &'a str,
     pub script_body: &'a str,
+    /// 스크립트 내용·출력 형식을 바꾸면 올려야 한다. 원격에 더 높은 버전이 있으면 덮어쓰지 않는다.
+    pub version: u32,
     /// 끝에 `marker`를 포함한 crontab 한 줄
     pub cron_line: &'a str,
     pub marker: &'a str,
@@ -200,32 +205,96 @@ pub(super) struct CollectorInstall<'a> {
     pub post_cmd: &'a str,
 }
 
-/// python3 확인·디렉터리 생성(exec 1) → 스크립트 업로드(sftp) → chmod·crontab·후처리(exec 2).
-/// 같은 crontab 줄이 이미 있으면 crontab은 다시 쓰지 않는다.
+/// 셰뱅 다음 줄에 버전 태그를 넣는다.
+fn with_version_tag(body: &str, version: u32) -> String {
+    match body.split_once('\n') {
+        Some((shebang, rest)) => format!("{shebang}\n{VERSION_TAG} {version}\n{rest}"),
+        None => format!("{VERSION_TAG} {version}\n{body}"),
+    }
+}
+
+/// 원격 스크립트의 버전 태그 값을 `$VAR`에 읽는 셸 조각. 태그가 없으면(구버전·미설치) 0.
+fn read_version_cmd(var: &str, script: &str) -> String {
+    format!(
+        "{var}=$(sed -n 's/^{VERSION_TAG} \\([0-9][0-9]*\\)$/\\1/p' {script} 2>/dev/null | head -n 1); {var}=${{{var}:-0}}"
+    )
+}
+
+/// 같은 계정으로 여러 클라이언트가 동시에 설치할 때 교체·crontab 수정을 직렬화하는 mkdir 잠금.
+/// 10초 넘게 풀리지 않으면 비정상 종료로 남은 잠금으로 보고 가져간다.
+fn install_lock_cmd(dir: &str) -> String {
+    format!(
+        "LOCK={dir}/.install.lock
+i=0
+while ! mkdir \"$LOCK\" 2>/dev/null; do
+  i=$((i + 1))
+  if [ \"$i\" -ge 50 ]; then rm -rf \"$LOCK\"; mkdir \"$LOCK\" 2>/dev/null; break; fi
+  sleep 0.2
+done
+trap 'rmdir \"$LOCK\" 2>/dev/null' EXIT"
+    )
+}
+
+/// python3 확인·디렉터리 생성·원격 버전 확인(exec 1) → 임시 파일로 업로드(sftp)
+/// → 잠금 안에서 버전 재확인·`mv` 교체·crontab·후처리(exec 2).
+/// 원격 스크립트가 더 높은 버전이면 아무것도 바꾸지 않고, 같은 버전이면 업로드를 건너뛴다.
+/// `mv`는 원자적으로 교체되므로 실행 중인 cron이 비어 있는 파일을 읽지 않는다.
 pub(super) fn install_collector(session: &Session, spec: &CollectorInstall) -> Result<(), String> {
     let dir = shell_single_quote(spec.dir);
+    let script = shell_single_quote(spec.script);
+    let version = spec.version;
     let preflight = exec_remote_command(
         session,
         &format!(
             "command -v python3 >/dev/null 2>&1 || {{ echo NO_PYTHON3; exit 0; }}; \
-mkdir -p {dir} && echo OK"
+mkdir -p {dir} || exit 0; {}; echo \"OK $CUR\"",
+            read_version_cmd("CUR", &script)
         ),
     )?;
     if preflight.contains("NO_PYTHON3") {
         return Err(format!("{} 수집에 python3가 필요합니다.", spec.label));
     }
-    if preflight.trim() != "OK" {
-        return Err(format!("{} 디렉터리를 만들지 못했습니다: {}", spec.label, spec.dir));
+    let remote_version = match preflight.trim().strip_prefix("OK ") {
+        Some(value) => value.trim().parse::<u32>().unwrap_or(0),
+        None => {
+            return Err(format!("{} 디렉터리를 만들지 못했습니다: {}", spec.label, spec.dir));
+        }
+    };
+    if remote_version > version {
+        return Ok(());
     }
 
-    write_file(session, spec.script, spec.script_body)?;
+    let tmp = if remote_version < version {
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
+        let tmp = format!("{}.tmp-{nanos}", spec.script);
+        write_file(session, &tmp, &with_version_tag(spec.script_body, version))?;
+        Some(shell_single_quote(&tmp))
+    } else {
+        None
+    };
 
-    let script = shell_single_quote(spec.script);
+    let replace = match &tmp {
+        Some(tmp) => format!(
+            "if [ \"$CUR\" -gt {version} ]; then rm -f {tmp}; exit 0; fi
+chmod +x {tmp} && mv -f {tmp} {script} || {{ rm -f {tmp}; echo '스크립트 교체에 실패했습니다.'; exit 1; }}"
+        ),
+        None => format!(
+            "if [ \"$CUR\" -gt {version} ]; then exit 0; fi
+chmod +x {script} || {{ echo 'chmod 실패'; exit 1; }}"
+        ),
+    };
+    let lock = install_lock_cmd(&dir);
+    let read_current = read_version_cmd("CUR", &script);
     let line = shell_single_quote(spec.cron_line);
     let marker = shell_single_quote(spec.marker);
     let post_cmd = spec.post_cmd;
     let install = format!(
-        "chmod +x {script} || {{ echo 'chmod 실패'; exit 1; }}
+        "{lock}
+{read_current}
+{replace}
 if ! crontab -l 2>/dev/null | grep -qxF {line}; then
   TMP=$(mktemp 2>/dev/null || echo /tmp/ec2-gui-cron.$$)
   crontab -l 2>/dev/null | grep -vF {marker} > \"$TMP\" || true
@@ -254,6 +323,7 @@ pub fn ensure_disk_history_collector(session: &Session, home: &str) -> Result<()
             dir: &dir,
             script: &script,
             script_body: record_disk_script(),
+            version: SCRIPT_VERSION,
             cron_line: &cron_line,
             marker: CRON_MARKER,
             post_cmd: &post_cmd,
@@ -329,5 +399,14 @@ mod tests {
         assert_eq!(samples.len(), MAX_DAY_FILES);
         assert_eq!(samples.first().map(|s| s.use_percent), Some(5));
         assert_eq!(samples.last().map(|s| s.use_percent), Some(34));
+    }
+
+    #[test]
+    fn inserts_version_tag_after_shebang() {
+        let body = with_version_tag("#!/usr/bin/env bash\necho hi\n", 3);
+        assert_eq!(
+            body,
+            "#!/usr/bin/env bash\n# ec2-gui-script-version: 3\necho hi\n"
+        );
     }
 }

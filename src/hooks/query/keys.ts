@@ -1,6 +1,50 @@
+import type { GitHubRepoQuery } from "@/types/github";
+
 export const queryKeys = {
   appInfo: ["appInfo"] as const,
   storagePaths: ["settings", "storagePaths"] as const,
+  githubViewer: ["github", "viewer"] as const,
+  githubRepos: (query: GitHubRepoQuery) =>
+    [
+      "github",
+      "repos",
+      query.affiliation,
+      query.visibility,
+      query.keyword,
+      query.perPage,
+      query.page,
+    ] as const,
+  /** 저장소 단위 무효화용 접두 키 */
+  githubRepoScope: (repo: string) => ["github", "repo", repo] as const,
+  githubRepo: (repo: string) => ["github", "repo", repo, "detail"] as const,
+  githubLanguages: (repo: string) =>
+    ["github", "repo", repo, "languages"] as const,
+  githubReadme: (repo: string, gitRef: string | null) =>
+    ["github", "repo", repo, "readme", gitRef] as const,
+  githubContents: (repo: string, path: string, gitRef: string | null) =>
+    ["github", "repo", repo, "contents", gitRef, path] as const,
+  githubFile: (repo: string, path: string, gitRef: string | null) =>
+    ["github", "repo", repo, "file", gitRef, path] as const,
+  githubBranchesScope: (repo: string) =>
+    ["github", "repo", repo, "branches"] as const,
+  githubBranches: (repo: string, page: number, perPage: number) =>
+    ["github", "repo", repo, "branches", perPage, page] as const,
+  githubIssuesScope: (repo: string) =>
+    ["github", "repo", repo, "issues"] as const,
+  githubIssues: (repo: string, state: string, page: number) =>
+    ["github", "repo", repo, "issues", "list", state, page] as const,
+  githubIssue: (repo: string, number: number) =>
+    ["github", "repo", repo, "issues", "detail", number] as const,
+  githubComments: (repo: string, number: number, page: number) =>
+    ["github", "repo", repo, "comments", number, page] as const,
+  githubCommentsScope: (repo: string, number: number) =>
+    ["github", "repo", repo, "comments", number] as const,
+  githubPullsScope: (repo: string) =>
+    ["github", "repo", repo, "pulls"] as const,
+  githubPulls: (repo: string, state: string, page: number) =>
+    ["github", "repo", repo, "pulls", "list", state, page] as const,
+  githubPull: (repo: string, number: number) =>
+    ["github", "repo", repo, "pulls", "detail", number] as const,
 
   dockerInstalled: (session: string) =>
     ["docker", "installed", session] as const,

@@ -15,12 +15,12 @@
 }
 
 .explorer-list__header {
-  height: 32px;
+  height: var(--item-list-header-height);
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--table-header-to) 55%, transparent);
   backdrop-filter: blur(10px);
   color: var(--text-secondary);
-  font-size: 0.75rem;
+  font-size: var(--item-list-header-font-size);
   font-weight: 600;
 }
 
@@ -31,7 +31,7 @@
 
 .explorer-row {
   width: 100%;
-  min-height: 36px;
+  min-height: var(--item-list-row-height);
   border: none;
   border-bottom: 1px solid rgba(210, 210, 215, 0.6);
   background: transparent;
@@ -50,7 +50,12 @@
 
 .explorer-list__cell {
   min-width: 0;
-  font-size: 0.8125rem;
+  font-size: var(--item-list-font-size);
+}
+
+.explorer-row .explorer-icon {
+  flex-shrink: 0;
+  zoom: var(--ui-scale);
 }
 
 .explorer-list__cell--name {

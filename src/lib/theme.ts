@@ -1,4 +1,9 @@
-import type { AppSettings, ThemeMode, WallpaperPreset } from "@/types/settings";
+import {
+  FONT_SIZE_DEFAULT,
+  type AppSettings,
+  type ThemeMode,
+  type WallpaperPreset,
+} from "@/types/settings";
 
 export function resolveTheme(theme: ThemeMode): "light" | "dark" {
   if (theme === "light" || theme === "dark") {
@@ -41,6 +46,12 @@ export function applySettingsToDocument(settings: AppSettings): void {
   root.style.setProperty(
     "--wallpaper-layer",
     wallpaperCssValue(settings.wallpaper.preset, settings.wallpaper.customDataUrl),
+  );
+
+  root.style.setProperty("--font-size-root", `${settings.fontSize}px`);
+  root.style.setProperty(
+    "--ui-scale",
+    String(settings.fontSize / FONT_SIZE_DEFAULT),
   );
 }
 

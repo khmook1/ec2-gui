@@ -5,6 +5,7 @@ import {
 } from "@/lib/settingsPersistence";
 import { applySettingsToDocument } from "@/lib/theme";
 import {
+  clampFontSize,
   DEFAULT_APP_SETTINGS,
   type AppSettings,
   type ThemeMode,
@@ -18,6 +19,7 @@ interface SettingsState extends AppSettings {
   setWallpaperPreset: (preset: WallpaperPreset) => Promise<void>;
   setCustomWallpaper: (customDataUrl: string) => Promise<void>;
   clearCustomWallpaper: () => Promise<void>;
+  setFontSize: (fontSize: number) => Promise<void>;
 }
 
 async function persistAndApply(settings: AppSettings): Promise<void> {
@@ -25,60 +27,46 @@ async function persistAndApply(settings: AppSettings): Promise<void> {
   await savePersistedSettings(settings);
 }
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
-  ...DEFAULT_APP_SETTINGS,
-  wallpaper: { ...DEFAULT_APP_SETTINGS.wallpaper },
-  hydrated: false,
+export const useSettingsStore = create<SettingsState>((set, get) => {
+  function current(): AppSettings {
+    const { theme, wallpaper, fontSize } = get();
+    return { theme, wallpaper, fontSize };
+  }
 
-  hydrate: async () => {
-    const settings = await loadPersistedSettings();
-    applySettingsToDocument(settings);
-    set({ ...settings, hydrated: true });
-  },
-
-  setTheme: async (theme) => {
-    const next: AppSettings = {
-      theme,
-      wallpaper: get().wallpaper,
-    };
+  async function update(patch: Partial<AppSettings>): Promise<void> {
+    const next: AppSettings = { ...current(), ...patch };
     set(next);
     await persistAndApply(next);
-  },
+  }
 
-  setWallpaperPreset: async (preset) => {
-    const current = get().wallpaper;
-    const next: AppSettings = {
-      theme: get().theme,
-      wallpaper: {
-        preset,
-        customDataUrl: preset === "custom" ? current.customDataUrl : null,
-      },
-    };
-    set(next);
-    await persistAndApply(next);
-  },
+  return {
+    ...DEFAULT_APP_SETTINGS,
+    wallpaper: { ...DEFAULT_APP_SETTINGS.wallpaper },
+    hydrated: false,
 
-  setCustomWallpaper: async (customDataUrl) => {
-    const next: AppSettings = {
-      theme: get().theme,
-      wallpaper: {
-        preset: "custom",
-        customDataUrl,
-      },
-    };
-    set(next);
-    await persistAndApply(next);
-  },
+    hydrate: async () => {
+      const settings = await loadPersistedSettings();
+      applySettingsToDocument(settings);
+      set({ ...settings, hydrated: true });
+    },
 
-  clearCustomWallpaper: async () => {
-    const next: AppSettings = {
-      theme: get().theme,
-      wallpaper: {
-        preset: "none",
-        customDataUrl: null,
-      },
-    };
-    set(next);
-    await persistAndApply(next);
-  },
-}));
+    setTheme: (theme) => update({ theme }),
+
+    setWallpaperPreset: (preset) =>
+      update({
+        wallpaper: {
+          preset,
+          customDataUrl:
+            preset === "custom" ? get().wallpaper.customDataUrl : null,
+        },
+      }),
+
+    setCustomWallpaper: (customDataUrl) =>
+      update({ wallpaper: { preset: "custom", customDataUrl } }),
+
+    clearCustomWallpaper: () =>
+      update({ wallpaper: { preset: "none", customDataUrl: null } }),
+
+    setFontSize: (fontSize) => update({ fontSize: clampFontSize(fontSize) }),
+  };
+});

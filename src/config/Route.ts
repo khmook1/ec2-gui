@@ -8,6 +8,7 @@ import {
   DockerSystemNavIcon,
   DockerVolumesNavIcon,
   FileExplorerNavIcon,
+  GitHubNavIcon,
   SettingsNavIcon,
 } from "@/components/icons/NavIcons";
 
@@ -20,6 +21,8 @@ export const ROUTE_ID = {
   dockerNetworks: "docker-networks",
   dockerVolumes: "docker-volumes",
   dockerSystem: "docker-system",
+  github: "github",
+  githubRepo: "github-repo",
   settings: "settings",
 } as const;
 
@@ -118,6 +121,24 @@ export const ROUTES: readonly AppRoute[] = [
         icon: DockerSystemNavIcon,
         showInSidebar: true,
         hiddenWhen: "docker-unavailable",
+      },
+    ],
+  },
+  {
+    id: ROUTE_ID.github,
+    path: "/github",
+    label: "GitHub",
+    headerTitle: "GitHub · 저장소",
+    icon: GitHubNavIcon,
+    showInSidebar: true,
+    children: [
+      {
+        id: ROUTE_ID.githubRepo,
+        path: "/github/repo",
+        label: "저장소 상세",
+        headerTitle: "GitHub · 저장소 상세",
+        icon: GitHubNavIcon,
+        showInSidebar: false,
       },
     ],
   },

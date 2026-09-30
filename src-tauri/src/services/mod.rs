@@ -1,4 +1,5 @@
 pub mod cache_service;
+pub mod github;
 pub mod local_favorites;
 pub mod remote_disk;
 pub mod remote_disk_history;

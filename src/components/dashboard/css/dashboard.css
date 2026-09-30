@@ -616,9 +616,94 @@
 }
 
 .dashboard-overview__trend-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--text-secondary);
   font-size: 0.875rem;
   font-weight: 560;
+}
+
+.dashboard-overview__trend-range {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 540;
+  font-variant-numeric: tabular-nums;
+  padding: 2px 8px;
+}
+
+.dashboard-overview__trend-body {
+  position: relative;
+  border-radius: 12px;
+  outline: none;
+  cursor: zoom-in;
+}
+
+.dashboard-overview__trend-body:focus-within {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
+  cursor: default;
+}
+
+.dashboard-overview__trend-body .recharts-surface:focus {
+  outline: none;
+}
+
+.dashboard-overview__trend-notice {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 0;
+  padding: 14px 22px;
+  border: 1.5px solid var(--warning);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--warning) 16%, var(--bg));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--warning) 18%, transparent),
+    0 12px 32px rgb(0 0 0 / 28%);
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: dashboard-trend-notice 3s ease forwards;
+}
+
+.dashboard-overview__trend-notice-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  color: var(--warning);
+}
+
+@keyframes dashboard-trend-notice {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.94);
+  }
+  6% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.03);
+  }
+  10%,
+  82% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.98);
+  }
 }
 
 .dashboard-overview__day-select {

@@ -18,43 +18,43 @@
 
 .docker-grid__nginx-badge {
   position: absolute;
-  top: 10px;
-  left: 36px;
+  top: 0.625rem;
+  left: 2.25rem;
 }
 
 .docker-grid__restart-badge {
   position: absolute;
-  top: 10px;
-  left: 36px;
+  top: 0.625rem;
+  left: 2.25rem;
   z-index: 1;
 }
 
 .explorer-icon-grid__item--docker.explorer-icon-grid__item--nginx,
 .explorer-icon-grid__item--docker.explorer-icon-grid__item--restarting {
-  padding-top: 38px;
+  padding-top: 2.375rem;
 }
 
 .explorer-icon-grid__item--nginx .docker-grid__restart-badge {
   left: auto;
-  right: 26px;
+  right: 1.625rem;
 }
 
 .docker-grid__icon {
-  width: 28px;
-  height: 28px;
+  flex-shrink: 0;
+  width: var(--item-icon-size);
+  height: var(--item-icon-size);
   color: var(--accent);
 }
 
 .docker-grid__name {
-  max-width: 100%;
   font-weight: 600;
-  font-size: 0.8125rem;
 }
 
 .docker-grid__meta {
   width: 100%;
+  margin-top: -0.25rem;
   color: var(--text-secondary);
-  font-size: 0.6875rem;
+  font-size: var(--item-meta-size);
   line-height: 1.35;
   word-break: break-word;
   display: -webkit-box;
@@ -74,10 +74,10 @@
 
 .docker-grid__status-dot {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 8px;
-  height: 8px;
+  top: 0.625rem;
+  right: 0.625rem;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 50%;
 }
 

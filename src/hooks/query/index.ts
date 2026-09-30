@@ -62,6 +62,32 @@ export {
   useWriteRemoteFileMutation,
 } from "./filesystem";
 export {
+  useGitHubBranchesQuery,
+  useGitHubCommentsQuery,
+  useGitHubContentsQuery,
+  useGitHubFileQuery,
+  useGitHubIssueQuery,
+  useGitHubIssuesQuery,
+  useGitHubLanguagesQuery,
+  useGitHubPullQuery,
+  useGitHubPullsQuery,
+  useGitHubReadmeQuery,
+  useGitHubRepoQuery,
+  useGitHubReposQuery,
+  useGitHubViewerQuery,
+} from "./github";
+export {
+  useCreateGitHubBranchMutation,
+  useCreateGitHubCommentMutation,
+  useCreateGitHubIssueMutation,
+  useDeleteGitHubBranchMutation,
+  useMergeGitHubPullMutation,
+  useSetGitHubIssueStateMutation,
+  useSetGitHubPullStateMutation,
+  useUpdateGitHubRepoMutation,
+} from "./githubMutations";
+export type { UpdateGitHubRepoInput } from "./githubMutations";
+export {
   useClearAppCacheMutation,
   useClearWallpaperImageMutation,
   useOpenStorageLocationMutation,

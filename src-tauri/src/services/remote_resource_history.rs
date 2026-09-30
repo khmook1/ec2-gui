@@ -6,6 +6,7 @@ use super::remote_fs::exec_remote_command;
 
 const DIR_NAME: &str = ".ec2-gui";
 const SCRIPT_NAME: &str = "record-resources.sh";
+const SCRIPT_VERSION: u32 = 1;
 const HISTORY_DIR_NAME: &str = "resource-history";
 const DAY_FILE_GLOB: &str = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].csv";
 const MAX_DAY_FILES: usize = 30;
@@ -228,6 +229,7 @@ pub fn ensure_resource_history_collector(session: &Session, home: &str) -> Resul
             dir: &dir,
             script: &script,
             script_body: record_resources_script(),
+            version: SCRIPT_VERSION,
             cron_line: &cron_line,
             marker: CRON_MARKER,
             post_cmd: &post_cmd,
@@ -349,6 +351,15 @@ mod tests {
                 ResourceHistorySample { ts: 2000, cpu: 15, memory: 25, disk: Some(35) },
                 ResourceHistorySample { ts: 3000, cpu: 30, memory: 40, disk: Some(50) },
             ]
+        );
+    }
+
+    #[test]
+    fn ignores_extra_columns_from_newer_script() {
+        let samples = parse_samples("1000,10,20,30,512,extra\n");
+        assert_eq!(
+            samples,
+            vec![ResourceHistorySample { ts: 1000, cpu: 10, memory: 20, disk: Some(30) }]
         );
     }
 

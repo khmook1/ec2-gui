@@ -10,6 +10,8 @@ import {
   DockerVolumesPage,
 } from "@/pages/docker";
 import { FileExplorerPage } from "@/pages/FileExplorer";
+import { GitHubPage } from "@/pages/GitHub";
+import { GitHubRepoPage } from "@/pages/GitHubRepo";
 import { SettingsPage } from "@/pages/Settings";
 
 export type RoutePage = ComponentType;
@@ -23,6 +25,8 @@ const ROUTE_PAGES: Partial<Record<RouteId, RoutePage>> = {
   [ROUTE_ID.dockerNetworks]: DockerNetworksPage,
   [ROUTE_ID.dockerVolumes]: DockerVolumesPage,
   [ROUTE_ID.dockerSystem]: DockerSystemPage,
+  [ROUTE_ID.github]: GitHubPage,
+  [ROUTE_ID.githubRepo]: GitHubRepoPage,
   [ROUTE_ID.settings]: SettingsPage,
 };
 

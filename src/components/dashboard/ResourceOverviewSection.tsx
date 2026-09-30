@@ -9,9 +9,13 @@ import {
   type ResourceSeriesKey,
 } from "@/components/dashboard/utils/resourceUi";
 import {
+  MIN_TREND_WINDOW_MS,
+  TREND_WINDOW_STEPS_MS,
   dayRange,
+  formatTrendWindow,
   useResourceHistory,
 } from "@/components/dashboard/utils/useResourceHistory";
+import { useWheelZoom } from "@/components/dashboard/utils/useWheelZoom";
 import {
   CpuIcon,
   DiskIcon,
@@ -19,7 +23,13 @@ import {
   NetworkIcon,
 } from "@/components/icons/ResourceIcons";
 import { useResourceHistoryDaysQuery } from "@/hooks/query/dashboard";
-import { useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import type { DiskFilesystem, RemoteOs } from "@/types/disk";
 import type { SystemResources } from "@/types/system";
 import { formatFileSize } from "@/utils/file";
@@ -31,6 +41,13 @@ interface ResourceOverviewSectionProps {
   os?: RemoteOs | null;
   loading: boolean;
   error: string | null;
+}
+
+const ZOOM_NOTICE_MS = 3000;
+
+interface ZoomNotice {
+  id: number;
+  message: string;
 }
 
 interface ChipData {
@@ -65,11 +82,46 @@ export function ResourceOverviewSection({
     pickedDate && dayOptions.includes(pickedDate) ? pickedDate : (today ?? null);
   const isToday = selectedDate != null && selectedDate === today;
 
-  const history = useResourceHistory(selectedDate, isToday);
-  const chartDomain =
-    selectedDate && daysInfo && !isToday
+  const [windowIndex, setWindowIndex] = useState(0);
+  const windowMs = TREND_WINDOW_STEPS_MS[windowIndex] ?? MIN_TREND_WINDOW_MS;
+  const day =
+    selectedDate && daysInfo
       ? dayRange(selectedDate, daysInfo.utcOffsetMinutes)
       : null;
+  const history = useResourceHistory(selectedDate, isToday, windowMs, day);
+
+  const [trendEl, setTrendEl] = useState<HTMLDivElement | null>(null);
+  const [zoomNotice, setZoomNotice] = useState<ZoomNotice | null>(null);
+  const spanMs = history.spanMs;
+  const stepWindow = useCallback(
+    (direction: 1 | -1) => {
+      const next = Math.min(
+        TREND_WINDOW_STEPS_MS.length - 1,
+        Math.max(0, windowIndex + direction),
+      );
+      if (next === windowIndex) {
+        return;
+      }
+      if (direction === 1 && spanMs != null && spanMs <= windowMs) {
+        setZoomNotice({
+          id: Date.now(),
+          message: `수집된 데이터가 ${formatTrendWindow(windowMs)}보다 짧아 범위를 넓힐 수 없습니다`,
+        });
+        return;
+      }
+      setWindowIndex(next);
+    },
+    [windowIndex, windowMs, spanMs],
+  );
+  useWheelZoom(trendEl, stepWindow);
+
+  useEffect(() => {
+    if (!zoomNotice) {
+      return;
+    }
+    const timer = window.setTimeout(() => setZoomNotice(null), ZOOM_NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [zoomNotice]);
 
   if (loading && !resources && !primary) {
     return (
@@ -204,7 +256,12 @@ export function ResourceOverviewSection({
 
       <div className="dashboard-overview__trend">
         <div className="dashboard-overview__trend-head">
-          <span className="dashboard-overview__trend-title">사용률 추이</span>
+          <span className="dashboard-overview__trend-title">
+            사용률 추이
+            <span className="dashboard-overview__trend-range">
+              최근 {formatTrendWindow(windowMs)}
+            </span>
+          </span>
           <select
             className="dashboard-overview__day-select"
             aria-label="날짜 선택"
@@ -227,18 +284,54 @@ export function ResourceOverviewSection({
             {history.error}
           </p>
         ) : null}
-        <ResourceTrendChart
-          samples={history.samples}
-          focused={focused}
-          domain={chartDomain}
-          emptyLabel={
-            history.loading
-              ? "불러오는 중…"
-              : isToday
-                ? "샘플 수집 중…"
-                : "저장된 샘플이 없습니다"
-          }
-        />
+        <div
+          ref={setTrendEl}
+          className="dashboard-overview__trend-body"
+          tabIndex={0}
+          aria-label={`사용률 추이 최근 ${formatTrendWindow(windowMs)}. 포커스 후 마우스 휠로 범위 조절`}
+          title="클릭 후 마우스 휠로 범위 조절 (30분 ~ 하루)"
+        >
+          <ResourceTrendChart
+            samples={history.samples}
+            focused={focused}
+            domain={history.domain}
+            emptyLabel={
+              history.loading
+                ? "불러오는 중…"
+                : isToday
+                  ? "샘플 수집 중…"
+                  : "저장된 샘플이 없습니다"
+            }
+          />
+          {zoomNotice ? (
+            <p
+              key={zoomNotice.id}
+              className="dashboard-overview__trend-notice"
+              role="status"
+            >
+              <svg
+                className="dashboard-overview__trend-notice-icon"
+                viewBox="0 0 24 24"
+                aria-hidden
+              >
+                <path
+                  d="M12 3 2 21h20L12 3Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M12 10v5M12 18h.01"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              {zoomNotice.message}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       {others.length > 0 ? (

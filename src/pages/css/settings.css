@@ -272,3 +272,43 @@
 .settings-storage-card:hover:not(:disabled) .settings-storage-card__open {
   opacity: 1;
 }
+
+.settings-font-size {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.form-field .settings-font-size__range {
+  flex: 1;
+  min-width: 160px;
+  max-width: 320px;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  accent-color: var(--accent);
+}
+
+.settings-font-size__input {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-field .settings-font-size__input input {
+  width: 72px;
+  padding: 7px 10px;
+  text-align: right;
+}
+
+.form-field .settings-font-size__input span {
+  font-weight: 500;
+}
+
+.settings-font-size__hint {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}

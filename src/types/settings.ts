@@ -17,6 +17,20 @@ export interface WallpaperSettings {
 export interface AppSettings {
   theme: ThemeMode;
   wallpaper: WallpaperSettings;
+  /** 루트 글자 크기(px). 목록 아이템 크기도 이 값에 비례한다 */
+  fontSize: number;
+}
+
+export const FONT_SIZE_MIN = 12;
+export const FONT_SIZE_MAX = 20;
+/** 파일 탐색기 기준 크기 */
+export const FONT_SIZE_DEFAULT = 16;
+
+export function clampFontSize(value: number): number {
+  if (!Number.isFinite(value)) {
+    return FONT_SIZE_DEFAULT;
+  }
+  return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, Math.round(value)));
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -25,6 +39,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     preset: "none",
     customDataUrl: null,
   },
+  fontSize: FONT_SIZE_DEFAULT,
 };
 
 export const WALLPAPER_PRESET_OPTIONS: {

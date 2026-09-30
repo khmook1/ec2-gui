@@ -2,6 +2,7 @@ pub mod app;
 pub mod cache;
 pub mod disk;
 pub mod docker;
+pub mod github;
 pub mod ssh;
 pub mod fs;
 pub mod permissions;

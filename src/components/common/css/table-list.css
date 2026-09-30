@@ -136,12 +136,12 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  height: 34px;
+  height: var(--item-list-header-height);
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--table-header-to) 55%, transparent);
   backdrop-filter: blur(10px);
   color: var(--text-secondary);
-  font-size: 0.6875rem;
+  font-size: var(--item-list-header-font-size);
   font-weight: 650;
   letter-spacing: 0.02em;
   text-transform: none;
@@ -186,10 +186,10 @@
 }
 
 .table-list__td {
-  height: 38px;
+  height: var(--item-list-row-height);
   border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
   color: var(--text);
-  font-size: 0.8125rem;
+  font-size: var(--item-list-font-size);
   background: transparent;
 }
 

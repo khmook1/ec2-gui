@@ -1,5 +1,6 @@
 import { LazyStore } from "@tauri-apps/plugin-store";
 import {
+  clampFontSize,
   DEFAULT_APP_SETTINGS,
   type AppSettings,
   type ThemeMode,
@@ -67,6 +68,10 @@ function normalizeSettings(value: unknown): AppSettings {
       preset,
       customDataUrl: preset === "custom" ? customDataUrl : null,
     },
+    fontSize:
+      typeof record.fontSize === "number"
+        ? clampFontSize(record.fontSize)
+        : DEFAULT_APP_SETTINGS.fontSize,
   };
 }
 
