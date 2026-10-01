@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import { DEFAULT_ROUTE_ID, type RouteId } from "@/config/Route";
-import { resolveNavigableRouteId, syncBrowserPath } from "@/config/routeUtils";
+import {
+  getRouteById,
+  resolveNavigableRouteId,
+  syncBrowserPath,
+} from "@/config/routeUtils";
 
 interface NavState {
   activeId: RouteId;
@@ -51,6 +55,12 @@ export const useNavStore = create<NavState>((set, get) => ({
     }),
   goBack: () => {
     const { history, activeId, forward } = get();
+    const backTo = getRouteById(activeId)?.backTo;
+    if (backTo && history[history.length - 1] !== backTo) {
+      applyActiveId(backTo);
+      set({ activeId: backTo, forward: [activeId, ...forward] });
+      return true;
+    }
     if (history.length === 0) {
       return false;
     }

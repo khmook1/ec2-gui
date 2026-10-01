@@ -809,6 +809,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+.dashboard-trend__tooltip-gap {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
 /* Docker compact list */
 .dashboard-docker {
   display: grid;

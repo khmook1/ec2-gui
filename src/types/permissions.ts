@@ -33,4 +33,5 @@ export interface CreateRemoteUserInput {
   shell?: string | null;
   groups: string[];
   sshPublicKey?: string | null;
+  password?: string | null;
 }

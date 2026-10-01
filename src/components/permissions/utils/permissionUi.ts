@@ -67,6 +67,24 @@ export function toCheckedList(value: unknown): string[] {
   return typeof value === "string" ? [value] : [];
 }
 
+export const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 256;
+
+/** 백엔드 chpasswd 검증과 같은 규칙. 비밀번호는 trim 하지 않는다. */
+export function validateUserPassword(value: string): true | string {
+  if (/[\r\n\0]/.test(value)) {
+    return "비밀번호에 줄바꿈 문자를 넣을 수 없습니다.";
+  }
+  const length = [...value].length;
+  if (length < PASSWORD_MIN_LENGTH) {
+    return `비밀번호는 ${PASSWORD_MIN_LENGTH}자 이상이어야 합니다.`;
+  }
+  if (length > PASSWORD_MAX_LENGTH) {
+    return `비밀번호는 ${PASSWORD_MAX_LENGTH}자 이하여야 합니다.`;
+  }
+  return true;
+}
+
 export function permissionErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) {
     return error.message;

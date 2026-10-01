@@ -11,6 +11,7 @@ import {
   readRemoteFile,
   setRemoteFavorite,
   writeRemoteFile,
+  writeRemoteFileWithSudo,
 } from "@/services/tauri/filesystem";
 import type { RemoteEntry } from "@/types/filesystem";
 
@@ -180,28 +181,51 @@ export function useSetRemoteFavoriteMutation() {
   });
 }
 
-export function useWriteRemoteFileMutation() {
+function useInvalidateWrittenFile() {
   const queryClient = useQueryClient();
   const sessionKey = useSessionKey();
+
+  return async (path: string) => {
+    if (!sessionKey) {
+      return;
+    }
+    const parent = path.includes("/")
+      ? path.slice(0, path.lastIndexOf("/")) || "/"
+      : "/";
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.remoteFile(sessionKey, path),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.remoteDir(sessionKey, parent),
+      }),
+    ]);
+  };
+}
+
+export function useWriteRemoteFileMutation() {
+  const invalidateWrittenFile = useInvalidateWrittenFile();
 
   return useMutation({
     mutationFn: ({ path, content }: { path: string; content: string }) =>
       writeRemoteFile(path, content),
-    onSuccess: async (_data, { path }) => {
-      if (!sessionKey) {
-        return;
-      }
-      const parent = path.includes("/")
-        ? path.slice(0, path.lastIndexOf("/")) || "/"
-        : "/";
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.remoteFile(sessionKey, path),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.remoteDir(sessionKey, parent),
-        }),
-      ]);
-    },
+    onSuccess: (_data, { path }) => invalidateWrittenFile(path),
+  });
+}
+
+export function useWriteRemoteFileWithSudoMutation() {
+  const invalidateWrittenFile = useInvalidateWrittenFile();
+
+  return useMutation({
+    mutationFn: ({
+      path,
+      content,
+      password,
+    }: {
+      path: string;
+      content: string;
+      password?: string;
+    }) => writeRemoteFileWithSudo(path, content, password),
+    onSuccess: (_data, { path }) => invalidateWrittenFile(path),
   });
 }

@@ -48,6 +48,8 @@ export interface AppRoute {
   children?: readonly AppRoute[];
   /** 그룹 전용 항목: 클릭 시 이동할 기본 자식 */
   defaultChildId?: RouteId;
+  /** 뒤로가기 시 히스토리와 관계없이 돌아갈 화면 (예: 상세 → 목록) */
+  backTo?: RouteId;
 }
 
 export const ROUTES: readonly AppRoute[] = [
@@ -139,6 +141,7 @@ export const ROUTES: readonly AppRoute[] = [
         headerTitle: "GitHub · 저장소 상세",
         icon: GitHubNavIcon,
         showInSidebar: false,
+        backTo: ROUTE_ID.github,
       },
     ],
   },

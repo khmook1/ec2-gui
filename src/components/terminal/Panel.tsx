@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, type PointerEvent } from "react";
 import { IconButton } from "@/components/common/IconButton";
+import { TerminalPendingView } from "@/components/terminal/TerminalPendingView";
 import { TerminalSession } from "@/components/terminal/TerminalSession";
 import { TerminalTabs } from "@/components/terminal/TerminalTabs";
-import { openSshShell } from "@/services/tauri";
+import { closeSshShell, openSshShell } from "@/services/tauri";
 import {
   TERMINAL_MIN_HEIGHT,
   clampTerminalHeight,
@@ -10,49 +11,60 @@ import {
 } from "@/stores/terminalStore";
 import "./css/terminal-panel.css";
 
-/** Strict Mode 이중 effect 로 인한 자동 세션 중복 생성 방지 */
-let autoCreateInFlight = false;
+function errorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error) {
+    return error;
+  }
+  return "터미널 세션을 열지 못했습니다.";
+}
 
 export function TerminalPanel() {
   const isOpen = useTerminalStore((state) => state.isOpen);
   const height = useTerminalStore((state) => state.height);
   const sessions = useTerminalStore((state) => state.sessions);
   const activeSessionId = useTerminalStore((state) => state.activeSessionId);
+  const pending = useTerminalStore((state) => state.pending);
   const setOpen = useTerminalStore((state) => state.setOpen);
   const setHeight = useTerminalStore((state) => state.setHeight);
   const addSession = useTerminalStore((state) => state.addSession);
+  const beginOpening = useTerminalStore((state) => state.beginOpening);
+  const failOpening = useTerminalStore((state) => state.failOpening);
+  const dismissPending = useTerminalStore((state) => state.dismissPending);
   const dragStartY = useRef(0);
   const dragStartHeight = useRef(height);
-  const creatingRef = useRef(false);
   const resizingRef = useRef(false);
 
   const createSession = useCallback(async () => {
-    if (creatingRef.current) {
+    // 스토어를 직접 읽어 Strict Mode 이중 effect·연타로 인한 중복 생성을 막는다.
+    if (useTerminalStore.getState().pending?.status === "opening") {
       return;
     }
-    creatingRef.current = true;
+    const token = beginOpening();
     try {
       const cols = Math.max(80, Math.floor(window.innerWidth / 8));
       const rows = Math.max(24, Math.floor(height / 18));
       const shellId = await openSshShell(cols, rows);
+      if (useTerminalStore.getState().pending?.token !== token) {
+        void closeSshShell(shellId).catch(() => {
+          // 서버 전환 등으로 무효화된 요청의 셸 정리
+        });
+        return;
+      }
       addSession(shellId);
     } catch (error) {
-      console.error("터미널 세션을 열지 못했습니다.", error);
-    } finally {
-      creatingRef.current = false;
+      failOpening(token, errorMessage(error));
     }
-  }, [addSession, height]);
+  }, [addSession, beginOpening, failOpening, height]);
 
   useEffect(() => {
-    if (!isOpen || sessions.length > 0 || autoCreateInFlight) {
+    if (!isOpen || sessions.length > 0 || pending) {
       return;
     }
-
-    autoCreateInFlight = true;
-    void createSession().finally(() => {
-      autoCreateInFlight = false;
-    });
-  }, [createSession, isOpen, sessions.length]);
+    void createSession();
+  }, [createSession, isOpen, pending, sessions.length]);
 
   const stopResize = useCallback(() => {
     if (!resizingRef.current) {
@@ -157,10 +169,12 @@ export function TerminalPanel() {
             active={session.id === activeSessionId}
           />
         ))}
-        {sessions.length === 0 ? (
-          <div className="terminal-panel__empty" role="status">
-            터미널을 여는 중…
-          </div>
+        {pending && activeSessionId === null ? (
+          <TerminalPendingView
+            pending={pending}
+            onRetry={() => void createSession()}
+            onDismiss={dismissPending}
+          />
         ) : null}
       </div>
     </section>

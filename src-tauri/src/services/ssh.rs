@@ -70,6 +70,7 @@ pub struct ActiveConnection {
     cached_identity: Mutex<Option<super::remote_fs::RemoteIdentity>>,
     cached_os: Mutex<Option<String>>,
     cached_home: Mutex<Option<String>>,
+    proc_counters: Mutex<Option<super::remote_system::ProcCounters>>,
 }
 
 impl ActiveConnection {
@@ -118,6 +119,9 @@ impl ActiveConnection {
         }
         if let Ok(mut cache) = self.cached_home.lock() {
             *cache = None;
+        }
+        if let Ok(mut counters) = self.proc_counters.lock() {
+            *counters = None;
         }
     }
 }
@@ -245,6 +249,7 @@ impl SshConnectionManager {
                 cached_identity: Mutex::new(None),
                 cached_os: Mutex::new(None),
                 cached_home: Mutex::new(None),
+                proc_counters: Mutex::new(None),
             },
         );
         drop(connections);
@@ -265,6 +270,7 @@ impl SshConnectionManager {
         if let Ok(app_guard) = self.app.lock() {
             if let Some(app) = app_guard.as_ref() {
                 ensure_shell_reader(app.clone());
+                super::local_history::ensure_sampler(app.clone());
             }
         }
 
@@ -886,6 +892,17 @@ impl SshConnectionManager {
         })
     }
 
+    pub fn write_file_with_sudo(
+        &self,
+        path: &str,
+        content: &str,
+        password: Option<&str>,
+    ) -> Result<(), String> {
+        self.with_connection(|connection| {
+            super::remote_fs::write_file_with_sudo(&connection.session, path, content, password)
+        })
+    }
+
     pub fn is_docker_installed(&self) -> Result<bool, String> {
         self.with_connection(|connection| {
             super::remote_docker::is_docker_installed(&connection.session)
@@ -989,9 +1006,19 @@ impl SshConnectionManager {
     }
 
     pub fn get_disk_overview(&self) -> Result<super::remote_disk::DiskOverview, String> {
+        let root = self.history_root().ok();
         self.with_connection(|connection| {
             let os = connection.remote_os();
-            super::remote_disk::get_disk_overview(&connection.session, &os)
+            let overview = super::remote_disk::get_disk_overview(&connection.session, &os)?;
+            if let Some(root) = &root {
+                let _ = super::local_history::ensure_today_disk_sample_from_filesystems(
+                    root,
+                    &connection.server_key(),
+                    &os,
+                    &overview.filesystems,
+                );
+            }
+            Ok(overview)
         })
     }
 
@@ -1007,7 +1034,11 @@ impl SshConnectionManager {
     pub fn get_system_resources(&self) -> Result<super::remote_system::SystemResources, String> {
         self.with_connection(|connection| {
             let os = connection.remote_os();
-            super::remote_system::get_system_resources(&connection.session, &os)
+            let mut counters = connection
+                .proc_counters
+                .lock()
+                .map_err(|_| "리소스 카운터 잠금에 실패했습니다.".to_string())?;
+            super::remote_system::get_system_resources(&connection.session, &os, &mut counters)
         })
     }
 
@@ -1080,6 +1111,12 @@ impl SshConnectionManager {
         })
     }
 
+    pub fn set_remote_user_password(&self, username: &str, password: &str) -> Result<(), String> {
+        self.with_connection(|connection| {
+            super::remote_user_admin::set_user_password(&connection.session, username, password)
+        })
+    }
+
     pub fn delete_remote_user(&self, username: &str, remove_home: bool) -> Result<(), String> {
         self.with_connection(|connection| {
             super::remote_user_admin::delete_user(
@@ -1091,55 +1128,87 @@ impl SshConnectionManager {
         })
     }
 
-    pub fn ensure_disk_history_collector(&self) -> Result<(), String> {
-        self.with_connection(|connection| {
-            let home = connection.home_dir()?;
-            super::remote_disk_history::ensure_disk_history_collector(&connection.session, &home)
-        })
+    /// 사용률 기록은 서버에 아무것도 설치하지 않고, 연결된 동안 앱이 모아 이 컴퓨터에 서버별로 저장한다.
+    fn history_root(&self) -> Result<PathBuf, String> {
+        let app = self
+            .app
+            .lock()
+            .map_err(|_| "앱 핸들 잠금에 실패했습니다.".to_string())?
+            .clone()
+            .ok_or_else(|| "앱이 아직 준비되지 않았습니다.".to_string())?;
+        super::local_history::history_root(&app)
+    }
+
+    fn active_server_key(&self) -> Result<String, String> {
+        let active_id = self
+            .active_id
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?
+            .clone()
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())?;
+        let connections = self
+            .connections
+            .lock()
+            .map_err(|_| "연결 상태 잠금에 실패했습니다.".to_string())?;
+        connections
+            .get(&active_id)
+            .map(ActiveConnection::server_key)
+            .ok_or_else(|| "SSH 호스트에 연결되어 있지 않습니다.".to_string())
+    }
+
+    /// 연결된 모든 세션에 `op(connection_id, server_key, os, session)`을 실행하고 세션 id 목록을 반환한다.
+    /// 다른 명령이 오래 기다리지 않도록 세션마다 잠금을 따로 잡고, 끊긴 세션은 건너뛴다(재접속은 keepalive가 맡는다).
+    pub fn for_each_connection(
+        &self,
+        mut op: impl FnMut(&str, &str, &str, &Session),
+    ) -> Vec<String> {
+        let ids: Vec<String> = match self.connections.lock() {
+            Ok(connections) => connections.keys().cloned().collect(),
+            Err(_) => return Vec::new(),
+        };
+        for id in &ids {
+            let Ok(connections) = self.connections.lock() else {
+                break;
+            };
+            let Some(connection) = connections.get(id) else {
+                continue;
+            };
+            if !session_is_alive(&connection.session) {
+                continue;
+            }
+            let os = connection.remote_os();
+            op(id, &connection.server_key(), &os, &connection.session);
+        }
+        ids
     }
 
     pub fn get_disk_history(
         &self,
-    ) -> Result<Vec<super::remote_disk_history::DiskUsageSample>, String> {
-        self.with_connection(|connection| {
-            let home = connection.home_dir()?;
-            super::remote_disk_history::read_disk_history(&connection.session, &home)
-        })
-    }
-
-    pub fn ensure_resource_history_collector(&self) -> Result<(), String> {
-        self.with_connection(|connection| {
-            let home = connection.home_dir()?;
-            super::remote_resource_history::ensure_resource_history_collector(
-                &connection.session,
-                &home,
-            )
-        })
+    ) -> Result<Vec<super::local_history::DiskUsageSample>, String> {
+        let root = self.history_root()?;
+        let server_key = self.active_server_key()?;
+        Ok(super::local_history::read_disk_history(&root, &server_key))
     }
 
     pub fn list_resource_history_days(
         &self,
-    ) -> Result<super::remote_resource_history::ResourceHistoryDays, String> {
-        self.with_connection(|connection| {
-            let home = connection.home_dir()?;
-            super::remote_resource_history::list_resource_history_days(&connection.session, &home)
-        })
+    ) -> Result<super::local_history::ResourceHistoryDays, String> {
+        let root = self.history_root()?;
+        let server_key = self.active_server_key()?;
+        Ok(super::local_history::list_resource_history_days(
+            &root,
+            &server_key,
+        ))
     }
 
     pub fn get_resource_history(
         &self,
         date: &str,
         since_ts: Option<u64>,
-    ) -> Result<Vec<super::remote_resource_history::ResourceHistorySample>, String> {
-        self.with_connection(|connection| {
-            let home = connection.home_dir()?;
-            super::remote_resource_history::read_resource_history(
-                &connection.session,
-                &home,
-                date,
-                since_ts,
-            )
-        })
+    ) -> Result<Vec<super::local_history::ResourceHistorySample>, String> {
+        let root = self.history_root()?;
+        let server_key = self.active_server_key()?;
+        super::local_history::read_resource_history(&root, &server_key, date, since_ts)
     }
 
     pub fn list_block_devices(

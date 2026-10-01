@@ -7,6 +7,7 @@ import {
   isPriorityGroup,
   sortGroupsByPriority,
   toCheckedList,
+  validateUserPassword,
 } from "@/components/permissions/utils/permissionUi";
 import "./css/permissions.css";
 
@@ -20,6 +21,7 @@ export interface CreateUserFormResult {
   shell: string;
   groups: string[];
   sshPublicKey: string | null;
+  password: string | null;
   grantNopasswd: boolean;
 }
 
@@ -38,6 +40,8 @@ interface CreateUserFormValues {
   shell: string;
   groups: string[];
   sshPublicKey: string;
+  password: string;
+  passwordConfirm: string;
   grantNopasswd: boolean;
 }
 
@@ -46,6 +50,8 @@ const DEFAULT_VALUES: CreateUserFormValues = {
   shell: DEFAULT_SHELL,
   groups: [],
   sshPublicKey: "",
+  password: "",
+  passwordConfirm: "",
   grantNopasswd: false,
 };
 
@@ -101,6 +107,7 @@ export function CreateUserDialog({
             shell: values.shell,
             groups: toCheckedList(values.groups),
             sshPublicKey: key ? key : null,
+            password: values.password ? values.password : null,
             grantNopasswd: values.grantNopasswd,
           });
         })}
@@ -162,6 +169,41 @@ export function CreateUserDialog({
             </div>
           </FormField>
         ) : null}
+
+        <FormField label="비밀번호 (선택)" width="wide">
+          <input
+            type="password"
+            autoComplete="new-password"
+            disabled={isSubmitting}
+            aria-invalid={errors.password ? true : undefined}
+            {...register("password", {
+              validate: (value) => !value || validateUserPassword(value),
+              deps: ["passwordConfirm"],
+            })}
+          />
+        </FormField>
+        <FormField label="비밀번호 확인" width="wide">
+          <input
+            type="password"
+            autoComplete="new-password"
+            disabled={isSubmitting}
+            aria-invalid={errors.passwordConfirm ? true : undefined}
+            {...register("passwordConfirm", {
+              validate: (value, form) =>
+                value === form.password || "비밀번호가 일치하지 않습니다.",
+            })}
+          />
+        </FormField>
+        {errors.password?.message || errors.passwordConfirm?.message ? (
+          <p className="perm-dialog__error" role="alert">
+            {errors.password?.message ?? errors.passwordConfirm?.message}
+          </p>
+        ) : (
+          <p className="perm-dialog__hint">
+            비워 두면 비밀번호 없이(잠긴 상태로) 생성되며, 나중에 목록에서 설정할
+            수 있습니다.
+          </p>
+        )}
 
         <label className="perm-dialog__check perm-dialog__check--standalone">
           <input

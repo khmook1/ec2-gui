@@ -6,7 +6,7 @@ mod macos;
 use ssh2::Session;
 
 pub use block_devices::{BlockDevice, DiskExpandResult, DiskExpandStatus};
-pub use common::{DiskOverview, LargeDirectory};
+pub use common::{DiskFilesystem, DiskOverview, LargeDirectory};
 
 use super::remote_fs::exec_remote_command;
 

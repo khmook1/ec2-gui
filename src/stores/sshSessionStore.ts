@@ -7,6 +7,7 @@ export type SshSessionTerminalSnapshot = TerminalSnapshot;
 export interface SshAppSession {
   id: string;
   title: string;
+  memo: string | null;
   connection: SshConnectionInfo;
   terminal: SshSessionTerminalSnapshot;
 }
@@ -61,6 +62,7 @@ export const useSshSessionStore = create<SshSessionState>((set, get) => ({
   upsertConnectedSession: (id, connection, memo) =>
     set((state) => {
       const title = sessionTitle(connection, memo);
+      const trimmedMemo = memo?.trim() || null;
       const existing = state.sessions.find((session) => session.id === id);
       if (existing) {
         return {
@@ -70,6 +72,7 @@ export const useSshSessionStore = create<SshSessionState>((set, get) => ({
                   ...session,
                   connection,
                   title,
+                  memo: trimmedMemo,
                 }
               : session,
           ),
@@ -81,6 +84,7 @@ export const useSshSessionStore = create<SshSessionState>((set, get) => ({
       const session: SshAppSession = {
         id,
         title,
+        memo: trimmedMemo,
         connection,
         terminal: defaultTerminalSnapshot(),
       };

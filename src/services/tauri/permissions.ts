@@ -39,6 +39,13 @@ export async function createRemoteUser(
   return invoke("create_remote_user", { input });
 }
 
+export async function setRemoteUserPassword(
+  username: string,
+  password: string,
+): Promise<void> {
+  return invoke("set_remote_user_password", { username, password });
+}
+
 export async function deleteRemoteUser(
   username: string,
   removeHome: boolean,

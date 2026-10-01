@@ -1,0 +1,89 @@
+.dialog-find-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--search-bar-bg);
+}
+
+.dialog-find-bar__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dialog-find-bar__input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.8125rem;
+  outline: none;
+}
+
+.dialog-find-bar__input::placeholder {
+  color: var(--text-secondary);
+}
+
+.dialog-find-bar__input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.dialog-find-bar__stats {
+  flex-shrink: 0;
+  min-width: 56px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 560;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.dialog-find-bar__stats--empty {
+  color: var(--danger);
+}
+
+.dialog-find-bar__button {
+  flex-shrink: 0;
+  min-width: 30px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.dialog-find-bar__button:hover:not(:disabled) {
+  background: var(--toolbar-muted);
+  color: var(--text);
+}
+
+.dialog-find-bar__button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+::highlight(dialog-find-match) {
+  background-color: color-mix(in srgb, #facc15 45%, transparent);
+  color: inherit;
+}
+
+::highlight(dialog-find-current) {
+  background-color: #f97316;
+  color: #fff;
+}

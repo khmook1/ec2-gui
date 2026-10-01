@@ -74,3 +74,13 @@ pub fn write_remote_file(
 ) -> Result<(), String> {
     state.write_file(&path, &content)
 }
+
+#[tauri::command(async)]
+pub fn write_remote_file_sudo(
+    path: String,
+    content: String,
+    password: Option<String>,
+    state: State<'_, SshConnectionManager>,
+) -> Result<(), String> {
+    state.write_file_with_sudo(&path, &content, password.as_deref())
+}

@@ -1,4 +1,4 @@
-/** 디스크 사용률 샘플 (원격 disk-history/YYYY-MM-DD.json / UI 일 버킷) */
+/** 디스크 사용률 샘플 (앱 데이터 server-history/<서버>/disk/YYYY-MM-DD.json / UI 일 버킷) */
 export interface DiskUsageSample {
   /** ms epoch (해당 날짜 00:00) */
   ts: number;

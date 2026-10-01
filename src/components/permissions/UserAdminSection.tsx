@@ -6,6 +6,7 @@ import {
   type CreateUserFormResult,
 } from "@/components/permissions/CreateUserDialog";
 import { DeleteUserDialog } from "@/components/permissions/DeleteUserDialog";
+import { SetPasswordDialog } from "@/components/permissions/SetPasswordDialog";
 import { UserGroupsDialog } from "@/components/permissions/UserGroupsDialog";
 import { permissionErrorMessage } from "@/components/permissions/utils/permissionUi";
 import {
@@ -14,6 +15,7 @@ import {
   useRemoteGroupsQuery,
   useRemoteUsersQuery,
   useSetRemoteUserPasswordlessSudoMutation,
+  useSetRemoteUserPasswordMutation,
   useUpdateRemoteUserGroupsMutation,
 } from "@/hooks/query";
 import { useToast } from "@/providers/ToastProvider";
@@ -32,6 +34,7 @@ export function UserAdminSection({ onNestedDialogChange }: UserAdminSectionProps
   const setNopasswd = useSetRemoteUserPasswordlessSudoMutation();
   const createUser = useCreateRemoteUserMutation();
   const deleteUser = useDeleteRemoteUserMutation();
+  const setPassword = useSetRemoteUserPasswordMutation();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -39,9 +42,14 @@ export function UserAdminSection({ onNestedDialogChange }: UserAdminSectionProps
   const [groupsError, setGroupsError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<RemoteUser | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [passwordTarget, setPasswordTarget] = useState<RemoteUser | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const nestedDialogOpen =
-    createOpen || groupsTarget != null || deleteTarget != null;
+    createOpen ||
+    groupsTarget != null ||
+    deleteTarget != null ||
+    passwordTarget != null;
 
   useEffect(() => {
     onNestedDialogChange?.(nestedDialogOpen);
@@ -57,7 +65,8 @@ export function UserAdminSection({ onNestedDialogChange }: UserAdminSectionProps
     updateGroups.isPending ||
     setNopasswd.isPending ||
     createUser.isPending ||
-    deleteUser.isPending;
+    deleteUser.isPending ||
+    setPassword.isPending;
 
   const usersError = usersQuery.isError
     ? permissionErrorMessage(usersQuery.error, "사용자 목록을 불러오지 못했습니다.")
@@ -71,6 +80,7 @@ export function UserAdminSection({ onNestedDialogChange }: UserAdminSectionProps
         shell: values.shell,
         groups: values.groups,
         sshPublicKey: values.sshPublicKey,
+        password: values.password,
       });
     } catch (error) {
       setCreateError(
@@ -123,6 +133,25 @@ export function UserAdminSection({ onNestedDialogChange }: UserAdminSectionProps
       );
     } catch (error) {
       toast.error(permissionErrorMessage(error, "sudo 권한을 변경하지 못했습니다."));
+    }
+  }
+
+  async function handleSetPassword({ password }: { password: string }) {
+    if (!passwordTarget) {
+      return;
+    }
+    setPasswordError(null);
+    try {
+      await setPassword.mutateAsync({
+        username: passwordTarget.username,
+        password,
+      });
+      toast.success(`${passwordTarget.username}의 비밀번호를 설정했습니다.`);
+      setPasswordTarget(null);
+    } catch (error) {
+      setPasswordError(
+        permissionErrorMessage(error, "비밀번호를 설정하지 못했습니다."),
+      );
     }
   }
 
@@ -194,6 +223,10 @@ export function UserAdminSection({ onNestedDialogChange }: UserAdminSectionProps
           onToggleNopasswd={(user, enabled) => {
             void handleToggleNopasswd(user, enabled);
           }}
+          onSetPassword={(user) => {
+            setPasswordError(null);
+            setPasswordTarget(user);
+          }}
           onDelete={(user) => {
             setDeleteError(null);
             setDeleteTarget(user);
@@ -217,6 +250,13 @@ export function UserAdminSection({ onNestedDialogChange }: UserAdminSectionProps
         errorMessage={groupsError}
         onClose={() => setGroupsTarget(null)}
         onSubmit={handleUpdateGroups}
+      />
+      <SetPasswordDialog
+        user={passwordTarget}
+        isSubmitting={setPassword.isPending}
+        errorMessage={passwordError}
+        onClose={() => setPasswordTarget(null)}
+        onSubmit={handleSetPassword}
       />
       <DeleteUserDialog
         user={deleteTarget}

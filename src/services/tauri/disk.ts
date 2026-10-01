@@ -35,16 +35,8 @@ export async function getRemotePermissionOverview(): Promise<RemotePermissionOve
   return invoke<RemotePermissionOverview>("get_remote_permission_overview");
 }
 
-export async function ensureRemoteDiskHistory(): Promise<void> {
-  return invoke("ensure_remote_disk_history");
-}
-
 export async function getRemoteDiskHistory(): Promise<DiskUsageSample[]> {
   return invoke<DiskUsageSample[]>("get_remote_disk_history");
-}
-
-export async function ensureRemoteResourceHistory(): Promise<void> {
-  return invoke("ensure_remote_resource_history");
 }
 
 export async function listRemoteResourceHistoryDays(): Promise<ResourceHistoryDays> {

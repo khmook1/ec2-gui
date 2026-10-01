@@ -1148,3 +1148,442 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------- Actions 탭 ---------- */
+.github-actions {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+.github-actions__side {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  padding: 14px 10px 14px 18px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.github-actions__side-title {
+  margin: 0 0 2px 8px;
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.github-actions__main {
+  min-width: 0;
+}
+
+.github-actions__heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.9375rem;
+}
+
+.github-actions__bar button svg {
+  width: 15px;
+  height: 15px;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.github-workflows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.github-workflows__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.github-workflows__item:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.github-workflows__item.is-active {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.github-workflows__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-workflows__tag {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+}
+
+/* 실행 상태 아이콘 */
+.github-run-status {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.github-run-status__icon {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.github-run-status--success {
+  color: #1f883d;
+}
+
+.github-run-status--failure {
+  color: #cf222e;
+}
+
+.github-run-status--neutral {
+  color: #6e7781;
+}
+
+.github-run-status--warning {
+  color: #bf8700;
+}
+
+.github-run-status--success .github-run-status__icon::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 4.5px;
+  width: 3px;
+  height: 6px;
+  border: solid #fff;
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.github-run-status--failure .github-run-status__icon::before,
+.github-run-status--failure .github-run-status__icon::after {
+  content: "";
+  position: absolute;
+  top: 6.25px;
+  left: 3.5px;
+  width: 7px;
+  height: 1.5px;
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.github-run-status--failure .github-run-status__icon::after {
+  transform: rotate(-45deg);
+}
+
+.github-run-status--neutral .github-run-status__icon::after {
+  content: "";
+  position: absolute;
+  top: 6.25px;
+  left: 3.5px;
+  width: 7px;
+  height: 1.5px;
+  background: #fff;
+}
+
+.github-run-status--warning .github-run-status__icon {
+  background: none;
+  border: 2px solid currentColor;
+}
+
+.github-run-status--active {
+  color: #bf8700;
+}
+
+.github-run-status--active .github-run-status__icon {
+  background: none;
+  border: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-top-color: currentColor;
+  animation: github-run-spin 0.9s linear infinite;
+}
+
+@keyframes github-run-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.github-run-row .github-run-status {
+  margin-top: 2px;
+}
+
+.github-run-row__time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  gap: 2px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* 실행 상세 */
+.github-run-actions {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.github-run-actions__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  text-decoration: none;
+}
+
+.github-run-actions__link:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.github-run-actions__link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.github-jobs {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.github-jobs__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.github-jobs__list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  list-style: none;
+  overflow: hidden;
+}
+
+.github-job + .github-job {
+  border-top: 1px solid var(--border);
+}
+
+.github-job__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 6px;
+}
+
+.github-job__toggle {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.github-job__toggle:hover {
+  background: var(--row-hover);
+}
+
+.github-job__toggle > svg {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.github-job__toggle.is-open > svg {
+  transform: rotate(90deg);
+}
+
+.github-job__name,
+.github-job__step-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-job__name {
+  font-weight: 600;
+}
+
+.github-job__duration {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.github-job__log-btn {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--toolbar-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.github-job__log-btn:hover:not(:disabled),
+.github-job__log-btn.is-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.github-job__log-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.github-job__link {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 4px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+}
+
+.github-job__link:hover {
+  background: var(--row-hover);
+  color: var(--text);
+}
+
+.github-job__link svg {
+  width: 14px;
+  height: 14px;
+}
+
+.github-job__steps {
+  margin: 0;
+  padding: 0 12px 10px 34px;
+  list-style: none;
+}
+
+.github-job__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 6px;
+  color: var(--text);
+  font-size: 0.8125rem;
+}
+
+.github-job__step .github-run-status__icon {
+  width: 12px;
+  height: 12px;
+}
+
+.github-job__empty {
+  margin: 0;
+  padding: 0 16px 12px 40px;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+}
+
+.github-job-log {
+  max-height: 480px;
+  margin: 0 12px 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow: auto;
+}
+
+.github-job .loading-indicator,
+.github-job .explorer-error {
+  margin: 0 16px 12px;
+}
+
+/* 워크플로 실행 폼 */
+.github-form__group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.github-form__hint {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.github-form__group .github-form__error {
+  margin: 0;
+}
+
+.github-form__note {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #bf8700 12%, transparent);
+  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}

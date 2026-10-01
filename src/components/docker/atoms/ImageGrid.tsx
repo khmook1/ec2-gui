@@ -56,44 +56,44 @@ export function ImageGrid({
         const key = imageKey(image);
         const selected = selectedKey === key;
         return (
-          <button
-            key={key}
-            type="button"
-            role="listitem"
-            className={[
-              "explorer-icon-grid__item",
-              "explorer-icon-grid__item--docker",
-              selected ? "explorer-icon-grid__item--selected" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            title={`${image.repository}:${image.tag}\n${image.id}\n${image.size}`}
-            aria-pressed={selected}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              select(key);
-            }}
-            onDoubleClick={(event) => {
-              event.stopPropagation();
-              onOpenImage?.(image);
-            }}
-            onContextMenu={(event) => onImageContextMenu?.(event, image)}
-          >
-            <DockerImagesNavIcon className="docker-grid__icon" />
-            <span className="explorer-icon-grid__name docker-grid__name">
-              <SearchHighlight text={image.repository} query={query} />
-            </span>
-            <span className="docker-grid__meta">
-              <SearchHighlight text={image.tag} query={query} />
-            </span>
-            <span className="docker-grid__meta docker-grid__meta--status">
-              <SearchHighlight
-                text={`${shortDockerId(image.id)} · ${image.size || "—"}`}
-                query={query}
-              />
-            </span>
-          </button>
+          <div key={key} role="listitem" className="docker-grid__cell">
+            <button
+              type="button"
+              className={[
+                "explorer-icon-grid__item",
+                "explorer-icon-grid__item--docker",
+                selected ? "explorer-icon-grid__item--selected" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              title={`${image.repository}:${image.tag}\n${image.id}\n${image.size}`}
+              aria-pressed={selected}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                select(key);
+              }}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                onOpenImage?.(image);
+              }}
+              onContextMenu={(event) => onImageContextMenu?.(event, image)}
+            >
+              <DockerImagesNavIcon className="docker-grid__icon" />
+              <span className="explorer-icon-grid__name docker-grid__name">
+                <SearchHighlight text={image.repository} query={query} />
+              </span>
+              <span className="docker-grid__meta">
+                <SearchHighlight text={image.tag} query={query} />
+              </span>
+              <span className="docker-grid__meta docker-grid__meta--status">
+                <SearchHighlight
+                  text={`${shortDockerId(image.id)} · ${image.size || "—"}`}
+                  query={query}
+                />
+              </span>
+            </button>
+          </div>
         );
       })}
     </div>

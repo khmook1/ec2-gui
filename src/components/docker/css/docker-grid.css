@@ -1,14 +1,3 @@
-.docker-grid__cell {
-  position: relative;
-  display: flex;
-  min-width: 0;
-}
-
-.docker-grid__cell > .explorer-icon-grid__item {
-  flex: 1;
-  min-width: 0;
-}
-
 .docker-grid__favorite {
   position: absolute;
   top: 6px;
@@ -46,15 +35,15 @@
   color: var(--accent);
 }
 
-.docker-grid__name {
+.explorer-icon-grid__name.docker-grid__name {
+  font-size: var(--item-docker-name-size);
   font-weight: 600;
 }
 
 .docker-grid__meta {
   width: 100%;
-  margin-top: -0.25rem;
   color: var(--text-secondary);
-  font-size: var(--item-meta-size);
+  font-size: var(--item-docker-meta-size);
   line-height: 1.35;
   word-break: break-word;
   display: -webkit-box;

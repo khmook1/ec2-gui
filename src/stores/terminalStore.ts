@@ -8,6 +8,14 @@ export interface TerminalSessionMeta {
   key?: string;
 }
 
+/** 새 셸을 여는 중이거나 열기에 실패한 임시 탭 */
+export interface TerminalPending {
+  /** 열기 요청 식별자. 서버 전환 등으로 무효화된 요청의 결과를 버리는 데 쓴다. */
+  token: number;
+  status: "opening" | "error";
+  message?: string;
+}
+
 export interface TerminalSnapshot {
   isOpen: boolean;
   height: number;
@@ -22,6 +30,7 @@ interface TerminalState {
   sessions: TerminalSessionMeta[];
   activeSessionId: string | null;
   nextTabNumber: number;
+  pending: TerminalPending | null;
   setOpen: (isOpen: boolean) => void;
   toggle: () => void;
   setHeight: (height: number) => void;
@@ -29,6 +38,11 @@ interface TerminalState {
   removeSession: (id: string) => void;
   replaceSessionId: (oldId: string, newId: string) => void;
   setActiveSession: (id: string) => void;
+  /** 임시 탭을 띄우고 활성화한다. 반환한 token 으로 결과를 반영한다. */
+  beginOpening: () => number;
+  failOpening: (token: number, message: string) => void;
+  focusPending: () => void;
+  dismissPending: () => void;
   getSnapshot: () => TerminalSnapshot;
   hydrate: (snapshot: TerminalSnapshot) => void;
   reset: () => void;
@@ -57,7 +71,10 @@ const initialState = {
   sessions: [] as TerminalSessionMeta[],
   activeSessionId: null as string | null,
   nextTabNumber: 1,
+  pending: null as TerminalPending | null,
 };
+
+let nextPendingToken = 1;
 
 export const useTerminalStore = create<TerminalState>((set, get) => ({
   ...initialState,
@@ -77,6 +94,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         activeSessionId: id,
         nextTabNumber: tabNumber + 1,
         isOpen: true,
+        pending: null,
       };
     }),
   removeSession: (id) =>
@@ -89,7 +107,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       return {
         sessions,
         activeSessionId,
-        isOpen: sessions.length > 0 ? state.isOpen : false,
+        isOpen: sessions.length > 0 || state.pending ? state.isOpen : false,
       };
     }),
   replaceSessionId: (oldId, newId) =>
@@ -103,6 +121,31 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
         state.activeSessionId === oldId ? newId : state.activeSessionId,
     })),
   setActiveSession: (id) => set({ activeSessionId: id }),
+  beginOpening: () => {
+    const token = nextPendingToken++;
+    set({
+      pending: { token, status: "opening" },
+      activeSessionId: null,
+      isOpen: true,
+    });
+    return token;
+  },
+  failOpening: (token, message) =>
+    set((state) =>
+      state.pending?.token === token
+        ? { pending: { token, status: "error", message } }
+        : {},
+    ),
+  focusPending: () => set({ activeSessionId: null }),
+  dismissPending: () =>
+    set((state) => ({
+      pending: null,
+      activeSessionId:
+        state.activeSessionId ??
+        state.sessions[state.sessions.length - 1]?.id ??
+        null,
+      isOpen: state.sessions.length > 0 ? state.isOpen : false,
+    })),
   getSnapshot: () => {
     const state = get();
     return {
@@ -120,6 +163,7 @@ export const useTerminalStore = create<TerminalState>((set, get) => ({
       sessions: snapshot.sessions,
       activeSessionId: snapshot.activeSessionId,
       nextTabNumber: snapshot.nextTabNumber,
+      pending: null,
     }),
   reset: () => set({ ...initialState }),
 }));

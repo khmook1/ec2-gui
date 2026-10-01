@@ -48,3 +48,18 @@ export async function writeRemoteFile(
 ): Promise<void> {
   return invoke("write_remote_file", { path, content });
 }
+
+/** sudo 비밀번호가 필요할 때 `writeRemoteFileWithSudo`가 던지는 오류 문자열 */
+export const SUDO_PASSWORD_REQUIRED = "SUDO_PASSWORD_REQUIRED";
+
+export async function writeRemoteFileWithSudo(
+  path: string,
+  content: string,
+  password?: string,
+): Promise<void> {
+  return invoke("write_remote_file_sudo", {
+    path,
+    content,
+    password: password ?? null,
+  });
+}

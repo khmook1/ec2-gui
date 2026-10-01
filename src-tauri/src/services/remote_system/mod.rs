@@ -3,6 +3,10 @@ use ssh2::Session;
 
 mod linux;
 mod macos;
+mod proc;
+
+pub use linux::ProcCounters;
+pub use proc::ProcSnapshot;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -59,10 +63,14 @@ pub struct SystemResources {
     pub host: Option<HostInfo>,
 }
 
-/// OS에 맞는 시스템 리소스 스냅샷을 조회한다.
-pub fn get_system_resources(session: &Session, os: &str) -> Result<SystemResources, String> {
+/// OS에 맞는 시스템 리소스 스냅샷을 조회한다. `counters`는 Linux에서 직전 조회 카운터로 쓴다.
+pub fn get_system_resources(
+    session: &Session,
+    os: &str,
+    counters: &mut Option<ProcCounters>,
+) -> Result<SystemResources, String> {
     match os {
-        "linux" => linux::get_system_resources(session),
+        "linux" => linux::get_system_resources(session, counters),
         "macos" => macos::get_system_resources(session),
         _ => Err("시스템 리소스는 Linux·macOS에서만 지원합니다.".to_string()),
     }

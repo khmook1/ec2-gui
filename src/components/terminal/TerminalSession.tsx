@@ -78,6 +78,17 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
   const [reconnecting, setReconnecting] = useState(false);
   const [reconnectError, setReconnectError] = useState<string | null>(null);
 
+  /** 커맨드가 백그라운드 스레드에서 병렬 실행되므로 입력 순서가 섞이지 않게 한 번에 하나만 전송한다. */
+  const writeBufferRef = useRef("");
+  const writingRef = useRef(false);
+  const fitFrameRef = useRef<number | null>(null);
+  const resizingRef = useRef(false);
+  const lastSentSizeRef = useRef<{
+    shellId: string;
+    cols: number;
+    rows: number;
+  } | null>(null);
+
   useEffect(() => {
     searchOpenRef.current = searchOpen;
   }, [searchOpen]);
@@ -95,6 +106,7 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
   }, []);
 
   const markDisconnected = useCallback(() => {
+    writeBufferRef.current = "";
     if (disconnectedRef.current) {
       return;
     }
@@ -105,6 +117,88 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
     );
   }, []);
 
+  const flushWrites = useCallback(async () => {
+    if (writingRef.current) {
+      return;
+    }
+    writingRef.current = true;
+    try {
+      while (writeBufferRef.current && !disconnectedRef.current) {
+        const data = writeBufferRef.current;
+        writeBufferRef.current = "";
+        try {
+          await writeSshShell(shellIdRef.current, data);
+        } catch {
+          markDisconnected();
+        }
+      }
+    } finally {
+      writingRef.current = false;
+    }
+  }, [markDisconnected]);
+
+  const enqueueWrite = useCallback(
+    (data: string) => {
+      writeBufferRef.current += data;
+      void flushWrites();
+    },
+    [flushWrites],
+  );
+
+  /** 진행 중인 요청이 끝나면 그 사이 바뀐 최신 크기만 이어서 보낸다. */
+  const syncRemoteSize = useCallback(async () => {
+    if (resizingRef.current) {
+      return;
+    }
+    resizingRef.current = true;
+    try {
+      for (;;) {
+        const term = termRef.current;
+        if (!term || disconnectedRef.current) {
+          return;
+        }
+        const target = {
+          shellId: shellIdRef.current,
+          cols: term.cols,
+          rows: term.rows,
+        };
+        const last = lastSentSizeRef.current;
+        if (
+          last &&
+          last.shellId === target.shellId &&
+          last.cols === target.cols &&
+          last.rows === target.rows
+        ) {
+          return;
+        }
+        lastSentSizeRef.current = target;
+        try {
+          await resizeSshShell(target.shellId, target.cols, target.rows);
+        } catch {
+          // 끊긴 셸은 입력/종료 이벤트로 감지
+        }
+      }
+    } finally {
+      resizingRef.current = false;
+    }
+  }, []);
+
+  const scheduleFit = useCallback(() => {
+    if (fitFrameRef.current !== null) {
+      return;
+    }
+    fitFrameRef.current = requestAnimationFrame(() => {
+      fitFrameRef.current = null;
+      try {
+        fitRef.current?.fit();
+      } catch {
+        // 숨김 상태·패널 애니메이션 중에는 fit 실패를 무시한다.
+        return;
+      }
+      void syncRemoteSize();
+    });
+  }, [syncRemoteSize]);
+
   const reconnect = useCallback(async () => {
     const term = termRef.current;
     if (!term || reconnectingRef.current) {
@@ -113,12 +207,15 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
     const previousId = shellIdRef.current;
     reconnectingRef.current = true;
     pendingOutputRef.current.clear();
+    writeBufferRef.current = "";
     setReconnecting(true);
     setReconnectError(null);
 
     try {
-      const nextId = await openSshShell(term.cols, term.rows);
+      const { cols, rows } = term;
+      const nextId = await openSshShell(cols, rows);
       shellIdRef.current = nextId;
+      lastSentSizeRef.current = { shellId: nextId, cols, rows };
       disconnectedRef.current = false;
       setDisconnected(false);
       term.writeln("\x1b[90m[다시 연결되었습니다]\x1b[0m");
@@ -130,6 +227,7 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
       void closeSshShell(previousId).catch(() => {
         // 이미 닫힌 셸
       });
+      scheduleFit();
       term.focus();
     } catch (error) {
       setReconnectError(errorMessage(error));
@@ -138,7 +236,7 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
       pendingOutputRef.current.clear();
       setReconnecting(false);
     }
-  }, [replaceSessionId]);
+  }, [replaceSessionId, scheduleFit]);
 
   useEffect(() => {
     reconnectRef.current = () => void reconnect();
@@ -217,7 +315,7 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
         }
         return;
       }
-      writeSshShell(shellIdRef.current, data).catch(markDisconnected);
+      enqueueWrite(data);
     });
 
     let cancelled = false;
@@ -252,23 +350,7 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
       unlisteners.push(unlistenData, unlistenClosed);
     })();
 
-    const resizeObserver = new ResizeObserver(() => {
-      if (!fitRef.current || !termRef.current) {
-        return;
-      }
-      try {
-        fitRef.current.fit();
-        if (disconnectedRef.current) {
-          return;
-        }
-        const { cols, rows } = termRef.current;
-        void resizeSshShell(shellIdRef.current, cols, rows).catch(() => {
-          // 끊긴 셸은 입력/종료 이벤트로 감지
-        });
-      } catch {
-        // Ignore fit errors while hidden.
-      }
-    });
+    const resizeObserver = new ResizeObserver(scheduleFit);
     resizeObserver.observe(container);
 
     return () => {
@@ -276,6 +358,10 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
       dataDisposable.dispose();
       resultsDisposable.dispose();
       resizeObserver.disconnect();
+      if (fitFrameRef.current !== null) {
+        cancelAnimationFrame(fitFrameRef.current);
+        fitFrameRef.current = null;
+      }
       for (const unlisten of unlisteners) {
         unlisten();
       }
@@ -284,7 +370,7 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
       fitRef.current = null;
       searchRef.current = null;
     };
-  }, [closeSearch, markDisconnected]);
+  }, [closeSearch, enqueueWrite, markDisconnected, scheduleFit]);
 
   const runSearch = useCallback(
     (
@@ -320,25 +406,11 @@ export function TerminalSession({ shellId, active }: TerminalSessionProps) {
       return;
     }
 
-    const frame = requestAnimationFrame(() => {
-      try {
-        fitRef.current?.fit();
-        const term = termRef.current;
-        if (term) {
-          if (!disconnectedRef.current) {
-            void resizeSshShell(shellId, term.cols, term.rows).catch(() => {
-              // 끊긴 셸은 입력/종료 이벤트로 감지
-            });
-          }
-          term.focus();
-        }
-      } catch {
-        // Ignore fit errors while panel animates open.
-      }
-    });
+    scheduleFit();
+    const frame = requestAnimationFrame(() => termRef.current?.focus());
 
     return () => cancelAnimationFrame(frame);
-  }, [active, shellId]);
+  }, [active, scheduleFit]);
 
   return (
     <div

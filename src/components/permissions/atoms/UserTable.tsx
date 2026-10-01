@@ -11,6 +11,7 @@ interface UserTableProps {
   busy: boolean;
   onEditGroups: (user: RemoteUser) => void;
   onToggleNopasswd: (user: RemoteUser, enabled: boolean) => void;
+  onSetPassword: (user: RemoteUser) => void;
   onDelete: (user: RemoteUser) => void;
 }
 
@@ -84,6 +85,7 @@ export function UserTable({
   busy,
   onEditGroups,
   onToggleNopasswd,
+  onSetPassword,
   onDelete,
 }: UserTableProps) {
   if (users.length === 0) {
@@ -168,6 +170,13 @@ export function UserTable({
                         busy={busy}
                         onToggle={onToggleNopasswd}
                       />
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => onSetPassword(user)}
+                      >
+                        비밀번호
+                      </Button>
                       <DangerButton
                         disabled={busy || user.isCurrent}
                         title={

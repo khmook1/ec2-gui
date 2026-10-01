@@ -15,6 +15,7 @@ pub struct AppStoragePaths {
     pub app_data: String,
     pub settings_file: String,
     pub favorites_file: String,
+    pub server_history: String,
     pub wallpapers: String,
     pub cache: String,
     pub logs: String,
@@ -27,6 +28,7 @@ pub enum StorageLocation {
     AppData,
     SettingsFile,
     FavoritesFile,
+    ServerHistory,
     Wallpapers,
     Cache,
     Logs,
@@ -91,6 +93,10 @@ pub fn resolve_paths<R: Runtime>(app: &AppHandle<R>) -> Result<AppStoragePaths, 
             .join(FAVORITES_FILE_NAME)
             .to_string_lossy()
             .into_owned(),
+        server_history: app_data
+            .join(super::local_history::HISTORY_DIR_NAME)
+            .to_string_lossy()
+            .into_owned(),
         wallpapers: app_data
             .join(WALLPAPER_DIR_NAME)
             .to_string_lossy()
@@ -108,6 +114,7 @@ pub fn ensure_dirs(paths: &AppStoragePaths) -> Result<(), String> {
         PathBuf::from(&paths.cache),
         PathBuf::from(&paths.logs),
         PathBuf::from(&paths.wallpapers),
+        PathBuf::from(&paths.server_history),
     ] {
         fs::create_dir_all(&dir).map_err(|error| {
             format!(
@@ -134,6 +141,7 @@ pub fn open_location<R: Runtime>(
         StorageLocation::AppData => paths.app_data,
         StorageLocation::SettingsFile => paths.settings_file,
         StorageLocation::FavoritesFile => paths.favorites_file,
+        StorageLocation::ServerHistory => paths.server_history,
         StorageLocation::Wallpapers => paths.wallpapers,
         StorageLocation::Cache => paths.cache,
         StorageLocation::Logs => paths.logs,

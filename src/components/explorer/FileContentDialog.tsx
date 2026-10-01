@@ -4,17 +4,22 @@ import { AppDialog } from "@/components/common/AppDialog";
 import { CodeBlock } from "@/components/common/CodeBlock";
 import { IconButton } from "@/components/common/IconButton";
 import { LoadingIndicator } from "@/components/common/LoadingIndicator";
+import { SudoPasswordPrompt } from "@/components/explorer/SudoPasswordPrompt";
 import {
   CheckIcon,
   EditIcon,
+  ShieldIcon,
 } from "@/components/icons/ToolbarIcons";
 import {
+  usePermissionOverviewQuery,
   useRemoteFileQuery,
   useWriteRemoteFileMutation,
+  useWriteRemoteFileWithSudoMutation,
 } from "@/hooks/query";
 import { queryKeys } from "@/hooks/query/keys";
 import { useSessionKey } from "@/hooks/query/useSessionKey";
 import { useToast } from "@/providers/ToastProvider";
+import { SUDO_PASSWORD_REQUIRED } from "@/services/tauri";
 import {
   getHighlightLanguage,
   getHighlightLanguageLabel,
@@ -26,12 +31,28 @@ interface FileContentDialogProps {
   onClose: () => void;
 }
 
+function toErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === "string") {
+    return error;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
+function isPermissionDenied(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes("permission denied") || lower.includes("권한");
+}
+
 export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const sessionKey = useSessionKey();
   const fileQuery = useRemoteFileQuery(path);
   const writeFile = useWriteRemoteFileMutation();
+  const writeFileWithSudo = useWriteRemoteFileWithSudoMutation();
+  const permissionsQuery = usePermissionOverviewQuery();
+  // root 계정은 sudo 가 필요 없으므로 그 외 계정에만 sudo 저장 버튼 노출
+  const canSudoSave = permissionsQuery.data?.isRoot !== true;
   const file = fileQuery.data ?? null;
   // 최초 로드만 로딩으로 취급 (백그라운드 refetch로 닫기가 막히지 않게)
   const isLoading =
@@ -45,10 +66,12 @@ export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
+  const [sudoPromptOpen, setSudoPromptOpen] = useState(false);
 
   useEffect(() => {
     setEditing(false);
     setDraft("");
+    setSudoPromptOpen(false);
   }, [path]);
 
   useEffect(() => {
@@ -73,7 +96,7 @@ export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
     !file?.truncated &&
     !isLoading &&
     !errorMessage;
-  const isSaving = writeFile.isPending;
+  const isSaving = writeFile.isPending || writeFileWithSudo.isPending;
   const isDirty = editing && file != null && draft !== file.content;
   const showImagePreview =
     Boolean(file?.isImage) && Boolean(file?.content) && !file?.truncated;
@@ -93,6 +116,7 @@ export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
   function cancelEditing() {
     setDraft(file?.content ?? "");
     setEditing(false);
+    setSudoPromptOpen(false);
   }
 
   async function saveEditing() {
@@ -104,11 +128,31 @@ export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
       toast.success("파일을 저장했습니다.");
       setEditing(false);
     } catch (error) {
+      const message = toErrorMessage(error, "파일을 저장하지 못했습니다.");
       toast.error(
-        error instanceof Error
-          ? error.message
-          : "파일을 저장하지 못했습니다.",
+        canSudoSave && isPermissionDenied(message)
+          ? `${message} (방패 아이콘의 sudo 저장으로 강제 저장할 수 있습니다.)`
+          : message,
       );
+    }
+  }
+
+  async function saveWithSudo(password?: string) {
+    if (!path || !file || file.isBinary || file.isImage || file.truncated) {
+      return;
+    }
+    try {
+      await writeFileWithSudo.mutateAsync({ path, content: draft, password });
+      toast.success("sudo로 파일을 저장했습니다.");
+      setSudoPromptOpen(false);
+      setEditing(false);
+    } catch (error) {
+      const message = toErrorMessage(error, "sudo로 저장하지 못했습니다.");
+      if (message === SUDO_PASSWORD_REQUIRED) {
+        setSudoPromptOpen(true);
+        return;
+      }
+      toast.error(message);
     }
   }
 
@@ -123,6 +167,7 @@ export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
       });
     }
     setEditing(false);
+    setSudoPromptOpen(false);
     onClose();
   }
 
@@ -153,6 +198,16 @@ export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
           >
             <CheckIcon />
           </IconButton>
+          {canSudoSave ? (
+            <IconButton
+              tone="danger"
+              tooltip="sudo로 강제 저장"
+              disabled={isSaving || !isDirty}
+              onClick={() => void saveWithSudo()}
+            >
+              <ShieldIcon />
+            </IconButton>
+          ) : null}
           <IconButton
             variant="close"
             tooltip="편집 취소"
@@ -186,6 +241,15 @@ export function FileContentDialog({ path, onClose }: FileContentDialogProps) {
       closeDisabled={isSaving}
       meta={meta}
       headerActions={headerActions}
+      toolbar={
+        editing && sudoPromptOpen ? (
+          <SudoPasswordPrompt
+            busy={isSaving}
+            onSubmit={(password) => void saveWithSudo(password)}
+            onCancel={() => setSudoPromptOpen(false)}
+          />
+        ) : undefined
+      }
       bodyClassName={
         editing
           ? "file-dialog__body--editing"

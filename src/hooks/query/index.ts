@@ -4,13 +4,11 @@ export { useAppInfoQuery } from "./app";
 export {
   useBlockDevicesQuery,
   useDiskExpandStatusQuery,
-  useDiskHistoryCollectorQuery,
   useDiskHistoryQuery,
   useDiskOverviewQuery,
   useDockerOverviewQuery,
   useExpandDiskMutation,
   useLargeDirectoriesQuery,
-  useResourceHistoryCollectorQuery,
   useResourceHistoryDaysQuery,
   useResourceHistoryQuery,
   useSshSessionsQuery,
@@ -23,6 +21,7 @@ export {
   useRemoteGroupsQuery,
   useRemoteUsersQuery,
   useSetRemoteUserPasswordlessSudoMutation,
+  useSetRemoteUserPasswordMutation,
   useUpdateRemoteUserGroupsMutation,
 } from "./permissions";
 export type { UpdateUserGroupsInput } from "./permissions";
@@ -60,6 +59,7 @@ export {
   useRemoteHomeQuery,
   useSetRemoteFavoriteMutation,
   useWriteRemoteFileMutation,
+  useWriteRemoteFileWithSudoMutation,
 } from "./filesystem";
 export {
   useGitHubBranchesQuery,
@@ -75,6 +75,12 @@ export {
   useGitHubRepoQuery,
   useGitHubReposQuery,
   useGitHubViewerQuery,
+  useGitHubJobLogsQuery,
+  useGitHubRunJobsQuery,
+  useGitHubWorkflowDispatchQuery,
+  useGitHubWorkflowRunQuery,
+  useGitHubWorkflowRunsQuery,
+  useGitHubWorkflowsQuery,
 } from "./github";
 export {
   useCreateGitHubBranchMutation,
@@ -85,8 +91,14 @@ export {
   useSetGitHubIssueStateMutation,
   useSetGitHubPullStateMutation,
   useUpdateGitHubRepoMutation,
+  useCancelGitHubWorkflowRunMutation,
+  useDispatchGitHubWorkflowMutation,
+  useRerunGitHubWorkflowRunMutation,
 } from "./githubMutations";
-export type { UpdateGitHubRepoInput } from "./githubMutations";
+export type {
+  DispatchGitHubWorkflowInput,
+  UpdateGitHubRepoInput,
+} from "./githubMutations";
 export {
   useClearAppCacheMutation,
   useClearWallpaperImageMutation,

@@ -293,6 +293,7 @@ export function ResourceOverviewSection({
         >
           <ResourceTrendChart
             samples={history.samples}
+            gaps={history.gaps}
             focused={focused}
             domain={history.domain}
             emptyLabel={

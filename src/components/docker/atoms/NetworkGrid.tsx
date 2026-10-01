@@ -54,44 +54,44 @@ export function NetworkGrid({
       {filtered.map((network) => {
         const selected = selectedKey === network.id;
         return (
-          <button
-            key={network.id}
-            type="button"
-            role="listitem"
-            className={[
-              "explorer-icon-grid__item",
-              "explorer-icon-grid__item--docker",
-              selected ? "explorer-icon-grid__item--selected" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            title={`${network.name}\n${network.driver}\n${network.id}`}
-            aria-pressed={selected}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              select(network.id);
-            }}
-            onDoubleClick={(event) => {
-              event.stopPropagation();
-              onOpenNetwork?.(network);
-            }}
-            onContextMenu={(event) => onNetworkContextMenu?.(event, network)}
-          >
-            <DockerNetworksNavIcon className="docker-grid__icon" />
-            <span className="explorer-icon-grid__name docker-grid__name">
-              <SearchHighlight text={network.name} query={query} />
-            </span>
-            <span className="docker-grid__meta">
-              <SearchHighlight text={network.driver || "—"} query={query} />
-            </span>
-            <span className="docker-grid__meta docker-grid__meta--status">
-              <SearchHighlight
-                text={`${shortDockerId(network.id)} · ${network.scope || "—"}`}
-                query={query}
-              />
-            </span>
-          </button>
+          <div key={network.id} role="listitem" className="docker-grid__cell">
+            <button
+              type="button"
+              className={[
+                "explorer-icon-grid__item",
+                "explorer-icon-grid__item--docker",
+                selected ? "explorer-icon-grid__item--selected" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              title={`${network.name}\n${network.driver}\n${network.id}`}
+              aria-pressed={selected}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                select(network.id);
+              }}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                onOpenNetwork?.(network);
+              }}
+              onContextMenu={(event) => onNetworkContextMenu?.(event, network)}
+            >
+              <DockerNetworksNavIcon className="docker-grid__icon" />
+              <span className="explorer-icon-grid__name docker-grid__name">
+                <SearchHighlight text={network.name} query={query} />
+              </span>
+              <span className="docker-grid__meta">
+                <SearchHighlight text={network.driver || "—"} query={query} />
+              </span>
+              <span className="docker-grid__meta docker-grid__meta--status">
+                <SearchHighlight
+                  text={`${shortDockerId(network.id)} · ${network.scope || "—"}`}
+                  query={query}
+                />
+              </span>
+            </button>
+          </div>
         );
       })}
     </div>

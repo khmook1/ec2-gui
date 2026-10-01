@@ -1,0 +1,97 @@
+.terminal-pending {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  color: #9d9d9d;
+  font-size: 0.8125rem;
+  text-align: center;
+  animation: terminal-pending-in 160ms ease-out;
+}
+
+.terminal-pending__loading .app-loading__message {
+  color: #c8c8c8;
+  font-size: 0.8125rem;
+}
+
+.terminal-pending__hint {
+  margin: 0;
+  color: #8a8a8a;
+  font-size: 0.75rem;
+  animation: terminal-pending-in 200ms ease-out;
+}
+
+.terminal-pending__title {
+  margin: 0;
+  color: #f0b4b4;
+  font-weight: 600;
+}
+
+.terminal-pending__message {
+  margin: 0;
+  max-width: min(36rem, 100%);
+  color: #b0b0b0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.terminal-pending__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.terminal-pending__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid #3c3c3c;
+  border-radius: 6px;
+  background: #2d2d2d;
+  color: #d4d4d4;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.terminal-pending__btn:hover {
+  background: #373737;
+}
+
+.terminal-pending__btn--primary {
+  border-color: transparent;
+  background: #0e639c;
+  color: #ffffff;
+}
+
+.terminal-pending__btn--primary:hover {
+  background: #1177bb;
+}
+
+.terminal-pending__btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+@keyframes terminal-pending-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-pending,
+  .terminal-pending__hint {
+    animation: none;
+  }
+}

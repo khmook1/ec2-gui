@@ -52,6 +52,15 @@ pub fn create_remote_user(
 }
 
 #[tauri::command(async)]
+pub fn set_remote_user_password(
+    state: State<'_, SshConnectionManager>,
+    username: String,
+    password: String,
+) -> Result<(), String> {
+    state.set_remote_user_password(&username, &password)
+}
+
+#[tauri::command(async)]
 pub fn delete_remote_user(
     state: State<'_, SshConnectionManager>,
     username: String,

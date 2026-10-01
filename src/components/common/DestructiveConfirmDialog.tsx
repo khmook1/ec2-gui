@@ -1,9 +1,11 @@
-import { useEffect, useId, useMemo } from "react";
+import { useEffect, useId, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/common/Button";
 import { DangerButton } from "@/components/common/DangerButton";
+import { DialogFindBar } from "@/components/common/DialogFindBar";
 import { FormField } from "@/components/common/FormField";
+import { useDialogFind } from "@/hooks/useDialogFind";
 import "./css/file-dialog.css";
 
 export interface DestructiveConfirmDialogProps {
@@ -39,6 +41,8 @@ export function DestructiveConfirmDialog({
   onConfirm,
 }: DestructiveConfirmDialogProps) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const find = useDialogFind(targetId != null, dialogRef);
   const entryName = useMemo(() => {
     if (label) {
       return label;
@@ -97,6 +101,7 @@ export function DestructiveConfirmDialog({
       }}
     >
       <div
+        ref={dialogRef}
         className="file-dialog file-dialog--confirm"
         role="dialog"
         aria-modal="true"
@@ -113,6 +118,8 @@ export function DestructiveConfirmDialog({
             닫기
           </Button>
         </header>
+
+        {find.isOpen ? <DialogFindBar {...find.barState} /> : null}
 
         <form
           className="file-dialog__confirm"

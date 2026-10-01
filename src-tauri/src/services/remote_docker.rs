@@ -127,7 +127,11 @@ pub fn list_containers(session: &Session) -> Result<Vec<DockerContainer>, String
         session,
         "docker ps -a --format '{{json .}}' 2>&1",
     )?;
-    let output = validate_docker_list_output(&output)?;
+    parse_containers(&output)
+}
+
+fn parse_containers(output: &str) -> Result<Vec<DockerContainer>, String> {
+    let output = validate_docker_list_output(output)?;
 
     let mut containers = Vec::new();
 
@@ -279,41 +283,72 @@ fn summarize_containers(containers: &[DockerContainer]) -> DockerContainerCounts
     counts
 }
 
-/// 컨테이너·이미지·볼륨·네트워크를 모아 대시보드용 요약을 만듭니다.
+/// `docker ps`가 실패하면(데몬 미실행·권한 없음) 나머지 docker CLI는 띄우지 않는다.
+/// 개수만 필요한 목록은 `-q`로 받아 포맷팅 비용을 줄인다.
+const DOCKER_OVERVIEW_CMD: &str = "set +e
+echo __containers__
+docker ps -a --format '{{json .}}' 2>&1 || exit 0
+echo __images__
+docker images -q 2>&1
+echo __volumes__
+docker volume ls -q 2>&1
+echo __networks__
+docker network ls -q 2>&1";
+
+/// `__name__` 마커로 나뉜 출력을 섹션별 본문으로 나눕니다.
+fn split_overview_sections(output: &str) -> Vec<(&str, String)> {
+    let mut sections: Vec<(&str, String)> = Vec::new();
+    for line in output.lines() {
+        let trimmed = line.trim();
+        if let Some(name) = trimmed
+            .strip_prefix("__")
+            .and_then(|rest| rest.strip_suffix("__"))
+            .filter(|name| !name.is_empty() && !name.contains(' '))
+        {
+            sections.push((name, String::new()));
+            continue;
+        }
+        if let Some((_, body)) = sections.last_mut() {
+            body.push_str(line);
+            body.push('\n');
+        }
+    }
+    sections
+}
+
+fn count_listed_ids(body: &str) -> Result<u32, String> {
+    let body = validate_docker_list_output(body.trim())?;
+    Ok(body.lines().filter(|line| !line.trim().is_empty()).count() as u32)
+}
+
+/// 컨테이너·이미지·볼륨·네트워크를 원격 명령 한 번으로 모아 대시보드용 요약을 만듭니다.
 /// 일부 목록 실패 시에도 가능한 데이터는 반환하고 `warnings`에 메시지를 담습니다.
 pub fn get_docker_overview(session: &Session) -> Result<DockerOverview, String> {
+    let output = exec_remote_command(session, DOCKER_OVERVIEW_CMD)?;
+    parse_docker_overview(&output)
+}
+
+fn parse_docker_overview(output: &str) -> Result<DockerOverview, String> {
     let mut warnings = Vec::new();
+    let mut succeeded = 0;
+    let mut containers = Vec::new();
+    let (mut images, mut volumes, mut networks) = (0, 0, 0);
 
-    let containers = match list_containers(session) {
-        Ok(value) => value,
-        Err(error) => {
-            warnings.push(error);
-            Vec::new()
+    for (name, body) in split_overview_sections(output) {
+        let result = match name {
+            "containers" => parse_containers(body.trim()).map(|value| containers = value),
+            "images" => count_listed_ids(&body).map(|count| images = count),
+            "volumes" => count_listed_ids(&body).map(|count| volumes = count),
+            "networks" => count_listed_ids(&body).map(|count| networks = count),
+            _ => continue,
+        };
+        match result {
+            Ok(()) => succeeded += 1,
+            Err(error) => warnings.push(error),
         }
-    };
-    let images = match list_images(session) {
-        Ok(value) => value,
-        Err(error) => {
-            warnings.push(error);
-            Vec::new()
-        }
-    };
-    let volumes = match list_volumes(session) {
-        Ok(value) => value,
-        Err(error) => {
-            warnings.push(error);
-            Vec::new()
-        }
-    };
-    let networks = match list_networks(session) {
-        Ok(value) => value,
-        Err(error) => {
-            warnings.push(error);
-            Vec::new()
-        }
-    };
+    }
 
-    if warnings.len() == 4 {
+    if succeeded == 0 {
         return Err(warnings
             .into_iter()
             .next()
@@ -328,9 +363,9 @@ pub fn get_docker_overview(session: &Session) -> Result<DockerOverview, String> 
 
     Ok(DockerOverview {
         containers: summarize_containers(&containers),
-        images: images.len() as u32,
-        volumes: volumes.len() as u32,
-        networks: networks.len() as u32,
+        images,
+        volumes,
+        networks,
         recent_containers,
         warnings,
     })
@@ -741,7 +776,7 @@ pub fn system_action(session: &Session, action: &str) -> Result<String, String> 
 
 #[cfg(test)]
 mod tests {
-    use super::{container_state, summarize_containers, DockerContainer};
+    use super::{container_state, parse_docker_overview, summarize_containers, DockerContainer};
 
     #[test]
     fn classifies_container_states() {
@@ -782,5 +817,36 @@ mod tests {
         assert_eq!(counts.paused, 1);
         assert_eq!(counts.stopped, 1);
         assert_eq!(counts.unknown, 0);
+    }
+
+    #[test]
+    fn parses_overview_sections() {
+        let output = "__containers__\n\
+{\"ID\":\"a1\",\"Image\":\"nginx\",\"Status\":\"Up 1 hour\",\"Names\":\"web\",\"Ports\":\"80/tcp\"}\n\
+{\"ID\":\"b2\",\"Image\":\"redis\",\"Status\":\"Exited (0) 2 hours ago\",\"Names\":\"cache\"}\n\
+__images__\n\
+sha1\n\
+sha2\n\
+sha3\n\
+__volumes__\n\
+__networks__\n\
+n1\n\
+n2\n\
+n3";
+        let overview = parse_docker_overview(output).unwrap();
+        assert_eq!(overview.containers.total, 2);
+        assert_eq!(overview.containers.running, 1);
+        assert_eq!(overview.images, 3);
+        assert_eq!(overview.volumes, 0);
+        assert_eq!(overview.networks, 3);
+        assert_eq!(overview.recent_containers.len(), 2);
+        assert!(overview.warnings.is_empty());
+    }
+
+    #[test]
+    fn fails_when_daemon_unreachable() {
+        let output = "__containers__\n\
+Cannot connect to the Docker daemon at unix:///var/run/docker.sock. Is the docker daemon running?";
+        assert!(parse_docker_overview(output).is_err());
     }
 }

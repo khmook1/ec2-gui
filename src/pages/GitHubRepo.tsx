@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType } from "react";
 import { AsyncDataLoader } from "@/components/common/AsyncDataLoader";
 import { IconButton } from "@/components/common/IconButton";
+import { RepoActionsTab } from "@/components/github/RepoActionsTab";
 import { RepoBranchesTab } from "@/components/github/RepoBranchesTab";
 import { RepoCodeTab } from "@/components/github/RepoCodeTab";
 import { RepoIssuesTab } from "@/components/github/RepoIssuesTab";
@@ -13,11 +14,11 @@ import {
   ExternalLinkIcon,
   GearIcon,
   IssueIcon,
+  PlayIcon,
   PullRequestIcon,
 } from "@/components/icons/GitHubIcons";
 import type { ToolbarIconProps } from "@/components/icons/ToolbarIcons";
 import { RefreshIcon } from "@/components/icons/ToolbarIcons";
-import { ROUTE_ID } from "@/config/Route";
 import { queryKeys, useGitHubRepoQuery } from "@/hooks/query";
 import { githubErrorMessage } from "@/lib/github";
 import { openExternalUrl } from "@/services/tauri";
@@ -28,7 +29,13 @@ import type { GitHubRepoDetail } from "@/types/github";
 import "@/components/github/css/github.css";
 import "@/components/github/css/github-repo.css";
 
-type RepoTabId = "code" | "issues" | "pulls" | "branches" | "settings";
+type RepoTabId =
+  | "code"
+  | "issues"
+  | "pulls"
+  | "actions"
+  | "branches"
+  | "settings";
 
 interface RepoTab {
   id: RepoTabId;
@@ -40,12 +47,13 @@ const TABS: RepoTab[] = [
   { id: "code", label: "Code", icon: CodeIcon },
   { id: "issues", label: "Issues", icon: IssueIcon },
   { id: "pulls", label: "Pull requests", icon: PullRequestIcon },
+  { id: "actions", label: "Actions", icon: PlayIcon },
   { id: "branches", label: "Branches", icon: BranchIcon },
   { id: "settings", label: "Settings", icon: GearIcon },
 ];
 
 function goToList() {
-  useNavStore.getState().setActiveId(ROUTE_ID.github);
+  useNavStore.getState().goBack();
 }
 
 function visibleTabs(detail: GitHubRepoDetail): RepoTab[] {
@@ -213,6 +221,8 @@ function RepoTabContent({
       return <RepoIssuesTab detail={detail} />;
     case "pulls":
       return <RepoPullsTab detail={detail} />;
+    case "actions":
+      return <RepoActionsTab detail={detail} />;
     case "branches":
       return <RepoBranchesTab detail={detail} />;
     case "settings":

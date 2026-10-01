@@ -67,3 +67,57 @@ export const LANGUAGE_COLORS: Record<string, string> = {
 export function languageColor(name: string): string {
   return LANGUAGE_COLORS[name] ?? "#8b949e";
 }
+
+/** 두 시각 사이 소요 시간. `end`가 없으면 지금까지 */
+export function formatDuration(
+  start: string | null | undefined,
+  end: string | null | undefined,
+): string {
+  if (!start) {
+    return "—";
+  }
+  const from = Date.parse(start);
+  const to = end ? Date.parse(end) : Date.now();
+  if (Number.isNaN(from) || Number.isNaN(to) || to < from) {
+    return "—";
+  }
+  const seconds = Math.round((to - from) / 1000);
+  if (seconds < 60) {
+    return `${seconds}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m ${seconds % 60}s`;
+  }
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+export type RunTone = "success" | "failure" | "neutral" | "active" | "warning";
+
+/** Actions 실행·job·step의 status/conclusion을 표시용 라벨과 색으로 바꾼다 */
+export function describeRunState(
+  status: string,
+  conclusion: string | null,
+): { label: string; tone: RunTone } {
+  if (status !== "completed") {
+    return status === "in_progress"
+      ? { label: "In progress", tone: "active" }
+      : { label: status === "waiting" ? "Waiting" : "Queued", tone: "warning" };
+  }
+  switch (conclusion) {
+    case "success":
+      return { label: "Success", tone: "success" };
+    case "failure":
+    case "timed_out":
+    case "startup_failure":
+      return { label: conclusion === "timed_out" ? "Timed out" : "Failure", tone: "failure" };
+    case "action_required":
+      return { label: "Action required", tone: "warning" };
+    case "cancelled":
+      return { label: "Cancelled", tone: "neutral" };
+    case "skipped":
+      return { label: "Skipped", tone: "neutral" };
+    default:
+      return { label: conclusion ?? "Completed", tone: "neutral" };
+  }
+}

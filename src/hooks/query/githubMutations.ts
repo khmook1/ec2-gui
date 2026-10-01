@@ -3,6 +3,9 @@ import { queryKeys } from "@/hooks/query/keys";
 import { githubErrorMessage } from "@/lib/github";
 import { useToast } from "@/providers/ToastProvider";
 import {
+  cancelGitHubWorkflowRun,
+  dispatchGitHubWorkflow,
+  rerunGitHubWorkflowRun,
   createGitHubBranch,
   createGitHubIssue,
   createGitHubIssueComment,
@@ -232,6 +235,80 @@ export function useSetGitHubPullStateMutation(repo: string) {
     },
     onError: (error) => {
       toast.error(githubErrorMessage(error, "PR 상태를 바꾸지 못했습니다."));
+    },
+  });
+}
+
+/** dispatch·재실행 직후에는 GitHub에 새 실행이 늦게 잡혀 한 번 더 불러온다 */
+const ACTIONS_REFRESH_DELAY_MS = 3000;
+
+function useInvalidateActions(repo: string) {
+  const queryClient = useQueryClient();
+  return () => {
+    const invalidate = () =>
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.githubActionsScope(repo),
+      });
+    invalidate();
+    window.setTimeout(invalidate, ACTIONS_REFRESH_DELAY_MS);
+  };
+}
+
+export interface DispatchGitHubWorkflowInput {
+  workflowId: number;
+  workflowName: string;
+  gitRef: string;
+  inputs: Record<string, string | boolean>;
+}
+
+export function useDispatchGitHubWorkflowMutation(repo: string) {
+  const toast = useToast();
+  const invalidateActions = useInvalidateActions(repo);
+
+  return useMutation({
+    mutationFn: ({ workflowId, gitRef, inputs }: DispatchGitHubWorkflowInput) =>
+      dispatchGitHubWorkflow(repo, workflowId, gitRef, inputs),
+    onSuccess: (_result, { workflowName, gitRef }) => {
+      invalidateActions();
+      toast.success(`${workflowName} 워크플로를 ${gitRef}에서 실행했습니다.`);
+    },
+    onError: (error) => {
+      toast.error(githubErrorMessage(error, "워크플로를 실행하지 못했습니다."));
+    },
+  });
+}
+
+export function useRerunGitHubWorkflowRunMutation(repo: string) {
+  const toast = useToast();
+  const invalidateActions = useInvalidateActions(repo);
+
+  return useMutation({
+    mutationFn: ({ runId, failedOnly }: { runId: number; failedOnly: boolean }) =>
+      rerunGitHubWorkflowRun(repo, runId, failedOnly),
+    onSuccess: (_result, { failedOnly }) => {
+      invalidateActions();
+      toast.success(
+        failedOnly ? "실패한 job을 다시 실행했습니다." : "모든 job을 다시 실행했습니다.",
+      );
+    },
+    onError: (error) => {
+      toast.error(githubErrorMessage(error, "다시 실행하지 못했습니다."));
+    },
+  });
+}
+
+export function useCancelGitHubWorkflowRunMutation(repo: string) {
+  const toast = useToast();
+  const invalidateActions = useInvalidateActions(repo);
+
+  return useMutation({
+    mutationFn: (runId: number) => cancelGitHubWorkflowRun(repo, runId),
+    onSuccess: () => {
+      invalidateActions();
+      toast.success("실행 취소를 요청했습니다.");
+    },
+    onError: (error) => {
+      toast.error(githubErrorMessage(error, "실행을 취소하지 못했습니다."));
     },
   });
 }

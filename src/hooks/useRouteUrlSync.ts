@@ -24,7 +24,19 @@ export function useRouteUrlSync() {
     function handleHashChange() {
       repairDocumentUrl();
       const route = getRouteByPath(getBrowserRoutePath());
-      if (route) {
+      if (!route) {
+        return;
+      }
+      const { activeId, history, forward, goBack, goForward } =
+        useNavStore.getState();
+      if (route.id === activeId) {
+        return;
+      }
+      if (route.id === history[history.length - 1]) {
+        goBack();
+      } else if (route.id === forward[0]) {
+        goForward();
+      } else {
         hydrateActiveId(route.id);
       }
     }

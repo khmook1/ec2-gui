@@ -17,6 +17,13 @@
   --item-icon-size: 3rem;
   --item-name-size: 0.8125rem;
   --item-meta-size: 0.6875rem;
+  /* Docker·GitHub 정사각형 카드 (정보 줄이 많아 파일 탐색기보다 넓다) */
+  --item-card-wide-min: 14rem;
+  --item-card-wide-gap: 0.5rem;
+  /* Docker 카드는 정보가 적어 더 작게, 글자는 조금 크게 */
+  --item-docker-card-min: 11.5rem;
+  --item-docker-name-size: 0.875rem;
+  --item-docker-meta-size: 0.75rem;
   --item-list-header-height: 2rem;
   --item-list-header-font-size: 0.75rem;
   --item-list-row-height: 2.25rem;

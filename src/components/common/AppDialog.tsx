@@ -1,6 +1,8 @@
-import { useId, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/common/Button";
+import { DialogFindBar } from "@/components/common/DialogFindBar";
+import { useDialogFind } from "@/hooks/useDialogFind";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import "./css/file-dialog.css";
 
@@ -46,6 +48,8 @@ export function AppDialog({
   children,
 }: AppDialogProps) {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const find = useDialogFind(open, dialogRef);
 
   useEscapeKey(open && !closeDisabled, onClose);
 
@@ -69,6 +73,7 @@ export function AppDialog({
       }}
     >
       <div
+        ref={dialogRef}
         className={["file-dialog", sizeClass].filter(Boolean).join(" ")}
         role="dialog"
         aria-modal="true"
@@ -97,6 +102,8 @@ export function AppDialog({
         ) : null}
 
         {toolbar}
+
+        {find.isOpen ? <DialogFindBar {...find.barState} /> : null}
 
         <div
           className={["file-dialog__body", bodyClassName]

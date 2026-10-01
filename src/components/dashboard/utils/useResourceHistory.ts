@@ -1,15 +1,23 @@
 import { useMemo } from "react";
-import {
-  useResourceHistoryCollectorQuery,
-  useResourceHistoryQuery,
-} from "@/hooks/query/dashboard";
+import { useResourceHistoryQuery } from "@/hooks/query/dashboard";
 import type { ResourceHistorySample } from "@/types/system";
 
 /** 리소스 추이 차트 샘플 (사용률 %) */
 export type ResourceSample = ResourceHistorySample;
 
+/** 차트 점. 집계 안 된 구간은 값이 모두 `null`이고 `gap`에 구간 [시작, 끝]이 담긴다. */
+export interface ResourceTrendPoint {
+  ts: number;
+  cpu: number | null;
+  memory: number | null;
+  disk: number | null;
+  gap?: [number, number];
+}
+
 export interface ResourceHistoryView {
-  samples: ResourceSample[];
+  samples: ResourceTrendPoint[];
+  /** 표시 구간 안에서 샘플이 없는 [시작, 끝] 구간 */
+  gaps: [number, number][];
   /** 차트 X축 범위. 샘플이 없으면 `null` */
   domain: [number, number] | null;
   /** 첫 샘플부터 마지막 샘플까지의 길이(ms). 샘플이 없으면 `null` */
@@ -72,11 +80,49 @@ export function pickBucketMs(spanMs: number): number {
   );
 }
 
+/** 이보다 짧은 수집 공백은 일시적인 누락으로 보고 집계 안 됨으로 표시하지 않는다. */
+const MIN_GAP_MS = 60_000;
+
+/** `[start, …]` 구간에서 샘플 간격이 `minGapMs`를 넘는 빈 구간을 찾습니다. */
+export function findGaps(
+  samples: ResourceSample[],
+  start: number,
+  minGapMs: number,
+): [number, number][] {
+  const gaps: [number, number][] = [];
+  let prev = start;
+  for (const sample of samples) {
+    if (sample.ts - prev > minGapMs) {
+      gaps.push([prev, sample.ts]);
+    }
+    prev = sample.ts;
+  }
+  return gaps;
+}
+
+/** 빈 구간 가운데에 `null` 점을 넣어 차트 선이 공백을 건너 이어지지 않게 합니다. */
+function withGapPoints(
+  points: ResourceTrendPoint[],
+  gaps: [number, number][],
+): ResourceTrendPoint[] {
+  if (gaps.length === 0) {
+    return points;
+  }
+  const breaks = gaps.map<ResourceTrendPoint>((gap) => ({
+    ts: Math.round((gap[0] + gap[1]) / 2),
+    cpu: null,
+    memory: null,
+    disk: null,
+    gap,
+  }));
+  return [...points, ...breaks].sort((a, b) => a.ts - b.ts);
+}
+
 /** 수집 샘플을 `bucketMs` 구간별 평균 점으로 묶습니다. */
 export function bucketSamples(
   samples: ResourceSample[],
   bucketMs: number,
-): ResourceSample[] {
+): ResourceTrendPoint[] {
   const buckets = new Map<number, ResourceSample[]>();
   for (const sample of samples) {
     const key = Math.floor(sample.ts / bucketMs) * bucketMs;
@@ -100,7 +146,7 @@ export function bucketSamples(
     }));
 }
 
-/** 원격 서버 기준 `YYYY-MM-DD` 하루의 [시작, 끝) 타임스탬프(ms) */
+/** `utcOffsetMinutes` 기준 `YYYY-MM-DD` 하루의 [시작, 끝) 타임스탬프(ms) */
 export function dayRange(
   date: string,
   utcOffsetMinutes: number,
@@ -121,7 +167,7 @@ function toMessage(error: unknown): string | null {
 }
 
 /**
- * 원격 `~/.ec2-gui/resource-history`에 쌓인 선택 날짜의 샘플 중
+ * 앱이 연결된 동안 이 컴퓨터에 쌓은 선택 날짜의 샘플 중
  * 마지막 샘플 기준 `windowMs` 구간만 차트용 점으로 묶어 반환합니다.
  * `day`(해당 날짜의 [시작, 끝))가 주어지면 구간 시작을 그날 00:00 이후로 제한합니다.
  * `live`(오늘)이면 수집 간격마다 새 샘플을 이어 받습니다.
@@ -132,7 +178,6 @@ export function useResourceHistory(
   windowMs: number,
   day: [number, number] | null,
 ): ResourceHistoryView {
-  const collector = useResourceHistoryCollectorQuery();
   const history = useResourceHistoryQuery(date, { live });
   const raw = history.data;
   const dayStart = day?.[0] ?? null;
@@ -141,7 +186,7 @@ export function useResourceHistory(
     const first = raw?.[0];
     const last = raw?.[raw.length - 1];
     if (!raw || !first || !last) {
-      return { samples: [], domain: null, spanMs: null };
+      return { samples: [], gaps: [], domain: null, spanMs: null };
     }
     const end = last.ts;
     const start =
@@ -149,8 +194,11 @@ export function useResourceHistory(
     const inWindow = raw.filter((s) => s.ts >= start && s.ts <= end);
     const dataStart =
       dayStart == null ? first.ts : Math.max(dayStart, first.ts);
+    const bucketMs = pickBucketMs(end - start);
+    const gaps = findGaps(inWindow, start, Math.max(bucketMs * 2, MIN_GAP_MS));
     return {
-      samples: bucketSamples(inWindow, pickBucketMs(end - start)),
+      samples: withGapPoints(bucketSamples(inWindow, bucketMs), gaps),
+      gaps,
       domain: [start, end] as [number, number],
       spanMs: end - dataStart,
     };
@@ -158,9 +206,10 @@ export function useResourceHistory(
 
   return {
     samples: view.samples,
+    gaps: view.gaps,
     domain: view.domain,
     spanMs: view.spanMs,
     loading: history.isLoading,
-    error: toMessage(collector.error) ?? toMessage(history.error),
+    error: toMessage(history.error),
   };
 }

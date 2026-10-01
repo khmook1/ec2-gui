@@ -30,6 +30,7 @@ const LOCAL_ITEMS: LocalStorageItem[] = [
   { location: "appData", title: "앱 데이터", kind: "folder" },
   { location: "settingsFile", title: "설정", kind: "file" },
   { location: "favoritesFile", title: "즐겨찾기", kind: "file" },
+  { location: "serverHistory", title: "서버 사용률 기록", kind: "folder" },
   { location: "wallpapers", title: "배경 이미지", kind: "folder" },
   // TODO: 폴더 열기가 동작하지 않아 숨김
   // { location: "webviewData", title: "접속 기록 · WebView", kind: "folder" },
@@ -191,7 +192,9 @@ export function StorageLocations({ disabled, onError }: StorageLocationsProps) {
         ))}
       </div>
 
-      <h3 className="settings-storage__heading">원격 서버</h3>
+      <h3 className="settings-storage__heading">
+        원격 서버 (이전 버전이 남긴 데이터)
+      </h3>
       {sessionKey ? (
         <div className="settings-storage__grid" aria-label="원격 저장 위치">
           {REMOTE_ITEMS.map((item) => {

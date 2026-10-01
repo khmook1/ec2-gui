@@ -297,6 +297,117 @@ pub fn write_file(session: &Session, path: &str, content: &str) -> Result<(), St
     Ok(())
 }
 
+/// 프론트엔드가 비밀번호 입력을 띄우는 신호로 쓰는 오류 코드
+pub const SUDO_PASSWORD_REQUIRED: &str = "SUDO_PASSWORD_REQUIRED";
+
+/// 쓰기 권한이 없는 파일을 sudo 로 저장한다.
+/// 사용자 소유 임시 파일에 SFTP 로 쓴 뒤 `sudo sh -c 'cat tmp > target'` 로 덮어써서 기존 소유자·권한을 유지한다.
+pub fn write_file_with_sudo(
+    session: &Session,
+    path: &str,
+    content: &str,
+    password: Option<&str>,
+) -> Result<(), String> {
+    let normalized = normalize_remote_path(path);
+    validate_mutable_path(&normalized)?;
+
+    let bytes = content.as_bytes();
+    if bytes.len() > MAX_WRITE_BYTES {
+        return Err(format!(
+            "파일 내용이 너무 큽니다. (최대 {}바이트)",
+            MAX_WRITE_BYTES
+        ));
+    }
+
+    let temp_path = exec_remote_command_checked(session, "mktemp /tmp/ec2-gui-save.XXXXXX")
+        .map_err(|error| format!("임시 파일을 만들 수 없습니다: {error}"))?;
+    if temp_path.is_empty() {
+        return Err("임시 파일을 만들 수 없습니다.".to_string());
+    }
+
+    let result = write_temp_file(session, &temp_path, bytes)
+        .and_then(|()| sudo_copy_file(session, &temp_path, &normalized, password));
+
+    let _ = exec_remote_command(session, &format!("rm -f -- {}", shell_quote(&temp_path)));
+
+    result
+}
+
+fn write_temp_file(session: &Session, temp_path: &str, bytes: &[u8]) -> Result<(), String> {
+    let sftp = session
+        .sftp()
+        .map_err(|error| format!("SFTP 채널을 열 수 없습니다: {error}"))?;
+    let mut file = sftp
+        .create(Path::new(temp_path))
+        .map_err(|error| format!("임시 파일을 열 수 없습니다: {error}"))?;
+    file.write_all(bytes)
+        .map_err(|error| format!("임시 파일에 쓸 수 없습니다: {error}"))
+}
+
+fn sudo_copy_file(
+    session: &Session,
+    temp_path: &str,
+    target_path: &str,
+    password: Option<&str>,
+) -> Result<(), String> {
+    let sudo_flags = if password.is_some() { "-S -p ''" } else { "-n" };
+    // 오류 메시지 판별을 위해 로케일 고정, stderr 는 stdout 으로 합친다
+    let command = format!(
+        "LC_ALL=C sudo {sudo_flags} -- sh -c 'cat -- \"$1\" > \"$2\"' sh {} {} 2>&1",
+        shell_quote(temp_path),
+        shell_quote(target_path),
+    );
+
+    let mut channel = session
+        .channel_session()
+        .map_err(|error| error.to_string())?;
+    channel
+        .exec(&command)
+        .map_err(|error| format!("원격 명령 실행 실패: {error}"))?;
+    if let Some(password) = password {
+        channel
+            .write_all(format!("{password}\n").as_bytes())
+            .map_err(|error| error.to_string())?;
+    }
+    channel.send_eof().ok();
+
+    let mut output = String::new();
+    channel
+        .read_to_string(&mut output)
+        .map_err(|error| error.to_string())?;
+    channel.wait_close().ok();
+
+    let code = channel.exit_status().unwrap_or(1);
+    if code == 0 {
+        return Ok(());
+    }
+
+    let lower = output.to_ascii_lowercase();
+    if lower.contains("a password is required") {
+        return Err(SUDO_PASSWORD_REQUIRED.to_string());
+    }
+    if lower.contains("incorrect password") || lower.contains("sorry, try again") {
+        return Err("sudo 비밀번호가 올바르지 않습니다.".to_string());
+    }
+    if lower.contains("not in the sudoers")
+        || lower.contains("may not run sudo")
+        || lower.contains("is not allowed to execute")
+    {
+        return Err("이 계정은 sudo 권한이 없습니다.".to_string());
+    }
+
+    let trimmed = output.trim();
+    Err(if trimmed.is_empty() {
+        format!("sudo 저장 실패 (exit {code})")
+    } else {
+        format!("sudo 저장 실패: {trimmed}")
+    })
+}
+
+pub(super) fn shell_quote(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
+
 fn is_likely_binary(bytes: &[u8]) -> bool {
     if bytes.is_empty() {
         return false;
@@ -411,12 +522,27 @@ pub fn exec_remote_command(session: &Session, command: &str) -> Result<String, S
 }
 
 pub fn exec_remote_command_checked(session: &Session, command: &str) -> Result<String, String> {
+    exec_remote_command_checked_with_input(session, command, None)
+}
+
+/// `input` 은 명령줄 대신 stdin 으로 전달된다 (비밀번호 등 `ps` 에 노출되면 안 되는 값용).
+pub fn exec_remote_command_checked_with_input(
+    session: &Session,
+    command: &str,
+    input: Option<&str>,
+) -> Result<String, String> {
     let mut channel = session
         .channel_session()
         .map_err(|error| error.to_string())?;
     channel
         .exec(command)
         .map_err(|error| format!("원격 명령 실행 실패: {error}"))?;
+    if let Some(input) = input {
+        channel
+            .write_all(input.as_bytes())
+            .map_err(|error| error.to_string())?;
+    }
+    channel.send_eof().ok();
 
     let mut output = String::new();
     channel

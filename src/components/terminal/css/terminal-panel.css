@@ -78,11 +78,3 @@ body.terminal-panel-resizing * {
   min-height: 0;
   overflow: hidden;
 }
-
-.terminal-panel__empty {
-  display: grid;
-  place-items: center;
-  height: 100%;
-  color: #9d9d9d;
-  font-size: 0.8125rem;
-}

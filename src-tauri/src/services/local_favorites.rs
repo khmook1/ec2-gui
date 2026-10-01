@@ -6,8 +6,7 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use ssh2::{FileType, Session};
 
-use super::remote_disk_history::shell_single_quote;
-use super::remote_fs::{exec_remote_command, RemoteEntry};
+use super::remote_fs::{exec_remote_command, shell_quote, RemoteEntry};
 
 const FILE_VERSION: u32 = 1;
 const LEGACY_DIR_NAME: &str = ".ec2-gui";
@@ -107,7 +106,7 @@ fn parse_legacy_paths(raw: &str) -> Vec<String> {
 }
 
 fn read_legacy_paths(session: &Session, home: &str, file_name: &str) -> Result<Vec<String>, String> {
-    let file = shell_single_quote(&format!(
+    let file = shell_quote(&format!(
         "{}/{LEGACY_DIR_NAME}/{file_name}",
         home.trim_end_matches('/')
     ));

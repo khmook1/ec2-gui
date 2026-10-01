@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use ssh2::Session;
 
-use super::remote_fs::{exec_remote_command, exec_remote_command_checked};
+use super::remote_fs::{exec_remote_command, exec_remote_command_checked_with_input};
 
 const SUDO_GROUPS: [&str; 3] = ["sudo", "wheel", "admin"];
+const PASSWORD_MIN_LEN: usize = 8;
+const PASSWORD_MAX_LEN: usize = 256;
 
 /// root 이면 그대로, 아니면 비대화형 sudo 로 실행. stderr 는 오류 메시지로 쓰기 위해 stdout 으로 합친다.
 const PRIVILEGED_PRELUDE: &str = r#"exec 2>&1
@@ -36,6 +38,7 @@ pub struct CreateRemoteUserInput {
     #[serde(default)]
     pub groups: Vec<String>,
     pub ssh_public_key: Option<String>,
+    pub password: Option<String>,
 }
 
 fn shell_quote(value: &str) -> String {
@@ -89,9 +92,36 @@ fn validate_ssh_public_key(raw: &str) -> Result<&str, String> {
     Ok(key)
 }
 
+/// 비밀번호는 trim 하지 않는다. chpasswd 입력이 줄 단위라 줄바꿈/NUL 은 막는다.
+fn validate_password(raw: &str) -> Result<&str, String> {
+    if raw.contains(['\n', '\r', '\0']) {
+        return Err("비밀번호에 줄바꿈 문자를 넣을 수 없습니다.".to_string());
+    }
+    let len = raw.chars().count();
+    if len < PASSWORD_MIN_LEN {
+        return Err(format!("비밀번호는 {PASSWORD_MIN_LEN}자 이상이어야 합니다."));
+    }
+    if len > PASSWORD_MAX_LEN {
+        return Err(format!("비밀번호는 {PASSWORD_MAX_LEN}자 이하여야 합니다."));
+    }
+    Ok(raw)
+}
+
+fn chpasswd_input(username: &str, password: &str) -> String {
+    format!("{username}:{password}\n")
+}
+
 fn run_privileged(session: &Session, script: &str) -> Result<String, String> {
+    run_privileged_with_input(session, script, None)
+}
+
+fn run_privileged_with_input(
+    session: &Session,
+    script: &str,
+    input: Option<&str>,
+) -> Result<String, String> {
     let command = format!("{PRIVILEGED_PRELUDE}{script}");
-    exec_remote_command_checked(session, &command).map_err(|error| {
+    exec_remote_command_checked_with_input(session, &command, input).map_err(|error| {
         if error.contains("a password is required") || error.contains("a terminal is required") {
             "비밀번호 없는 sudo 권한이 필요합니다.".to_string()
         } else {
@@ -285,6 +315,12 @@ pub fn create_user(session: &Session, input: &CreateRemoteUserInput) -> Result<(
         .filter(|key| !key.is_empty())
         .map(validate_ssh_public_key)
         .transpose()?;
+    let password = input
+        .password
+        .as_deref()
+        .filter(|password| !password.is_empty())
+        .map(validate_password)
+        .transpose()?;
 
     let user_q = shell_quote(username);
     let shell_q = shell_quote(shell);
@@ -310,6 +346,17 @@ pub fn create_user(session: &Session, input: &CreateRemoteUserInput) -> Result<(
         "$SUDO useradd -m -s {shell_q}{group_arg} {user_q} || exit 1\n"
     ));
 
+    if password.is_some() {
+        script.push_str(&format!(
+            r#"if ! $SUDO chpasswd; then
+  $SUDO userdel -r {user_q} >/dev/null 2>&1
+  echo "비밀번호 설정에 실패해 사용자 생성을 취소했습니다."
+  exit 1
+fi
+"#
+        ));
+    }
+
     if let Some(key) = ssh_key {
         let key_q = shell_quote(key);
         script.push_str(&format!(
@@ -324,7 +371,28 @@ $SUDO chown {user_q}:"$PRIMARY" "$HOME_DIR/.ssh/authorized_keys"
         ));
     }
 
-    run_privileged(session, &script)?;
+    let stdin = password.map(|password| chpasswd_input(username, password));
+    run_privileged_with_input(session, &script, stdin.as_deref())?;
+    Ok(())
+}
+
+pub fn set_user_password(session: &Session, username: &str, password: &str) -> Result<(), String> {
+    let username = validate_account_name(username, "사용자")?;
+    if username == "root" {
+        return Err("root 계정의 비밀번호는 변경할 수 없습니다.".to_string());
+    }
+    let password = validate_password(password)?;
+    let user_q = shell_quote(username);
+
+    run_privileged_with_input(
+        session,
+        &format!(
+            r#"getent passwd {user_q} >/dev/null || {{ echo "사용자를 찾을 수 없습니다: {username}"; exit 1; }}
+$SUDO chpasswd
+"#
+        ),
+        Some(&chpasswd_input(username, password)),
+    )?;
     Ok(())
 }
 
@@ -364,7 +432,8 @@ $SUDO rm -f {path_q}
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_groups, parse_users, validate_account_name, validate_shell, validate_ssh_public_key,
+        parse_groups, parse_users, validate_account_name, validate_password, validate_shell,
+        validate_ssh_public_key,
     };
 
     #[test]
@@ -429,5 +498,14 @@ user\ta\t1001\t1001\t/home/a\t/bin/bash\ta\t0\t0\n";
         assert!(validate_ssh_public_key("ssh-ed25519").is_err());
         assert!(validate_ssh_public_key("not-a-key AAAA").is_err());
         assert!(validate_ssh_public_key("ssh-rsa AAAA\nssh-rsa BBBB").is_err());
+    }
+
+    #[test]
+    fn validates_passwords() {
+        assert!(validate_password("s3cret-pw").is_ok());
+        assert!(validate_password(" with:colon ").is_ok());
+        assert!(validate_password("short").is_err());
+        assert!(validate_password("line1234\nroot:x").is_err());
+        assert!(validate_password(&"a".repeat(257)).is_err());
     }
 }

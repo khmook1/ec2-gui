@@ -119,13 +119,62 @@
 }
 
 .github-repo__badge--private {
-  border-color: color-mix(in srgb, var(--warning, #d97706) 50%, transparent);
-  color: color-mix(in srgb, var(--warning, #d97706) 80%, var(--text));
+  gap: 3px;
+  padding-left: 5px;
+  border-color: color-mix(in srgb, #64748b 38%, var(--surface));
+  background: color-mix(in srgb, #64748b 12%, var(--surface));
+  color: #334155;
+}
+
+html[data-theme="dark"] .github-repo__badge--private {
+  border-color: color-mix(in srgb, #94a3b8 36%, transparent);
+  background: color-mix(in srgb, #94a3b8 16%, transparent);
+  color: #e2e8f0;
+}
+
+.github-repo__badge-icon {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
 }
 
 .github-repo__badge--archived {
   border-color: color-mix(in srgb, var(--danger) 40%, transparent);
   color: color-mix(in srgb, var(--danger) 72%, var(--text));
+}
+
+.github-repo__badge--lang {
+  letter-spacing: 0.01em;
+}
+
+.github-repo__badge--lang-typescript {
+  border-color: #3178c6;
+  background: #3178c6;
+  color: #fff;
+}
+
+.github-repo__badge--lang-javascript {
+  border-color: #f7df1e;
+  background: #f7df1e;
+  color: #1a1a1a;
+}
+
+.github-repo__badge--lang-kotlin {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7f52ff 0%, #c811e1 55%, #e54857 100%);
+  color: #fff;
+}
+
+.github-repo__badge--lang-java {
+  border-color: #5382a1;
+  background: color-mix(in srgb, #e76f00 16%, transparent);
+  color: color-mix(in srgb, #e76f00 78%, var(--text));
+}
+
+.github-repo__badge--lang-swift {
+  border-color: transparent;
+  background: linear-gradient(180deg, #fa7343 0%, #f05138 100%);
+  color: #fff;
 }
 
 .explorer-icon-grid__item.explorer-icon-grid__item--github {
@@ -146,12 +195,6 @@
 
 .explorer-icon-grid__item--github .github-grid__name {
   font-weight: 600;
-}
-
-.github-grid__owner,
-.github-grid__desc,
-.github-grid__meta {
-  margin-top: -0.25rem;
 }
 
 .github-grid__owner {

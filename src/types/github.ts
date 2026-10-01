@@ -229,3 +229,78 @@ export const GITHUB_MERGE_METHOD_OPTIONS: {
 
 /** 이슈·PR·브랜치 목록 페이지 크기 */
 export const GITHUB_DETAIL_PER_PAGE = 30;
+
+export interface GitHubWorkflow {
+  id: number;
+  name: string;
+  path: string;
+  /** "active" | "disabled_manually" | "disabled_inactivity" 등 */
+  state: string;
+  htmlUrl: string;
+}
+
+export type GitHubRunStatus =
+  | "queued"
+  | "in_progress"
+  | "completed"
+  | "waiting"
+  | "requested"
+  | "pending";
+
+export interface GitHubWorkflowRun {
+  id: number;
+  workflowId: number;
+  name: string;
+  displayTitle: string;
+  runNumber: number;
+  runAttempt: number;
+  event: string;
+  status: GitHubRunStatus;
+  /** completed일 때만: success | failure | cancelled | skipped | timed_out 등 */
+  conclusion: string | null;
+  headBranch: string | null;
+  headSha: string;
+  actor: GitHubUser;
+  createdAt: string;
+  updatedAt: string;
+  runStartedAt: string | null;
+  htmlUrl: string;
+}
+
+export interface GitHubJobStep {
+  number: number;
+  name: string;
+  status: GitHubRunStatus;
+  conclusion: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+}
+
+export interface GitHubJob {
+  id: number;
+  name: string;
+  status: GitHubRunStatus;
+  conclusion: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  htmlUrl: string | null;
+  steps: GitHubJobStep[];
+}
+
+export interface GitHubWorkflowInput {
+  name: string;
+  description: string | null;
+  required: boolean;
+  default: string | null;
+  /** "string" | "boolean" | "choice" | "number" | "environment" */
+  kind: string;
+  options: string[];
+}
+
+export interface GitHubWorkflowDispatch {
+  /** `on: workflow_dispatch` 트리거가 있어야 수동 실행할 수 있다 */
+  dispatchable: boolean;
+  inputs: GitHubWorkflowInput[];
+}
+
+export const GITHUB_RUNS_PER_PAGE = 25;

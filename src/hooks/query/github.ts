@@ -2,6 +2,12 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/query/keys";
 import {
   getGitHubFile,
+  getGitHubJobLogs,
+  getGitHubWorkflowDispatch,
+  getGitHubWorkflowRun,
+  listGitHubRunJobs,
+  listGitHubWorkflowRuns,
+  listGitHubWorkflows,
   getGitHubIssue,
   getGitHubPull,
   getGitHubReadme,
@@ -17,7 +23,9 @@ import {
 } from "@/services/tauri";
 import {
   GITHUB_DETAIL_PER_PAGE,
+  GITHUB_RUNS_PER_PAGE,
   type GitHubIssueState,
+  type GitHubRunStatus,
   type GitHubRepoQuery,
 } from "@/types/github";
 
@@ -171,6 +179,91 @@ export function useGitHubPullQuery(repo: string, number: number) {
     queryKey: queryKeys.githubPull(repo, number),
     queryFn: () => getGitHubPull(repo, number),
     staleTime: DETAIL_STALE_MS,
+    retry: false,
+  });
+}
+
+/** 진행 중인 실행이 있으면 주기적으로 다시 불러온다 */
+const ACTIONS_POLL_MS = 5000;
+
+function isRunActive(status: GitHubRunStatus): boolean {
+  return status !== "completed";
+}
+
+export function useGitHubWorkflowsQuery(repo: string) {
+  return useQuery({
+    queryKey: queryKeys.githubWorkflows(repo),
+    queryFn: () => listGitHubWorkflows(repo),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useGitHubWorkflowRunsQuery(
+  repo: string,
+  workflowId: number | null,
+  page: number,
+) {
+  return useQuery({
+    queryKey: queryKeys.githubWorkflowRuns(repo, workflowId, page),
+    queryFn: () =>
+      listGitHubWorkflowRuns(repo, workflowId, page, GITHUB_RUNS_PER_PAGE),
+    staleTime: 15 * 1000,
+    placeholderData: keepPreviousData,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.items.some((run) => isRunActive(run.status))
+        ? ACTIONS_POLL_MS
+        : false,
+  });
+}
+
+export function useGitHubWorkflowRunQuery(repo: string, runId: number) {
+  return useQuery({
+    queryKey: queryKeys.githubWorkflowRun(repo, runId),
+    queryFn: () => getGitHubWorkflowRun(repo, runId),
+    staleTime: 5 * 1000,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data && isRunActive(query.state.data.status)
+        ? ACTIONS_POLL_MS
+        : false,
+  });
+}
+
+export function useGitHubRunJobsQuery(repo: string, runId: number) {
+  return useQuery({
+    queryKey: queryKeys.githubRunJobs(repo, runId),
+    queryFn: () => listGitHubRunJobs(repo, runId),
+    staleTime: 5 * 1000,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.some((job) => isRunActive(job.status))
+        ? ACTIONS_POLL_MS
+        : false,
+  });
+}
+
+export function useGitHubJobLogsQuery(repo: string, jobId: number | null) {
+  return useQuery({
+    queryKey: queryKeys.githubJobLogs(repo, jobId ?? 0),
+    queryFn: () => getGitHubJobLogs(repo, jobId!),
+    enabled: jobId != null,
+    staleTime: 30 * 1000,
+    retry: false,
+  });
+}
+
+export function useGitHubWorkflowDispatchQuery(
+  repo: string,
+  path: string | null,
+  gitRef: string | null,
+) {
+  return useQuery({
+    queryKey: queryKeys.githubWorkflowDispatch(repo, path ?? "", gitRef),
+    queryFn: () => getGitHubWorkflowDispatch(repo, path!, gitRef),
+    enabled: path != null,
+    staleTime: 5 * 60 * 1000,
     retry: false,
   });
 }

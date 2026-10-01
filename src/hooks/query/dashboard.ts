@@ -2,8 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/hooks/query/keys";
 import { useSessionKey } from "@/hooks/query/useSessionKey";
 import {
-  ensureRemoteDiskHistory,
-  ensureRemoteResourceHistory,
   expandRemoteDisk,
   getRemoteBlockDevices,
   getRemoteDiskExpandStatus,
@@ -39,6 +37,9 @@ export function useDiskOverviewQuery() {
   });
 }
 
+/** `du`는 루트 전체를 순회해 원격 CPU·I/O를 크게 쓰므로 한 번 받은 결과를 이 시간 동안 재사용한다. */
+export const LARGE_DIRECTORIES_FRESH_MS = 60 * 60 * 1000;
+
 /** `du` 스캔은 SSH 세션을 오래 점유하므로 초기 동기화·파일 목록 이후에 실행한다. */
 export function useLargeDirectoriesQuery(options?: { enabled?: boolean }) {
   const sessionKey = useSessionKey();
@@ -48,42 +49,20 @@ export function useLargeDirectoriesQuery(options?: { enabled?: boolean }) {
     queryKey: queryKeys.largeDirectories(sessionKey ?? ""),
     queryFn: getRemoteLargeDirectories,
     enabled,
-    staleTime: 5 * 60 * 1000,
+    staleTime: LARGE_DIRECTORIES_FRESH_MS,
+    gcTime: LARGE_DIRECTORIES_FRESH_MS,
   });
 }
 
-/** 원격 cron 수집기(1일 1회 df 샘플) 설치. 세션당 한 번만 실행한다. */
-export function useDiskHistoryCollectorQuery(options?: { enabled?: boolean }) {
-  const sessionKey = useSessionKey();
-  const enabled = Boolean(sessionKey) && (options?.enabled ?? true);
-
-  return useQuery({
-    queryKey: queryKeys.diskHistoryCollector(sessionKey ?? ""),
-    queryFn: async () => {
-      try {
-        await ensureRemoteDiskHistory();
-        return true;
-      } catch {
-        // crontab/python 미설치여도 기존 일별 파일은 읽기 시도
-        return false;
-      }
-    },
-    enabled,
-    staleTime: Infinity,
-    retry: false,
-  });
-}
-
-/** 수집기 설치(오늘 샘플 시드 포함)가 끝난 뒤 일별 파일만 읽는다. */
+/** 앱이 이 컴퓨터에 저장한 일별 디스크 샘플. 오늘 샘플은 디스크 개요 조회 때 백엔드가 기록한다. */
 export function useDiskHistoryQuery(options?: { enabled?: boolean }) {
   const sessionKey = useSessionKey();
   const enabled = Boolean(sessionKey) && (options?.enabled ?? true);
-  const collector = useDiskHistoryCollectorQuery({ enabled });
 
   return useQuery({
     queryKey: queryKeys.diskHistory(sessionKey ?? ""),
     queryFn: (): Promise<DiskUsageSample[]> => getRemoteDiskHistory(),
-    enabled: enabled && collector.isFetched,
+    enabled,
   });
 }
 
@@ -95,6 +74,7 @@ export function useBlockDevicesQuery(options?: { enabled?: boolean }) {
     queryKey: queryKeys.blockDevices(sessionKey ?? ""),
     queryFn: getRemoteBlockDevices,
     enabled,
+    staleTime: 10 * 60 * 1000,
   });
 }
 
@@ -139,12 +119,12 @@ export function useExpandDiskMutation() {
 }
 
 /**
- * 현재 사용률 칩 갱신 간격. 1회 조회가 SSH mutex를 ~0.3s+ 점유하므로 1초 단위로 줄이지 않는다.
+ * 현재 사용률 칩 갱신 간격. 조회마다 원격 프로세스를 띄우므로 서버 부하를 위해 짧게 줄이지 않는다.
  * 대시보드가 보일 때만 폴링한다.
  */
-export const SYSTEM_RESOURCES_POLL_MS = 3000;
+export const SYSTEM_RESOURCES_POLL_MS = 5000;
 
-/** 원격 수집기 샘플 간격(10초)과 맞춘 추이 차트 증분 조회 간격 */
+/** 앱 백엔드 수집 간격(10초)과 맞춘 추이 차트 증분 조회 간격 */
 export const RESOURCE_HISTORY_POLL_MS = 10_000;
 
 export function useSystemResourcesQuery(options?: { enabled?: boolean }) {
@@ -157,22 +137,6 @@ export function useSystemResourcesQuery(options?: { enabled?: boolean }) {
     enabled,
     refetchInterval: SYSTEM_RESOURCES_POLL_MS,
     refetchIntervalInBackground: false,
-  });
-}
-
-/** 원격 cron 수집기(10초 샘플 → 일별 파일) 설치. 세션당 한 번만 실행한다. */
-export function useResourceHistoryCollectorQuery() {
-  const sessionKey = useSessionKey();
-
-  return useQuery({
-    queryKey: queryKeys.resourceHistoryCollector(sessionKey ?? ""),
-    queryFn: async () => {
-      await ensureRemoteResourceHistory();
-      return true;
-    },
-    enabled: Boolean(sessionKey),
-    staleTime: Infinity,
-    retry: false,
   });
 }
 
@@ -226,6 +190,7 @@ export function useSshSessionsQuery(options?: { enabled?: boolean }) {
     queryKey: queryKeys.sshSessions(sessionKey ?? ""),
     queryFn: listRemoteSshSessions,
     enabled,
+    staleTime: 60 * 1000,
   });
 }
 
@@ -237,5 +202,6 @@ export function useDockerOverviewQuery(options?: { enabled?: boolean }) {
     queryKey: queryKeys.dockerOverview(sessionKey ?? ""),
     queryFn: getRemoteDockerOverview,
     enabled,
+    staleTime: 2 * 60 * 1000,
   });
 }

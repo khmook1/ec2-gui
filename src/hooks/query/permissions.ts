@@ -9,6 +9,7 @@ import {
   listRemoteGroups,
   listRemoteUsers,
   removeRemoteUserGroup,
+  setRemoteUserPassword,
   setRemoteUserPasswordlessSudo,
 } from "@/services/tauri";
 import type {
@@ -115,6 +116,18 @@ export function useCreateRemoteUserMutation() {
   return useMutation({
     mutationFn: (input: CreateRemoteUserInput) => createRemoteUser(input),
     onSettled: invalidate,
+  });
+}
+
+export function useSetRemoteUserPasswordMutation() {
+  return useMutation({
+    mutationFn: ({
+      username,
+      password,
+    }: {
+      username: string;
+      password: string;
+    }) => setRemoteUserPassword(username, password),
   });
 }
 

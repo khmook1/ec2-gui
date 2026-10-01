@@ -45,6 +45,20 @@ export const queryKeys = {
     ["github", "repo", repo, "pulls", "list", state, page] as const,
   githubPull: (repo: string, number: number) =>
     ["github", "repo", repo, "pulls", "detail", number] as const,
+  githubActionsScope: (repo: string) =>
+    ["github", "repo", repo, "actions"] as const,
+  githubWorkflows: (repo: string) =>
+    ["github", "repo", repo, "actions", "workflows"] as const,
+  githubWorkflowRuns: (repo: string, workflowId: number | null, page: number) =>
+    ["github", "repo", repo, "actions", "runs", workflowId, page] as const,
+  githubWorkflowRun: (repo: string, runId: number) =>
+    ["github", "repo", repo, "actions", "run", runId] as const,
+  githubRunJobs: (repo: string, runId: number) =>
+    ["github", "repo", repo, "actions", "run", runId, "jobs"] as const,
+  githubJobLogs: (repo: string, jobId: number) =>
+    ["github", "repo", repo, "actions", "logs", jobId] as const,
+  githubWorkflowDispatch: (repo: string, path: string, gitRef: string | null) =>
+    ["github", "repo", repo, "actions", "dispatch", path, gitRef] as const,
 
   dockerInstalled: (session: string) =>
     ["docker", "installed", session] as const,
@@ -81,16 +95,12 @@ export const queryKeys = {
     ["dashboard", "largeDirectories", session] as const,
   diskHistory: (session: string) =>
     ["dashboard", "diskHistory", session] as const,
-  diskHistoryCollector: (session: string) =>
-    ["dashboard", "diskHistoryCollector", session] as const,
   blockDevices: (session: string) =>
     ["dashboard", "blockDevices", session] as const,
   diskExpandStatus: (session: string) =>
     ["dashboard", "diskExpandStatus", session] as const,
   systemResources: (session: string) =>
     ["dashboard", "system", session] as const,
-  resourceHistoryCollector: (session: string) =>
-    ["dashboard", "resourceHistoryCollector", session] as const,
   resourceHistoryDays: (session: string) =>
     ["dashboard", "resourceHistoryDays", session] as const,
   resourceHistory: (session: string, date: string) =>

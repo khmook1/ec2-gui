@@ -1,7 +1,10 @@
+use serde_json::{Map, Value};
+
 use crate::services::github::{
-    self, GitHubBranch, GitHubComment, GitHubContentEntry, GitHubFile, GitHubIssue,
+    self, GitHubBranch, GitHubComment, GitHubContentEntry, GitHubFile, GitHubIssue, GitHubJob,
     GitHubLanguage, GitHubMergeResult, GitHubPage, GitHubPull, GitHubRepoDetail, GitHubRepoPage,
-    GitHubRepoQuery, GitHubRepoUpdate, GitHubViewer,
+    GitHubRepoQuery, GitHubRepoUpdate, GitHubViewer, GitHubWorkflow, GitHubWorkflowDispatch,
+    GitHubWorkflowRun,
 };
 
 /// README·댓글 링크를 웹뷰가 아닌 기본 브라우저로 연다 (http/https만 허용).
@@ -192,4 +195,70 @@ pub async fn set_github_pull_state(
     state: String,
 ) -> Result<GitHubPull, String> {
     github::set_github_pull_state(&repo, number, &state).await
+}
+
+#[tauri::command]
+pub async fn list_github_workflows(repo: String) -> Result<Vec<GitHubWorkflow>, String> {
+    github::list_github_workflows(&repo).await
+}
+
+#[tauri::command]
+pub async fn list_github_workflow_runs(
+    repo: String,
+    workflow_id: Option<u64>,
+    page: u32,
+    per_page: u32,
+) -> Result<GitHubPage<GitHubWorkflowRun>, String> {
+    github::list_github_workflow_runs(&repo, workflow_id, page, per_page).await
+}
+
+#[tauri::command]
+pub async fn get_github_workflow_run(
+    repo: String,
+    run_id: u64,
+) -> Result<GitHubWorkflowRun, String> {
+    github::get_github_workflow_run(&repo, run_id).await
+}
+
+#[tauri::command]
+pub async fn list_github_run_jobs(repo: String, run_id: u64) -> Result<Vec<GitHubJob>, String> {
+    github::list_github_run_jobs(&repo, run_id).await
+}
+
+#[tauri::command]
+pub async fn get_github_job_logs(repo: String, job_id: u64) -> Result<String, String> {
+    github::get_github_job_logs(&repo, job_id).await
+}
+
+#[tauri::command]
+pub async fn get_github_workflow_dispatch(
+    repo: String,
+    path: String,
+    git_ref: Option<String>,
+) -> Result<GitHubWorkflowDispatch, String> {
+    github::get_github_workflow_dispatch(&repo, &path, git_ref.as_deref()).await
+}
+
+#[tauri::command]
+pub async fn dispatch_github_workflow(
+    repo: String,
+    workflow_id: u64,
+    git_ref: String,
+    inputs: Map<String, Value>,
+) -> Result<(), String> {
+    github::dispatch_github_workflow(&repo, workflow_id, &git_ref, inputs).await
+}
+
+#[tauri::command]
+pub async fn rerun_github_workflow_run(
+    repo: String,
+    run_id: u64,
+    failed_only: bool,
+) -> Result<(), String> {
+    github::rerun_github_workflow_run(&repo, run_id, failed_only).await
+}
+
+#[tauri::command]
+pub async fn cancel_github_workflow_run(repo: String, run_id: u64) -> Result<(), String> {
+    github::cancel_github_workflow_run(&repo, run_id).await
 }

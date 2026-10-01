@@ -36,7 +36,8 @@ export function RepoCodeTab({ detail }: { detail: GitHubRepoDetail }) {
   );
   const readmeQuery = useGitHubReadmeQuery(repo, gitRef);
 
-  const branchNames = branchesQuery.data?.items.map((branch) => branch.name) ?? [];
+  const branchNames =
+    branchesQuery.data?.items.map((branch) => branch.name) ?? [];
   if (!branchNames.includes(gitRef)) {
     branchNames.unshift(gitRef);
   }
@@ -105,7 +106,9 @@ export function RepoCodeTab({ detail }: { detail: GitHubRepoDetail }) {
                 <span key={path} className="github-breadcrumb__part">
                   <span className="github-breadcrumb__sep">/</span>
                   {isLast ? (
-                    <span className="github-breadcrumb__current">{segment}</span>
+                    <span className="github-breadcrumb__current">
+                      {segment}
+                    </span>
                   ) : (
                     <button
                       type="button"
@@ -135,7 +138,10 @@ export function RepoCodeTab({ detail }: { detail: GitHubRepoDetail }) {
           <LoadingIndicator message="파일 목록을 불러오는 중" />
         ) : contentsQuery.error ? (
           <p className="explorer-error" role="alert">
-            {githubErrorMessage(contentsQuery.error, "파일 목록을 불러오지 못했습니다.")}
+            {githubErrorMessage(
+              contentsQuery.error,
+              "파일 목록을 불러오지 못했습니다.",
+            )}
           </p>
         ) : (
           <div
@@ -154,7 +160,10 @@ export function RepoCodeTab({ detail }: { detail: GitHubRepoDetail }) {
         {showReadme && readmeQuery.data ? (
           <section className="github-readme">
             <header className="github-readme__header">README</header>
-            <MarkdownHtml html={readmeQuery.data} className="github-readme__body" />
+            <MarkdownHtml
+              html={readmeQuery.data}
+              className="github-readme__body"
+            />
           </section>
         ) : null}
       </div>

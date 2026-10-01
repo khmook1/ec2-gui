@@ -51,41 +51,41 @@ export function VolumeGrid({
       {filtered.map((volume) => {
         const selected = selectedKey === volume.name;
         return (
-          <button
-            key={volume.name}
-            type="button"
-            role="listitem"
-            className={[
-              "explorer-icon-grid__item",
-              "explorer-icon-grid__item--docker",
-              selected ? "explorer-icon-grid__item--selected" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            title={`${volume.name}\n${volume.driver}\n${volume.mountpoint}`}
-            aria-pressed={selected}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              select(volume.name);
-            }}
-            onDoubleClick={(event) => {
-              event.stopPropagation();
-              onOpenVolume?.(volume);
-            }}
-            onContextMenu={(event) => onVolumeContextMenu?.(event, volume)}
-          >
-            <DockerVolumesNavIcon className="docker-grid__icon" />
-            <span className="explorer-icon-grid__name docker-grid__name">
-              <SearchHighlight text={volume.name} query={query} />
-            </span>
-            <span className="docker-grid__meta">
-              <SearchHighlight text={volume.driver || "—"} query={query} />
-            </span>
-            <span className="docker-grid__meta docker-grid__meta--status">
-              <SearchHighlight text={volume.scope || "—"} query={query} />
-            </span>
-          </button>
+          <div key={volume.name} role="listitem" className="docker-grid__cell">
+            <button
+              type="button"
+              className={[
+                "explorer-icon-grid__item",
+                "explorer-icon-grid__item--docker",
+                selected ? "explorer-icon-grid__item--selected" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              title={`${volume.name}\n${volume.driver}\n${volume.mountpoint}`}
+              aria-pressed={selected}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                select(volume.name);
+              }}
+              onDoubleClick={(event) => {
+                event.stopPropagation();
+                onOpenVolume?.(volume);
+              }}
+              onContextMenu={(event) => onVolumeContextMenu?.(event, volume)}
+            >
+              <DockerVolumesNavIcon className="docker-grid__icon" />
+              <span className="explorer-icon-grid__name docker-grid__name">
+                <SearchHighlight text={volume.name} query={query} />
+              </span>
+              <span className="docker-grid__meta">
+                <SearchHighlight text={volume.driver || "—"} query={query} />
+              </span>
+              <span className="docker-grid__meta docker-grid__meta--status">
+                <SearchHighlight text={volume.scope || "—"} query={query} />
+              </span>
+            </button>
+          </div>
         );
       })}
     </div>

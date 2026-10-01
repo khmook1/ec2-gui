@@ -47,46 +47,57 @@ export function RepoGrid({ repos }: RepoGridProps) {
         const selected = selectedKey === repo.fullName;
         const meta = [
           repo.language,
-          repo.stargazers > 0 ? `★ ${repo.stargazers.toLocaleString("ko-KR")}` : null,
+          repo.stargazers > 0
+            ? `★ ${repo.stargazers.toLocaleString("ko-KR")}`
+            : null,
         ]
           .filter(Boolean)
           .join(" · ");
         return (
-          <button
+          <div
             key={repo.fullName}
-            type="button"
             role="listitem"
-            className={[
-              "explorer-icon-grid__item",
-              "explorer-icon-grid__item--github",
-              "github-grid__card--clickable",
-              selected ? "explorer-icon-grid__item--selected" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            title={[repo.fullName, repo.description].filter(Boolean).join("\n")}
-            aria-pressed={selected}
-            onMouseDown={(event) => event.stopPropagation()}
-            onClick={(event) => {
-              event.stopPropagation();
-              select(repo.fullName);
-              openRepo(repo.fullName);
-            }}
+            className="github-grid__cell"
           >
-            <GitHubNavIcon className="github-grid__icon" />
-            <span className="explorer-icon-grid__name github-grid__name">
-              <SearchHighlight text={repo.name} query={query} />
-            </span>
-            <span className="github-grid__owner">{repo.owner}</span>
-            <RepoBadges repo={repo} />
-            <span className="github-grid__desc">
-              <SearchHighlight text={repo.description || "설명 없음"} query={query} />
-            </span>
-            <span className="github-grid__meta">
-              {meta ? <SearchHighlight text={meta} query={query} /> : null}
-              <span>{formatRepoPushedAt(repo.pushedAt)}</span>
-            </span>
-          </button>
+            <button
+              type="button"
+              className={[
+                "explorer-icon-grid__item",
+                "explorer-icon-grid__item--github",
+                "github-grid__card--clickable",
+                selected ? "explorer-icon-grid__item--selected" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              title={[repo.fullName, repo.description]
+                .filter(Boolean)
+                .join("\n")}
+              aria-pressed={selected}
+              onMouseDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                select(repo.fullName);
+                openRepo(repo.fullName);
+              }}
+            >
+              <GitHubNavIcon className="github-grid__icon" />
+              <span className="explorer-icon-grid__name github-grid__name">
+                <SearchHighlight text={repo.name} query={query} />
+              </span>
+              <span className="github-grid__owner">{repo.owner}</span>
+              <RepoBadges repo={repo} />
+              <span className="github-grid__desc">
+                <SearchHighlight
+                  text={repo.description || "설명 없음"}
+                  query={query}
+                />
+              </span>
+              <span className="github-grid__meta">
+                {meta ? <SearchHighlight text={meta} query={query} /> : null}
+                <span>{formatRepoPushedAt(repo.pushedAt)}</span>
+              </span>
+            </button>
+          </div>
         );
       })}
     </div>

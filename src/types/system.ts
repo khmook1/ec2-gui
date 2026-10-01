@@ -30,7 +30,7 @@ export interface HostInfo {
   uptimeSeconds: number;
 }
 
-/** 원격 `~/.ec2-gui/resource-history` 일별 파일의 샘플 (사용률 %) */
+/** 앱이 이 컴퓨터에 서버별로 저장한 일별 파일의 샘플 (사용률 %) */
 export interface ResourceHistorySample {
   ts: number;
   cpu: number;
@@ -39,9 +39,9 @@ export interface ResourceHistorySample {
 }
 
 export interface ResourceHistoryDays {
-  /** 원격 서버 로컬 기준 오늘 (`YYYY-MM-DD`) */
+  /** 이 컴퓨터 기준 오늘 (`YYYY-MM-DD`) */
   today: string;
-  /** 원격 서버 UTC 오프셋(분) */
+  /** 이 컴퓨터의 UTC 오프셋(분) */
   utcOffsetMinutes: number;
   /** 저장된 날짜 (오래된 순, 최대 30개) */
   days: string[];

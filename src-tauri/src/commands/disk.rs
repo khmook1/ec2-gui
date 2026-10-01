@@ -49,24 +49,10 @@ pub fn get_remote_permission_overview(
 }
 
 #[tauri::command(async)]
-pub fn ensure_remote_disk_history(
-    state: State<'_, SshConnectionManager>,
-) -> Result<(), String> {
-    state.ensure_disk_history_collector()
-}
-
-#[tauri::command(async)]
 pub fn get_remote_disk_history(
     state: State<'_, SshConnectionManager>,
 ) -> Result<Vec<DiskUsageSample>, String> {
     state.get_disk_history()
-}
-
-#[tauri::command(async)]
-pub fn ensure_remote_resource_history(
-    state: State<'_, SshConnectionManager>,
-) -> Result<(), String> {
-    state.ensure_resource_history_collector()
 }
 
 #[tauri::command(async)]

@@ -64,6 +64,41 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
+.terminal-tabs__item--pending .terminal-tabs__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-style: italic;
+}
+
+.terminal-tabs__item--error {
+  color: #f0b4b4;
+}
+
+.terminal-tabs__spinner {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  animation: terminal-tabs-spin 0.9s linear infinite;
+}
+
 .terminal-tabs__add {
   flex-shrink: 0;
+}
+
+.terminal-tabs__add:disabled {
+  opacity: 0.45;
+  cursor: progress;
+}
+
+@keyframes terminal-tabs-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal-tabs__spinner {
+    animation: none;
+  }
 }

@@ -124,3 +124,20 @@ export function CommentIcon(props: ToolbarIconProps) {
     </ToolbarSvg>
   );
 }
+
+export function PlayIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m10 8.5 5 3.5-5 3.5Z" />
+    </ToolbarSvg>
+  );
+}
+
+export function ChevronRightIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <path d="m9 6 6 6-6 6" />
+    </ToolbarSvg>
+  );
+}

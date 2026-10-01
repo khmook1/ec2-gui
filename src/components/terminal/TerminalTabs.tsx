@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { IconButton } from "@/components/common/IconButton";
-import { PlusIcon } from "@/components/icons/ToolbarIcons";
+import { PlusIcon, RefreshIcon } from "@/components/icons/ToolbarIcons";
 import { closeSshShell } from "@/services/tauri";
 import { useTerminalStore } from "@/stores/terminalStore";
 import "./css/terminal-tabs.css";
@@ -14,6 +14,12 @@ export function TerminalTabs({ onAddSession }: TerminalTabsProps) {
   const activeSessionId = useTerminalStore((state) => state.activeSessionId);
   const setActiveSession = useTerminalStore((state) => state.setActiveSession);
   const removeSession = useTerminalStore((state) => state.removeSession);
+  const pending = useTerminalStore((state) => state.pending);
+  const focusPending = useTerminalStore((state) => state.focusPending);
+  const dismissPending = useTerminalStore((state) => state.dismissPending);
+  const opening = pending?.status === "opening";
+  const pendingActive = pending !== null && activeSessionId === null;
+  const pendingTitle = opening ? "연결 중…" : "연결 실패";
 
   const handleClose = useCallback(
     async (sessionId: string) => {
@@ -62,12 +68,49 @@ export function TerminalTabs({ onAddSession }: TerminalTabsProps) {
             </div>
           );
         })}
+        {pending ? (
+          <div
+            className={[
+              "terminal-tabs__item",
+              "terminal-tabs__item--pending",
+              pendingActive ? "terminal-tabs__item--active" : "",
+              opening ? "" : "terminal-tabs__item--error",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={pendingActive}
+              aria-busy={opening}
+              className="terminal-tabs__button"
+              onClick={focusPending}
+            >
+              {opening ? (
+                <RefreshIcon className="terminal-tabs__spinner" aria-hidden />
+              ) : null}
+              {pendingTitle}
+            </button>
+            {opening ? null : (
+              <button
+                type="button"
+                className="terminal-tabs__close"
+                aria-label={`${pendingTitle} 닫기`}
+                onClick={dismissPending}
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ) : null}
       </div>
       <IconButton
         tone="neutral"
-        tooltip="새 터미널"
+        tooltip={opening ? "터미널 연결 중" : "새 터미널"}
         aria-label="새 터미널"
         className="terminal-tabs__add"
+        disabled={opening}
         onClick={onAddSession}
       >
         <PlusIcon />

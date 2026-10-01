@@ -143,7 +143,7 @@ export function DashboardPage() {
     if (features.blockDevices) {
       void blockDevicesQuery.refetch();
     }
-    if (features.largeDirectories) {
+    if (features.largeDirectories && largeDirsQuery.isStale) {
       void largeDirsQuery.refetch();
     }
     if (features.systemResources) {

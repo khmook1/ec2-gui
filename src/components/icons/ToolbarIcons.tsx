@@ -138,6 +138,16 @@ export function EditIcon(props: ToolbarIconProps) {
   );
 }
 
+/** sudo(관리자 권한) */
+export function ShieldIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </ToolbarSvg>
+  );
+}
+
 /** 저장/확인 */
 export function CheckIcon(props: ToolbarIconProps) {
   return (

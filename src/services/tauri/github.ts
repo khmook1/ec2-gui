@@ -6,6 +6,7 @@ import type {
   GitHubFile,
   GitHubIssue,
   GitHubIssueState,
+  GitHubJob,
   GitHubLanguage,
   GitHubMergeMethod,
   GitHubMergeResult,
@@ -16,6 +17,9 @@ import type {
   GitHubRepoQuery,
   GitHubRepoUpdate,
   GitHubViewer,
+  GitHubWorkflow,
+  GitHubWorkflowDispatch,
+  GitHubWorkflowRun,
 } from "@/types/github";
 
 export async function openExternalUrl(url: string): Promise<void> {
@@ -219,4 +223,86 @@ export async function setGitHubPullState(
   state: GitHubIssueState,
 ): Promise<GitHubPull> {
   return invoke<GitHubPull>("set_github_pull_state", { repo, number, state });
+}
+
+export async function listGitHubWorkflows(
+  repo: string,
+): Promise<GitHubWorkflow[]> {
+  return invoke<GitHubWorkflow[]>("list_github_workflows", { repo });
+}
+
+export async function listGitHubWorkflowRuns(
+  repo: string,
+  workflowId: number | null,
+  page: number,
+  perPage: number,
+): Promise<GitHubPage<GitHubWorkflowRun>> {
+  return invoke<GitHubPage<GitHubWorkflowRun>>("list_github_workflow_runs", {
+    repo,
+    workflowId,
+    page,
+    perPage,
+  });
+}
+
+export async function getGitHubWorkflowRun(
+  repo: string,
+  runId: number,
+): Promise<GitHubWorkflowRun> {
+  return invoke<GitHubWorkflowRun>("get_github_workflow_run", { repo, runId });
+}
+
+export async function listGitHubRunJobs(
+  repo: string,
+  runId: number,
+): Promise<GitHubJob[]> {
+  return invoke<GitHubJob[]>("list_github_run_jobs", { repo, runId });
+}
+
+export async function getGitHubJobLogs(
+  repo: string,
+  jobId: number,
+): Promise<string> {
+  return invoke<string>("get_github_job_logs", { repo, jobId });
+}
+
+export async function getGitHubWorkflowDispatch(
+  repo: string,
+  path: string,
+  gitRef: string | null,
+): Promise<GitHubWorkflowDispatch> {
+  return invoke<GitHubWorkflowDispatch>("get_github_workflow_dispatch", {
+    repo,
+    path,
+    gitRef,
+  });
+}
+
+export async function dispatchGitHubWorkflow(
+  repo: string,
+  workflowId: number,
+  gitRef: string,
+  inputs: Record<string, string | boolean>,
+): Promise<void> {
+  return invoke<void>("dispatch_github_workflow", {
+    repo,
+    workflowId,
+    gitRef,
+    inputs,
+  });
+}
+
+export async function rerunGitHubWorkflowRun(
+  repo: string,
+  runId: number,
+  failedOnly: boolean,
+): Promise<void> {
+  return invoke<void>("rerun_github_workflow_run", { repo, runId, failedOnly });
+}
+
+export async function cancelGitHubWorkflowRun(
+  repo: string,
+  runId: number,
+): Promise<void> {
+  return invoke<void>("cancel_github_workflow_run", { repo, runId });
 }
