@@ -1,3 +1,4 @@
+pub mod ai_cli;
 pub mod cache_service;
 pub mod github;
 pub mod local_favorites;

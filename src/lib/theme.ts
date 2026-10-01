@@ -37,7 +37,9 @@ function wallpaperCssValue(
   }
 }
 
-export function applySettingsToDocument(settings: AppSettings): void {
+export function applySettingsToDocument(
+  settings: Pick<AppSettings, "theme" | "wallpaper" | "fontSize">,
+): void {
   const resolved = resolveTheme(settings.theme);
   const root = document.documentElement;
   root.dataset.theme = resolved;

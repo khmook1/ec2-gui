@@ -12,7 +12,7 @@ export function FeatureComingSoon({
     <div className="dashboard-coming-soon" role="status" aria-label={label}>
       <img
         className="dashboard-coming-soon__icon"
-        src="/app-icon.png"
+        src="/ai-icon.png"
         alt=""
         width={96}
         height={96}

@@ -14,11 +14,21 @@ export interface WallpaperSettings {
   customDataUrl: string | null;
 }
 
+export type AiProvider = "codex" | "claude";
+
+export interface AiSettings {
+  /** null이면 AI 미연결 (캐릭터 숨김) */
+  provider: AiProvider | null;
+  /** 비우면 PATH에서 자동 탐색 */
+  binaryPath: string | null;
+}
+
 export interface AppSettings {
   theme: ThemeMode;
   wallpaper: WallpaperSettings;
   /** 루트 글자 크기(px). 목록 아이템 크기도 이 값에 비례한다 */
   fontSize: number;
+  ai: AiSettings;
 }
 
 export const FONT_SIZE_MIN = 12;
@@ -40,7 +50,38 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     customDataUrl: null,
   },
   fontSize: FONT_SIZE_DEFAULT,
+  ai: {
+    provider: null,
+    binaryPath: null,
+  },
 };
+
+export const AI_PROVIDER_OPTIONS: {
+  id: AiProvider;
+  label: string;
+  command: string;
+  description: string;
+}[] = [
+  {
+    id: "codex",
+    label: "Codex CLI",
+    command: "codex",
+    description: "OpenAI",
+  },
+  {
+    id: "claude",
+    label: "Claude Code",
+    command: "claude",
+    description: "Anthropic",
+  },
+];
+
+export function getAiProviderLabel(provider: AiProvider): string {
+  return (
+    AI_PROVIDER_OPTIONS.find((option) => option.id === provider)?.label ??
+    provider
+  );
+}
 
 export const WALLPAPER_PRESET_OPTIONS: {
   id: Exclude<WallpaperPreset, "custom">;

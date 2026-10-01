@@ -152,6 +152,31 @@ export function SettingsNavIcon(props: NavIconProps) {
   );
 }
 
+export function SettingsGeneralNavIcon(props: NavIconProps) {
+  return (
+    <NavSvg {...props}>
+      <path d="M4 6h9" />
+      <path d="M17 6h3" />
+      <circle cx="15" cy="6" r="2" />
+      <path d="M4 12h3" />
+      <path d="M11 12h9" />
+      <circle cx="9" cy="12" r="2" />
+      <path d="M4 18h11" />
+      <path d="M19 18h1" />
+      <circle cx="17" cy="18" r="2" />
+    </NavSvg>
+  );
+}
+
+export function SettingsAiNavIcon(props: NavIconProps) {
+  return (
+    <NavSvg {...props}>
+      <path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8Z" />
+      <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z" />
+    </NavSvg>
+  );
+}
+
 export function ChevronDownNavIcon(props: NavIconProps) {
   return (
     <NavSvg {...props}>

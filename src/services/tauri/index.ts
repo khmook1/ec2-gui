@@ -1,3 +1,11 @@
+export { AI_CHAT_CANCELLED, cancelAiChat, checkAiCli, sendAiChat } from "./ai";
+export type {
+  AiChatMessage,
+  AiChatRole,
+  AiCliStatus,
+  AiConnectionInput,
+  AiStreamEvent,
+} from "./ai";
 export { getAppInfo, getLocalLoginDefaults } from "./app";
 export {
   checkRemoteDocker,

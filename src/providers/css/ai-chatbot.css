@@ -73,6 +73,26 @@
   opacity: 1;
 }
 
+.ai-chatbot-toggle--busy {
+  animation: ai-chatbot-talk 0.7s ease-in-out infinite;
+}
+
+@keyframes ai-chatbot-talk {
+  0%,
+  100% {
+    translate: 0 0;
+    rotate: 0deg;
+  }
+  25% {
+    translate: 0 -6px;
+    rotate: -2deg;
+  }
+  75% {
+    translate: 0 -3px;
+    rotate: 2deg;
+  }
+}
+
 @keyframes ai-chatbot-float {
   0%,
   100% {

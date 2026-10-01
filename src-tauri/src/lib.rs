@@ -21,6 +21,9 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::ai::check_ai_cli,
+            commands::ai::send_ai_chat,
+            commands::ai::cancel_ai_chat,
             commands::app::get_app_info,
             commands::app::get_local_login_defaults,
             commands::ssh::connect_ssh,

@@ -9,6 +9,8 @@ import {
   DockerVolumesNavIcon,
   FileExplorerNavIcon,
   GitHubNavIcon,
+  SettingsAiNavIcon,
+  SettingsGeneralNavIcon,
   SettingsNavIcon,
 } from "@/components/icons/NavIcons";
 
@@ -24,6 +26,8 @@ export const ROUTE_ID = {
   github: "github",
   githubRepo: "github-repo",
   settings: "settings",
+  settingsGeneral: "settings-general",
+  settingsAi: "settings-ai",
 } as const;
 
 export type RouteId = (typeof ROUTE_ID)[keyof typeof ROUTE_ID];
@@ -152,6 +156,25 @@ export const ROUTES: readonly AppRoute[] = [
     headerTitle: "설정",
     icon: SettingsNavIcon,
     showInSidebar: true,
+    defaultChildId: ROUTE_ID.settingsGeneral,
+    children: [
+      {
+        id: ROUTE_ID.settingsGeneral,
+        path: "/settings/general",
+        label: "기본 설정",
+        headerTitle: "설정 · 기본 설정",
+        icon: SettingsGeneralNavIcon,
+        showInSidebar: true,
+      },
+      {
+        id: ROUTE_ID.settingsAi,
+        path: "/settings/ai",
+        label: "AI 설정",
+        headerTitle: "설정 · AI 설정",
+        icon: SettingsAiNavIcon,
+        showInSidebar: true,
+      },
+    ],
   },
 ] as const;
 

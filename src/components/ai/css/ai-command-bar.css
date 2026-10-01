@@ -1,0 +1,121 @@
+.ai-command-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  background: rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(2px);
+  animation: ai-command-fade 0.16s ease both;
+}
+
+.ai-command {
+  position: fixed;
+  left: 50%;
+  bottom: 40px;
+  z-index: 2501;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  width: min(780px, calc(100vw - 48px));
+  padding: 14px 18px 14px 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  backdrop-filter: blur(28px) saturate(1.5);
+  box-shadow:
+    0 28px 70px rgba(0, 0, 0, 0.38),
+    0 2px 10px rgba(0, 0, 0, 0.14);
+  translate: -50% 0;
+  animation: ai-command-rise 0.22s cubic-bezier(0.2, 1.1, 0.4, 1) both;
+}
+
+.ai-command__avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ai-command .ai-command__input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 1.375rem;
+  font-weight: 500;
+  outline: none;
+}
+
+.ai-command .ai-command__input::placeholder {
+  color: color-mix(in srgb, var(--text-secondary) 80%, transparent);
+}
+
+.ai-command__meta {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  align-items: flex-end;
+  gap: 4px;
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  white-space: nowrap;
+}
+
+.ai-command__provider {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.ai-command__keys kbd {
+  display: inline-block;
+  margin: 0 2px 0 6px;
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg) 70%, var(--surface));
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.625rem;
+  font-weight: 600;
+}
+
+.ai-command__keys kbd:first-child {
+  margin-left: 0;
+}
+
+.ai-command__notice {
+  flex-basis: 100%;
+  margin: 0 0 0 58px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+@keyframes ai-command-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes ai-command-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-command,
+  .ai-command-backdrop {
+    animation: none;
+  }
+}

@@ -4,28 +4,57 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { AiCommandBar } from "@/components/ai/AiCommandBar";
+import { AiSpeechBubble } from "@/components/ai/AiSpeechBubble";
+import { useCancelAiChatMutation, useSendAiChatMutation } from "@/hooks/query";
+import { AI_CHAT_CANCELLED, type AiChatMessage } from "@/services/tauri/ai";
+import { useSettingsStore } from "@/stores/settingsStore";
+import type { AiExchange } from "@/types/ai";
 import "./css/ai-chatbot.css";
 
 interface AiChatbotContextValue {
-  isOpen: boolean;
-  open: () => void;
-  close: () => void;
-  toggle: () => void;
+  /** AI 설정이 있어 캐릭터·입력창을 쓸 수 있는지 */
+  enabled: boolean;
+  commandOpen: boolean;
+  openCommand: () => void;
+  closeCommand: () => void;
+  toggleCommand: () => void;
+  ask: (question: string) => void;
 }
 
 const AiChatbotContext = createContext<AiChatbotContextValue | null>(null);
 
 const ICON_SWAP_MS = 3200;
 
+const AI_COMMAND_SHORTCUT_LABEL = "⇧ Space";
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target.tagName === "INPUT" ||
+    target.tagName === "TEXTAREA" ||
+    target.tagName === "SELECT"
+  );
+}
+
+function isCommandShortcut(event: KeyboardEvent): boolean {
+  if (event.code !== "Space" || !event.shiftKey || event.isComposing) return false;
+  if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return false;
+  // 입력 중 Shift+Space(대문자 뒤 공백 등)를 가로채지 않는다. 터미널(xterm)도 textarea라 제외된다.
+  return !isEditableTarget(event.target);
+}
+
 function AiChatbotToggle({
-  isOpen,
+  busy,
   onToggle,
 }: {
-  isOpen: boolean;
+  busy: boolean;
   onToggle: () => void;
 }) {
   const [showActiveIcon, setShowActiveIcon] = useState(false);
@@ -42,17 +71,16 @@ function AiChatbotToggle({
       type="button"
       className={[
         "ai-chatbot-toggle",
-        isOpen ? "ai-chatbot-toggle--open" : "",
-        showActiveIcon ? "ai-chatbot-toggle--alt" : "",
+        busy ? "ai-chatbot-toggle--busy" : "",
+        showActiveIcon || busy ? "ai-chatbot-toggle--alt" : "",
       ]
         .filter(Boolean)
         .join(" ")}
-      aria-label={isOpen ? "AI 챗봇 닫기" : "AI 챗봇 열기"}
-      aria-pressed={isOpen}
+      aria-label={`AI에게 질문하기 (${AI_COMMAND_SHORTCUT_LABEL})`}
+      title={`AI에게 질문하기 (${AI_COMMAND_SHORTCUT_LABEL})`}
       onClick={onToggle}
     >
-      {/* ai chatbot icon 기능 추가후 활성화 */}
-      {/* <span className="ai-chatbot-toggle__icons" aria-hidden>
+      <span className="ai-chatbot-toggle__icons" aria-hidden>
         <img
           className="ai-chatbot-toggle__icon ai-chatbot-toggle__icon--idle"
           src="/ai-icon2.png"
@@ -65,28 +93,183 @@ function AiChatbotToggle({
           alt=""
           draggable={false}
         />
-      </span> */}
+      </span>
     </button>,
     document.body,
   );
 }
 
 export function AiChatbotProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
+  const hydrated = useSettingsStore((state) => state.hydrated);
+  const ai = useSettingsStore((state) => state.ai);
+  const enabled = hydrated && ai.provider !== null;
 
-  const open = useCallback(() => setIsOpen(true), []);
-  const close = useCallback(() => setIsOpen(false), []);
-  const toggle = useCallback(() => setIsOpen((current) => !current), []);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [history, setHistory] = useState<AiChatMessage[]>([]);
+  const [exchange, setExchange] = useState<AiExchange | null>(null);
+  const requestIdRef = useRef(0);
+  const partialAnswerRef = useRef("");
+  const sendMutation = useSendAiChatMutation();
+  const cancelMutation = useCancelAiChatMutation();
+
+  const openCommand = useCallback(() => setCommandOpen(true), []);
+  const closeCommand = useCallback(() => setCommandOpen(false), []);
+  const toggleCommand = useCallback(() => setCommandOpen((current) => !current), []);
+
+  const updateExchange = useCallback(
+    (requestId: number, patch: (current: AiExchange) => AiExchange) => {
+      if (requestId !== requestIdRef.current) return;
+      setExchange((current) => (current ? patch(current) : current));
+    },
+    [],
+  );
+
+  const cancel = useCallback(() => {
+    if (!exchange?.pending) return;
+    cancelMutation.mutate();
+  }, [cancelMutation, exchange?.pending]);
+
+  const ask = useCallback(
+    (input: string) => {
+      const question = input.trim();
+      if (!question || !ai.provider) return;
+
+      const requestId = ++requestIdRef.current;
+      partialAnswerRef.current = "";
+      const messages: AiChatMessage[] = [
+        ...history,
+        { role: "user", content: question },
+      ];
+      setExchange({
+        id: requestId,
+        question,
+        answer: "",
+        status: null,
+        error: null,
+        pending: true,
+        cancelled: false,
+      });
+
+      sendMutation
+        .mutateAsync({
+          connection: { provider: ai.provider, binaryPath: ai.binaryPath },
+          messages,
+          onEvent: (event) => {
+            if (requestId !== requestIdRef.current) return;
+            if (event.type === "delta") {
+              partialAnswerRef.current += event.text;
+            }
+            updateExchange(requestId, (current) =>
+              event.type === "delta"
+                ? { ...current, answer: current.answer + event.text, status: null }
+                : { ...current, status: event.text },
+            );
+          },
+        })
+        .then((reply) => {
+          if (requestId !== requestIdRef.current) return;
+          setHistory((current) => [
+            ...current,
+            { role: "user", content: question },
+            { role: "assistant", content: reply },
+          ]);
+          updateExchange(requestId, (current) => ({
+            ...current,
+            answer: reply,
+            status: null,
+            pending: false,
+          }));
+        })
+        .catch((err: unknown) => {
+          if (requestId !== requestIdRef.current) return;
+          const message = err instanceof Error ? err.message : String(err);
+          const cancelled = message === AI_CHAT_CANCELLED;
+          const partial = partialAnswerRef.current.trim();
+          if (cancelled && partial) {
+            setHistory((current) => [
+              ...current,
+              { role: "user", content: question },
+              { role: "assistant", content: partial },
+            ]);
+          }
+          updateExchange(requestId, (current) => ({
+            ...current,
+            status: null,
+            pending: false,
+            cancelled,
+            error: cancelled ? null : message,
+          }));
+        });
+    },
+    [ai.provider, ai.binaryPath, history, sendMutation, updateExchange],
+  );
+
+  const dismiss = useCallback(() => {
+    cancel();
+    requestIdRef.current += 1;
+    setExchange(null);
+  }, [cancel]);
+
+  const resetConversation = useCallback(() => {
+    cancel();
+    requestIdRef.current += 1;
+    setHistory([]);
+    setExchange(null);
+  }, [cancel]);
+
+  useEffect(() => {
+    if (!enabled) {
+      setCommandOpen(false);
+    }
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    function handleKeyDown(event: KeyboardEvent) {
+      if (!isCommandShortcut(event)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setCommandOpen((current) => !current);
+    }
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [enabled]);
 
   const value = useMemo<AiChatbotContextValue>(
-    () => ({ isOpen, open, close, toggle }),
-    [isOpen, open, close, toggle],
+    () => ({ enabled, commandOpen, openCommand, closeCommand, toggleCommand, ask }),
+    [enabled, commandOpen, openCommand, closeCommand, toggleCommand, ask],
   );
 
   return (
     <AiChatbotContext.Provider value={value}>
       {children}
-      <AiChatbotToggle isOpen={isOpen} onToggle={toggle} />
+      {enabled && ai.provider ? (
+        <>
+          {exchange ? (
+            <AiSpeechBubble
+              key={exchange.id}
+              exchange={exchange}
+              canReset={history.length > 0}
+              onCancel={cancel}
+              onDismiss={dismiss}
+              onReset={resetConversation}
+            />
+          ) : null}
+          <AiChatbotToggle busy={exchange?.pending ?? false} onToggle={toggleCommand} />
+          {commandOpen ? (
+            <AiCommandBar
+              provider={ai.provider}
+              shortcutLabel={AI_COMMAND_SHORTCUT_LABEL}
+              pending={exchange?.pending ?? false}
+              onSubmit={(question) => {
+                ask(question);
+                closeCommand();
+              }}
+              onClose={closeCommand}
+            />
+          ) : null}
+        </>
+      ) : null}
     </AiChatbotContext.Provider>
   );
 }

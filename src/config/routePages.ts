@@ -12,11 +12,11 @@ import {
 import { FileExplorerPage } from "@/pages/FileExplorer";
 import { GitHubPage } from "@/pages/GitHub";
 import { GitHubRepoPage } from "@/pages/GitHubRepo";
-import { SettingsPage } from "@/pages/Settings";
+import { AiSettingsPage, GeneralSettingsPage } from "@/pages/settings";
 
 export type RoutePage = ComponentType;
 
-/** 그룹 전용 라우트(`docker`)는 defaultChildId로 해석되므로 매핑하지 않는다. */
+/** 그룹 전용 라우트(`docker`, `settings`)는 defaultChildId로 해석되므로 매핑하지 않는다. */
 const ROUTE_PAGES: Partial<Record<RouteId, RoutePage>> = {
   [ROUTE_ID.dashboard]: DashboardPage,
   [ROUTE_ID.fileExplorer]: FileExplorerPage,
@@ -27,7 +27,8 @@ const ROUTE_PAGES: Partial<Record<RouteId, RoutePage>> = {
   [ROUTE_ID.dockerSystem]: DockerSystemPage,
   [ROUTE_ID.github]: GitHubPage,
   [ROUTE_ID.githubRepo]: GitHubRepoPage,
-  [ROUTE_ID.settings]: SettingsPage,
+  [ROUTE_ID.settingsGeneral]: GeneralSettingsPage,
+  [ROUTE_ID.settingsAi]: AiSettingsPage,
 };
 
 export function getRoutePage(id: RouteId): RoutePage {

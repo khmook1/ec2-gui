@@ -21,7 +21,7 @@ import {
   type ThemeMode,
   type WallpaperPreset,
 } from "@/types/settings";
-import "./css/settings.css";
+import "../css/settings.css";
 
 interface SettingsFormValues {
   theme: ThemeMode;
@@ -35,7 +35,7 @@ const THEME_OPTIONS: { value: ThemeMode; label: string }[] = [
   { value: "system", label: "시스템" },
 ];
 
-export function SettingsPage() {
+export function GeneralSettingsPage() {
   const theme = useSettingsStore((state) => state.theme);
   const wallpaper = useSettingsStore((state) => state.wallpaper);
   const setTheme = useSettingsStore((state) => state.setTheme);
@@ -190,7 +190,8 @@ export function SettingsPage() {
     <section className="explorer settings-page">
       <PageToolbar>
         <p className="page-toolbar__hint">
-          GUI 테마, 글자 크기, 배경화면을 설정합니다. 저장소에서 데이터가 저장되는 위치를 확인하고 열 수 있습니다.
+          GUI 테마, 글자 크기, 배경화면을 설정합니다. 저장소에서 데이터가
+          저장되는 위치를 확인하고 열 수 있습니다.
         </p>
       </PageToolbar>
 
@@ -276,8 +277,9 @@ export function SettingsPage() {
               </Button>
             </div>
             <p className="settings-font-size__hint">
-              앱 전체 글자와 파일 탐색기·Docker·GitHub 목록 아이템(카드·리스트) 크기가 함께
-              바뀝니다. 기본값 {FONT_SIZE_DEFAULT}px이 파일 탐색기 기준 크기입니다.
+              앱 전체 글자와 파일 탐색기·Docker·GitHub 목록 아이템(카드·리스트)
+              크기가 함께 바뀝니다. 기본값 {FONT_SIZE_DEFAULT}px이 파일 탐색기
+              기준 크기입니다.
             </p>
           </FormField>
 

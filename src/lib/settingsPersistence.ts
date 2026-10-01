@@ -2,6 +2,8 @@ import { LazyStore } from "@tauri-apps/plugin-store";
 import {
   clampFontSize,
   DEFAULT_APP_SETTINGS,
+  type AiProvider,
+  type AiSettings,
   type AppSettings,
   type ThemeMode,
   type WallpaperPreset,
@@ -42,9 +44,36 @@ function isWallpaperPreset(value: unknown): value is WallpaperPreset {
   );
 }
 
+function isAiProvider(value: unknown): value is AiProvider {
+  return value === "codex" || value === "claude";
+}
+
+function normalizeAiSettings(value: unknown): AiSettings {
+  if (!value || typeof value !== "object") {
+    return { ...DEFAULT_APP_SETTINGS.ai };
+  }
+  const record = value as Record<string, unknown>;
+  const binaryPath =
+    typeof record.binaryPath === "string" && record.binaryPath.trim()
+      ? record.binaryPath.trim()
+      : null;
+  return {
+    provider: isAiProvider(record.provider) ? record.provider : null,
+    binaryPath,
+  };
+}
+
+function defaultSettings(): AppSettings {
+  return {
+    ...DEFAULT_APP_SETTINGS,
+    wallpaper: { ...DEFAULT_APP_SETTINGS.wallpaper },
+    ai: { ...DEFAULT_APP_SETTINGS.ai },
+  };
+}
+
 function normalizeSettings(value: unknown): AppSettings {
   if (!value || typeof value !== "object") {
-    return { ...DEFAULT_APP_SETTINGS, wallpaper: { ...DEFAULT_APP_SETTINGS.wallpaper } };
+    return defaultSettings();
   }
 
   const record = value as Record<string, unknown>;
@@ -72,6 +101,7 @@ function normalizeSettings(value: unknown): AppSettings {
       typeof record.fontSize === "number"
         ? clampFontSize(record.fontSize)
         : DEFAULT_APP_SETTINGS.fontSize,
+    ai: normalizeAiSettings(record.ai),
   };
 }
 
@@ -98,20 +128,11 @@ export async function loadPersistedSettings(): Promise<AppSettings> {
     const store = await getStore();
     const value = await store.get<unknown>(SETTINGS_KEY);
     if (value === undefined) {
-      const fallback = readBrowserFallback();
-      return fallback ?? {
-        ...DEFAULT_APP_SETTINGS,
-        wallpaper: { ...DEFAULT_APP_SETTINGS.wallpaper },
-      };
+      return readBrowserFallback() ?? defaultSettings();
     }
     return normalizeSettings(value);
   } catch {
-    return (
-      readBrowserFallback() ?? {
-        ...DEFAULT_APP_SETTINGS,
-        wallpaper: { ...DEFAULT_APP_SETTINGS.wallpaper },
-      }
-    );
+    return readBrowserFallback() ?? defaultSettings();
   }
 }
 

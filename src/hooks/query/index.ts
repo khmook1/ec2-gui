@@ -1,5 +1,10 @@
 export { queryKeys } from "./keys";
 export { useSessionKey } from "./useSessionKey";
+export {
+  useCancelAiChatMutation,
+  useCheckAiCliMutation,
+  useSendAiChatMutation,
+} from "./ai";
 export { useAppInfoQuery } from "./app";
 export {
   useBlockDevicesQuery,

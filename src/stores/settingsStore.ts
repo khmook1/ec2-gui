@@ -7,6 +7,7 @@ import { applySettingsToDocument } from "@/lib/theme";
 import {
   clampFontSize,
   DEFAULT_APP_SETTINGS,
+  type AiSettings,
   type AppSettings,
   type ThemeMode,
   type WallpaperPreset,
@@ -20,6 +21,7 @@ interface SettingsState extends AppSettings {
   setCustomWallpaper: (customDataUrl: string) => Promise<void>;
   clearCustomWallpaper: () => Promise<void>;
   setFontSize: (fontSize: number) => Promise<void>;
+  setAiSettings: (ai: AiSettings) => Promise<void>;
 }
 
 async function persistAndApply(settings: AppSettings): Promise<void> {
@@ -29,8 +31,8 @@ async function persistAndApply(settings: AppSettings): Promise<void> {
 
 export const useSettingsStore = create<SettingsState>((set, get) => {
   function current(): AppSettings {
-    const { theme, wallpaper, fontSize } = get();
-    return { theme, wallpaper, fontSize };
+    const { theme, wallpaper, fontSize, ai } = get();
+    return { theme, wallpaper, fontSize, ai };
   }
 
   async function update(patch: Partial<AppSettings>): Promise<void> {
@@ -42,6 +44,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
   return {
     ...DEFAULT_APP_SETTINGS,
     wallpaper: { ...DEFAULT_APP_SETTINGS.wallpaper },
+    ai: { ...DEFAULT_APP_SETTINGS.ai },
     hydrated: false,
 
     hydrate: async () => {
@@ -68,5 +71,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
       update({ wallpaper: { preset: "none", customDataUrl: null } }),
 
     setFontSize: (fontSize) => update({ fontSize: clampFontSize(fontSize) }),
+
+    setAiSettings: (ai) =>
+      update({
+        ai: { provider: ai.provider, binaryPath: ai.binaryPath?.trim() || null },
+      }),
   };
 });

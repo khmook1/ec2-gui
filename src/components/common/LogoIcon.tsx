@@ -28,7 +28,7 @@ export function LogoIcon({
   return (
     <img
       className={classes}
-      src="/app-icon.png"
+      src="/ai-icon.png"
       alt={alt ?? getAppName()}
       width={size}
       height={size}
