@@ -112,6 +112,23 @@ export function GitHubNavIcon(props: NavIconProps) {
   );
 }
 
+export function GitHubReposNavIcon(props: NavIconProps) {
+  return (
+    <NavSvg {...props}>
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
+    </NavSvg>
+  );
+}
+
+export function GitHubActionsNavIcon(props: NavIconProps) {
+  return (
+    <NavSvg {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m10 8.5 5 3.5-5 3.5Z" />
+    </NavSvg>
+  );
+}
+
 export function LogOutNavIcon(props: NavIconProps) {
   return (
     <NavSvg {...props}>

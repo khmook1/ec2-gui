@@ -11,6 +11,10 @@ use super::client::{
 /// 로그는 끝부분만 보여 준다 (실패 원인은 보통 마지막에 있다).
 const MAX_LOG_BYTES: usize = 512 * 1024;
 const ACCEPT_RAW: &str = "application/vnd.github.raw";
+/// 계정 전체 실행 조회 API가 없어 저장소마다 1회씩 호출한다 (시간당 5,000회 한도 고려).
+const ACTIVE_SCAN_REPOS: u32 = 30;
+/// 진행 중인 실행은 최신 실행 안에 있으므로 저장소당 최근 N건만 본다.
+const ACTIVE_SCAN_RUNS: u32 = 30;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +48,24 @@ pub struct GitHubWorkflowRun {
     pub updated_at: String,
     pub run_started_at: Option<String>,
     pub html_url: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubActiveRun {
+    /// `owner/name`
+    pub repo: String,
+    #[serde(flatten)]
+    pub run: GitHubWorkflowRun,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GitHubActiveRuns {
+    pub runs: Vec<GitHubActiveRun>,
+    pub scanned_repos: usize,
+    /// Actions 비활성·권한 부족 등으로 조회하지 못한 저장소
+    pub failed_repos: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -129,6 +151,13 @@ struct ApiRun {
 struct ApiRuns {
     total_count: u64,
     workflow_runs: Vec<ApiRun>,
+}
+
+#[derive(Deserialize)]
+struct ApiRepoName {
+    full_name: String,
+    #[serde(default)]
+    archived: bool,
 }
 
 #[derive(Deserialize)]
@@ -264,6 +293,76 @@ pub async fn list_github_workflow_runs(
         per_page,
         total_pages,
     })
+}
+
+/// 최근 push된 저장소들의 진행 중(`completed`가 아닌) 실행을 모은다.
+pub async fn list_github_active_runs() -> Result<GitHubActiveRuns, String> {
+    let client = GitHubClient::connect().await?;
+    let repos: Vec<ApiRepoName> = client
+        .get_json(
+            "/user/repos",
+            &[
+                ("sort", "pushed".to_string()),
+                ("affiliation", "owner,collaborator,organization_member".to_string()),
+                ("per_page", ACTIVE_SCAN_REPOS.to_string()),
+            ],
+            None,
+        )
+        .await?;
+    let repos: Vec<String> = repos
+        .into_iter()
+        .filter(|repo| !repo.archived)
+        .map(|repo| repo.full_name)
+        .collect();
+
+    let tasks: Vec<_> = repos
+        .iter()
+        .cloned()
+        .map(|repo| {
+            let client = client.clone();
+            tauri::async_runtime::spawn(async move {
+                let result = fetch_active_runs(&client, &repo).await;
+                (repo, result)
+            })
+        })
+        .collect();
+
+    let mut runs = Vec::new();
+    let mut failed_repos = Vec::new();
+    for task in tasks {
+        match task.await {
+            Ok((_, Ok(found))) => runs.extend(found),
+            Ok((repo, Err(_))) => failed_repos.push(repo),
+            Err(error) => return Err(format!("실행 조회 작업 실패: {error}")),
+        }
+    }
+    runs.sort_by(|a, b| b.run.created_at.cmp(&a.run.created_at));
+
+    Ok(GitHubActiveRuns {
+        runs,
+        scanned_repos: repos.len(),
+        failed_repos,
+    })
+}
+
+async fn fetch_active_runs(
+    client: &GitHubClient,
+    repo: &str,
+) -> Result<Vec<GitHubActiveRun>, String> {
+    let path = format!("{}/actions/runs", repo_path(repo)?);
+    let result: ApiRuns = client
+        .get_json(&path, &[("per_page", ACTIVE_SCAN_RUNS.to_string())], None)
+        .await?;
+    Ok(result
+        .workflow_runs
+        .into_iter()
+        .map(GitHubWorkflowRun::from)
+        .filter(|run| run.status != "completed")
+        .map(|run| GitHubActiveRun {
+            repo: repo.to_string(),
+            run,
+        })
+        .collect())
 }
 
 pub async fn get_github_workflow_run(repo: &str, run_id: u64) -> Result<GitHubWorkflowRun, String> {

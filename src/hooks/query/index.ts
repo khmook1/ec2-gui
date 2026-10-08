@@ -81,6 +81,7 @@ export {
   useGitHubRepoQuery,
   useGitHubReposQuery,
   useGitHubViewerQuery,
+  useGitHubActiveRunsQuery,
   useGitHubJobLogsQuery,
   useGitHubRunJobsQuery,
   useGitHubWorkflowDispatchQuery,

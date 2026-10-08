@@ -66,6 +66,7 @@ export {
   getGitHubJobLogs,
   getGitHubWorkflowDispatch,
   getGitHubWorkflowRun,
+  listGitHubActiveRuns,
   listGitHubRunJobs,
   listGitHubWorkflowRuns,
   listGitHubWorkflows,

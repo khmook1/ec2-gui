@@ -267,6 +267,18 @@ export interface GitHubWorkflowRun {
   htmlUrl: string;
 }
 
+export interface GitHubActiveRun extends GitHubWorkflowRun {
+  /** `owner/name` */
+  repo: string;
+}
+
+export interface GitHubActiveRuns {
+  runs: GitHubActiveRun[];
+  scannedRepos: number;
+  /** Actions 비활성·권한 부족 등으로 조회하지 못한 저장소 */
+  failedRepos: string[];
+}
+
 export interface GitHubJobStep {
   number: number;
   name: string;

@@ -93,7 +93,7 @@ export function RepoActionsTab({ detail }: { detail: GitHubRepoDetail }) {
                   ? "이 저장소에는 워크플로가 없습니다."
                   : "실행 기록이 없습니다."
               }
-              onOpen={setOpenRunId}
+              onOpen={(run) => setOpenRunId(run.id)}
             />
           ) : null}
         </PaginatedContent>

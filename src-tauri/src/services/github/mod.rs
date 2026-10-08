@@ -7,9 +7,10 @@ mod repos;
 
 pub use actions::{
     cancel_github_workflow_run, dispatch_github_workflow, get_github_job_logs,
-    get_github_workflow_dispatch, get_github_workflow_run, list_github_run_jobs,
-    list_github_workflow_runs, list_github_workflows, rerun_github_workflow_run, GitHubJob,
-    GitHubWorkflow, GitHubWorkflowDispatch, GitHubWorkflowRun,
+    get_github_workflow_dispatch, get_github_workflow_run, list_github_active_runs,
+    list_github_run_jobs, list_github_workflow_runs, list_github_workflows,
+    rerun_github_workflow_run, GitHubActiveRuns, GitHubJob, GitHubWorkflow,
+    GitHubWorkflowDispatch, GitHubWorkflowRun,
 };
 pub use branches::{create_github_branch, delete_github_branch, list_github_branches, GitHubBranch};
 pub use client::GitHubPage;

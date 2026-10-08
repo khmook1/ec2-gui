@@ -165,6 +165,7 @@ async fn error_message(response: Response) -> String {
     }
 }
 
+#[derive(Clone)]
 pub struct GitHubClient {
     client: Client,
 }

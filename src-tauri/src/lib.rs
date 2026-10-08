@@ -100,6 +100,7 @@ pub fn run() {
             commands::github::set_github_pull_state,
             commands::github::list_github_workflows,
             commands::github::list_github_workflow_runs,
+            commands::github::list_github_active_runs,
             commands::github::get_github_workflow_run,
             commands::github::list_github_run_jobs,
             commands::github::get_github_job_logs,

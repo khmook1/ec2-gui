@@ -4,6 +4,7 @@ export const queryKeys = {
   appInfo: ["appInfo"] as const,
   storagePaths: ["settings", "storagePaths"] as const,
   githubViewer: ["github", "viewer"] as const,
+  githubActiveRuns: ["github", "activeRuns"] as const,
   githubRepos: (query: GitHubRepoQuery) =>
     [
       "github",

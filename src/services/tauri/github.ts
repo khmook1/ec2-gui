@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  GitHubActiveRuns,
   GitHubBranch,
   GitHubComment,
   GitHubContentEntry,
@@ -243,6 +244,10 @@ export async function listGitHubWorkflowRuns(
     page,
     perPage,
   });
+}
+
+export async function listGitHubActiveRuns(): Promise<GitHubActiveRuns> {
+  return invoke<GitHubActiveRuns>("list_github_active_runs");
 }
 
 export async function getGitHubWorkflowRun(

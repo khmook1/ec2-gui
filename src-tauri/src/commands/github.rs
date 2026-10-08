@@ -1,7 +1,7 @@
 use serde_json::{Map, Value};
 
 use crate::services::github::{
-    self, GitHubBranch, GitHubComment, GitHubContentEntry, GitHubFile, GitHubIssue, GitHubJob,
+    self, GitHubActiveRuns, GitHubBranch, GitHubComment, GitHubContentEntry, GitHubFile, GitHubIssue, GitHubJob,
     GitHubLanguage, GitHubMergeResult, GitHubPage, GitHubPull, GitHubRepoDetail, GitHubRepoPage,
     GitHubRepoQuery, GitHubRepoUpdate, GitHubViewer, GitHubWorkflow, GitHubWorkflowDispatch,
     GitHubWorkflowRun,
@@ -210,6 +210,11 @@ pub async fn list_github_workflow_runs(
     per_page: u32,
 ) -> Result<GitHubPage<GitHubWorkflowRun>, String> {
     github::list_github_workflow_runs(&repo, workflow_id, page, per_page).await
+}
+
+#[tauri::command]
+pub async fn list_github_active_runs() -> Result<GitHubActiveRuns, String> {
+    github::list_github_active_runs().await
 }
 
 #[tauri::command]

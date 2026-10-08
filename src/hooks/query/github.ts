@@ -5,6 +5,7 @@ import {
   getGitHubJobLogs,
   getGitHubWorkflowDispatch,
   getGitHubWorkflowRun,
+  listGitHubActiveRuns,
   listGitHubRunJobs,
   listGitHubWorkflowRuns,
   listGitHubWorkflows,
@@ -215,6 +216,19 @@ export function useGitHubWorkflowRunsQuery(
       query.state.data?.items.some((run) => isRunActive(run.status))
         ? ACTIONS_POLL_MS
         : false,
+  });
+}
+
+/** 저장소마다 API를 호출하므로 단일 저장소보다 느슨하게 폴링한다 */
+const ACTIVE_RUNS_POLL_MS = 30 * 1000;
+
+export function useGitHubActiveRunsQuery() {
+  return useQuery({
+    queryKey: queryKeys.githubActiveRuns,
+    queryFn: listGitHubActiveRuns,
+    staleTime: 10 * 1000,
+    retry: false,
+    refetchInterval: ACTIVE_RUNS_POLL_MS,
   });
 }
 

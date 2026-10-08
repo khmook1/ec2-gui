@@ -2,13 +2,19 @@ import { RunStatusBadge } from "@/components/github/atoms/RunStatusBadge";
 import { formatDuration, formatGitHubTime } from "@/lib/github";
 import type { GitHubWorkflowRun } from "@/types/github";
 
-interface RunListProps {
-  runs: GitHubWorkflowRun[];
+type RunItem = GitHubWorkflowRun & { repo?: string };
+
+interface RunListProps<T extends RunItem> {
+  runs: T[];
   emptyText: string;
-  onOpen: (runId: number) => void;
+  onOpen: (run: T) => void;
 }
 
-export function RunList({ runs, emptyText, onOpen }: RunListProps) {
+export function RunList<T extends RunItem>({
+  runs,
+  emptyText,
+  onOpen,
+}: RunListProps<T>) {
   if (runs.length === 0) {
     return <p className="github-list__empty">{emptyText}</p>;
   }
@@ -20,7 +26,7 @@ export function RunList({ runs, emptyText, onOpen }: RunListProps) {
           <button
             type="button"
             className="github-list__row github-run-row"
-            onClick={() => onOpen(run.id)}
+            onClick={() => onOpen(run)}
           >
             <RunStatusBadge status={run.status} conclusion={run.conclusion} />
             <span className="github-list__main">
@@ -28,6 +34,11 @@ export function RunList({ runs, emptyText, onOpen }: RunListProps) {
                 {run.displayTitle || run.name}
               </span>
               <span className="github-list__sub">
+                {run.repo ? (
+                  <>
+                    <code className="github-ref">{run.repo}</code> ·{" "}
+                  </>
+                ) : null}
                 <strong>{run.name}</strong> #{run.runNumber}: {run.event} ·{" "}
                 {run.actor.login}
                 {run.headBranch ? (
