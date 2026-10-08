@@ -3,6 +3,7 @@ export { useSessionKey } from "./useSessionKey";
 export {
   useCancelAiChatMutation,
   useCheckAiCliMutation,
+  useRespondAiCommandApprovalMutation,
   useSendAiChatMutation,
 } from "./ai";
 export { useAppInfoQuery } from "./app";

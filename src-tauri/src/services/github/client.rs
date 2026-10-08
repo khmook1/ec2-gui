@@ -84,7 +84,7 @@ fn build_client(token: &str) -> Result<Client, String> {
     let auth = HeaderValue::from_str(&format!("Bearer {token}"))
         .map_err(|_| "GitHub 토큰 형식이 올바르지 않습니다.".to_string())?;
     headers.insert(AUTHORIZATION, auth);
-    headers.insert(USER_AGENT, HeaderValue::from_static("ec2-gui"));
+    headers.insert(USER_AGENT, HeaderValue::from_static("opsdeck"));
     headers.insert(
         "X-GitHub-Api-Version",
         HeaderValue::from_static("2022-11-28"),

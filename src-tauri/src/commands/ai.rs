@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
 use tauri::ipc::Channel;
-use tauri::AppHandle;
+use tauri::{AppHandle, Manager};
 
-use crate::services::ai_cli::{self, AiChatMessage, AiCliStatus, AiProvider, AiStreamEvent};
-use crate::services::storage_service;
+use crate::services::ai_cli::{
+    self, AiChatMessage, AiCliStatus, AiProvider, AiStreamEvent, RemoteExecutor,
+};
+use crate::services::{storage_service, SshConnectionManager};
 
 #[tauri::command]
 pub async fn check_ai_cli(
@@ -22,6 +24,7 @@ pub async fn send_ai_chat(
     provider: AiProvider,
     binary_path: Option<String>,
     messages: Vec<AiChatMessage>,
+    github_repo: Option<String>,
     on_event: Channel<AiStreamEvent>,
 ) -> Result<String, String> {
     let paths = storage_service::resolve_and_ensure(&app)?;
@@ -30,7 +33,19 @@ pub async fn send_ai_chat(
         let emit = |event: AiStreamEvent| {
             let _ = on_event.send(event);
         };
-        ai_cli::chat(provider, binary_path.as_deref(), &workdir, &messages, &emit)
+        let manager = app.try_state::<SshConnectionManager>();
+        let executor = manager
+            .as_ref()
+            .map(|manager| manager.inner() as &dyn RemoteExecutor);
+        ai_cli::chat(
+            provider,
+            binary_path.as_deref(),
+            &workdir,
+            &messages,
+            executor,
+            github_repo.as_deref(),
+            &emit,
+        )
     })
     .await
     .map_err(|error| format!("AI 대화 작업 실패: {error}"))?
@@ -39,4 +54,9 @@ pub async fn send_ai_chat(
 #[tauri::command]
 pub fn cancel_ai_chat() {
     ai_cli::cancel_active_chat();
+}
+
+#[tauri::command]
+pub fn respond_ai_command_approval(id: u64, approved: bool) -> Result<(), String> {
+    ai_cli::respond_approval(id, approved)
 }

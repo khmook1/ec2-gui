@@ -8,6 +8,10 @@ import { getParentPath } from "@/utils/file";
 
 const EMPTY_FAVORITES: RemoteEntry[] = [];
 
+function trimTrailingSlash(path: string): string {
+  return path.length > 1 ? path.replace(/\/+$/, "") : path;
+}
+
 /**
  * 이 컴퓨터의 앱 데이터(`favorites.json`)에 서버별로 저장된 파일 탐색기 즐겨찾기.
  * 즐겨찾기는 어느 폴더를 보고 있든 목록 맨 앞에 바로가기로 노출한다.
@@ -39,10 +43,13 @@ export function useExplorerFavorites(entries: RemoteEntry[], currentPath: string
       return entries;
     }
     const localByPath = new Map(entries.map((entry) => [entry.path, entry]));
-    const pinned = favorites.map((entry) => localByPath.get(entry.path) ?? entry);
+    const current = trimTrailingSlash(currentPath);
+    const pinned = favorites
+      .filter((entry) => !(entry.isDirectory && trimTrailingSlash(entry.path) === current))
+      .map((entry) => localByPath.get(entry.path) ?? entry);
     const others = entries.filter((entry) => !favoriteSet.has(entry.path));
     return [...pinned, ...others];
-  }, [entries, favoriteSet, favorites]);
+  }, [currentPath, entries, favoriteSet, favorites]);
 
   const toggleFavorite = useCallback(
     (entry: RemoteEntry) => {

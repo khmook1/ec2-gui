@@ -1,4 +1,10 @@
-export { AI_CHAT_CANCELLED, cancelAiChat, checkAiCli, sendAiChat } from "./ai";
+export {
+  AI_CHAT_CANCELLED,
+  cancelAiChat,
+  checkAiCli,
+  respondAiCommandApproval,
+  sendAiChat,
+} from "./ai";
 export type {
   AiChatMessage,
   AiChatRole,

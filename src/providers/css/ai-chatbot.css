@@ -4,6 +4,14 @@
   --ai-toggle-bottom: 60px;
 }
 
+@media (max-width: 640px) {
+  :root {
+    --ai-toggle-size: 88px;
+    --ai-toggle-right: 16px;
+    --ai-toggle-bottom: 16px;
+  }
+}
+
 .ai-chatbot-toggle {
   position: fixed;
   right: var(--ai-toggle-right);

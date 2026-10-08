@@ -1,7 +1,8 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   cancelAiChat,
   checkAiCli,
+  respondAiCommandApproval,
   sendAiChat,
   type AiChatMessage,
   type AiConnectionInput,
@@ -15,7 +16,12 @@ export function useCheckAiCliMutation() {
 }
 
 export function useSendAiChatMutation() {
+  const queryClient = useQueryClient();
   return useMutation({
+    onSettled: () => {
+      // 승인된 변경은 취소/오류 전에 이미 실행되었을 수도 있다.
+      void queryClient.invalidateQueries({ queryKey: ["github"] });
+    },
     mutationFn: ({
       connection,
       messages,
@@ -31,5 +37,12 @@ export function useSendAiChatMutation() {
 export function useCancelAiChatMutation() {
   return useMutation({
     mutationFn: cancelAiChat,
+  });
+}
+
+export function useRespondAiCommandApprovalMutation() {
+  return useMutation({
+    mutationFn: ({ id, approved }: { id: number; approved: boolean }) =>
+      respondAiCommandApproval(id, approved),
   });
 }

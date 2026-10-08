@@ -1,5 +1,11 @@
+mod command_policy;
+mod danger_gate;
+mod docker_tool;
+mod github_tool;
+mod remote_tool;
 mod stream;
 
+use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -12,7 +18,11 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
+pub use danger_gate::respond_approval;
+pub use remote_tool::{RemoteExecutor, RemoteTarget};
 pub use stream::AiStreamEvent;
+use danger_gate::{ApprovalCommand, PendingApproval};
+use remote_tool::{CommandOutcome, TOOL_FENCE};
 use stream::StreamState;
 
 /// 프론트가 취소 응답을 구분하는 데 쓰는 고정 메시지
@@ -22,9 +32,11 @@ const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
 const CHAT_TIMEOUT: Duration = Duration::from_secs(300);
 const SHELL_PATH_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_HISTORY_MESSAGES: usize = 20;
+/// 명령 요청 → 실행 → 분석을 반복하는 최대 횟수 (마지막 라운드는 답변만)
+const MAX_TOOL_ROUNDS: usize = 4;
 const PATH_MARKER: &str = "__EC2GUI_PATH__";
 
-const SYSTEM_PROMPT: &str = "당신은 EC2 서버를 관리하는 데스크톱 앱(EC2 GUI)에 내장된 AI 도우미입니다. \
+const SYSTEM_PROMPT: &str = "당신은 EC2 서버를 관리하는 데스크톱 앱(OpsDeck)에 내장된 AI 도우미입니다. \
 리눅스 서버 운영, SSH, Docker, 디스크·권한 관리, GitHub Actions 관련 질문에 간결하고 정확하게 답하세요. \
 명령어를 제안할 때는 코드 블록으로 보여 주고, 파괴적인 작업은 위험성을 먼저 알려 주세요. \
 사용자가 쓴 언어로 답하세요.";
@@ -289,7 +301,11 @@ pub fn check(provider: AiProvider, custom_path: Option<&str>) -> Result<AiCliSta
     })
 }
 
-fn build_prompt(messages: &[AiChatMessage]) -> Result<String, String> {
+fn build_prompt(
+    messages: &[AiChatMessage],
+    target: Option<&RemoteTarget>,
+    docker_section: Option<&str>,
+) -> Result<String, String> {
     let (last, history) = messages
         .split_last()
         .ok_or_else(|| "보낼 메시지가 없습니다.".to_string())?;
@@ -299,6 +315,13 @@ fn build_prompt(messages: &[AiChatMessage]) -> Result<String, String> {
 
     let start = history.len().saturating_sub(MAX_HISTORY_MESSAGES);
     let mut prompt = String::from(SYSTEM_PROMPT);
+    prompt.push_str(danger_gate::AI_DANGER_POLICY);
+    if let Some(target) = target {
+        prompt.push_str(&remote_tool::tool_instructions(target));
+    }
+    if let Some(section) = docker_section {
+        prompt.push_str(section);
+    }
     if start < history.len() {
         prompt.push_str("\n\n[이전 대화]\n");
         for message in &history[start..] {
@@ -434,20 +457,175 @@ fn run_streaming(
     })
 }
 
+#[derive(Default, PartialEq)]
+enum GateMode {
+    /// 응답이 도구 블록으로 시작하는지 아직 모름
+    #[default]
+    Pending,
+    Streaming,
+    Suppressed,
+}
+
+/// 도구 블록으로 시작하는 응답은 화면에 흘려보내지 않도록 앞부분 delta를 잠시 모아 둔다.
+#[derive(Default)]
+struct DeltaGate {
+    mode: GateMode,
+    buffer: String,
+}
+
+impl DeltaGate {
+    fn push(&mut self, text: String, emit: &dyn Fn(AiStreamEvent)) {
+        match self.mode {
+            GateMode::Streaming => emit(AiStreamEvent::Delta { text }),
+            GateMode::Suppressed => {}
+            GateMode::Pending => {
+                self.buffer.push_str(&text);
+                let head = self.buffer.trim_start();
+                if head.starts_with(TOOL_FENCE) || head.starts_with(github_tool::TOOL_FENCE) {
+                    self.mode = GateMode::Suppressed;
+                    self.buffer.clear();
+                    emit(AiStreamEvent::Status {
+                        text: "도구 실행 준비 중…".to_string(),
+                    });
+                } else if !TOOL_FENCE.starts_with(head) && !github_tool::TOOL_FENCE.starts_with(head) {
+                    self.mode = GateMode::Streaming;
+                    emit(AiStreamEvent::Delta {
+                        text: std::mem::take(&mut self.buffer),
+                    });
+                }
+            }
+        }
+    }
+
+    fn flush(&mut self, emit: &dyn Fn(AiStreamEvent)) {
+        if self.mode == GateMode::Pending && !self.buffer.is_empty() {
+            self.mode = GateMode::Streaming;
+            emit(AiStreamEvent::Delta {
+                text: std::mem::take(&mut self.buffer),
+            });
+        }
+    }
+}
+
 pub fn chat(
     provider: AiProvider,
     custom_path: Option<&str>,
     workdir: &Path,
     messages: &[AiChatMessage],
+    executor: Option<&dyn RemoteExecutor>,
+    github_repo: Option<&str>,
     emit: &dyn Fn(AiStreamEvent),
 ) -> Result<String, String> {
     let request = ActiveRequest::register();
     let binary = resolve_binary(provider, custom_path)?;
-    let prompt = build_prompt(messages)?;
+    let executor = executor.and_then(|executor| executor.target().map(|target| (executor, target)));
+    let mut docker_status = executor.as_ref().and_then(|(executor, _)| {
+        emit(AiStreamEvent::Status {
+            text: "서버 Docker 상태 확인 중…".to_string(),
+        });
+        docker_tool::probe(*executor)
+    });
+    let docker_section = executor
+        .as_ref()
+        .map(|_| docker_tool::instructions(docker_status.as_ref()));
+    let mut base_prompt = build_prompt(
+        messages,
+        executor.as_ref().map(|(_, target)| target),
+        docker_section.as_deref(),
+    )?;
+    base_prompt.push_str(&github_tool::instructions(github_repo));
     fs::create_dir_all(workdir)
         .map_err(|error| format!("AI 작업 폴더를 만들지 못했습니다: {error}"))?;
 
-    let mut command = base_command(&binary);
+
+    let cancelled = || request.cancelled();
+    let mut approve = |commands: Vec<ApprovalCommand>| -> Result<bool, String> {
+        let pending = PendingApproval::register();
+        // 프론트는 이후 상태 이벤트가 오면 승인 UI를 닫으므로 상태를 먼저 보낸다.
+        emit(AiStreamEvent::Status {
+            text: "실행 승인을 기다리는 중…".to_string(),
+        });
+        emit(AiStreamEvent::ApprovalRequired {
+            id: pending.id,
+            commands,
+        });
+        pending.wait(&cancelled)
+    };
+    let status = |text: String| emit(AiStreamEvent::Status { text });
+
+    let mut transcript = String::new();
+    for round in 1..=MAX_TOOL_ROUNDS {
+        let last_round = round == MAX_TOOL_ROUNDS;
+        let mut prompt = format!("{base_prompt}{transcript}");
+        if last_round {
+            prompt.push_str(
+                "\n\n[안내] 더 이상 도구를 실행할 수 없습니다. 지금까지의 결과만으로 답하세요.",
+            );
+        }
+
+        let reply = run_cli_round(provider, &binary, workdir, &prompt, &request, true, emit)?;
+        if !last_round {
+            if let Some(requests) = github_tool::parse(&reply) {
+                let output = match requests {
+                    Ok(requests) => remote_tool::format_results(&github_tool::run(requests, &cancelled, &mut approve, &github_tool::execute)?),
+                    Err(error) => format!("[실행 실패] {error}"),
+                };
+                transcript.push_str(&format!("\n\n[GitHub 도구 결과 {round}]\n{output}"));
+                status("GitHub 결과 분석 중…".into());
+                continue;
+            }
+        }
+        let commands = remote_tool::parse_tool_block(&reply).filter(|_| !last_round);
+        let Some(commands) = commands else {
+            return Ok(reply);
+        };
+
+        let Some((executor, _)) = executor.as_ref() else {
+            transcript.push_str("\n[실행 실패] SSH 연결이 없습니다.");
+            continue;
+        };
+        let executor = *executor;
+        let install_script = || docker_tool::install_script(docker_status.as_ref());
+        let results = remote_tool::run_commands(
+            executor,
+            commands,
+            &cancelled,
+            &mut approve,
+            &install_script,
+            &status,
+        )?;
+        transcript.push_str(&format!(
+            "\n\n[서버 명령 실행 결과 {round}]\n{}",
+            remote_tool::format_results(&results)
+        ));
+
+        let installed = results.iter().any(|result| {
+            result.command == docker_tool::INSTALL_COMMAND
+                && matches!(result.outcome, CommandOutcome::Executed(_))
+        });
+        if installed {
+            status("설치 결과 확인 중…".to_string());
+            docker_status = docker_tool::probe(executor);
+            if let Some(updated) = &docker_status {
+                transcript.push_str(&format!("\n\n[Docker 상태 갱신]\n{}", updated.summary()));
+            }
+        }
+        status("결과 분석 중…".to_string());
+    }
+    unreachable!("마지막 라운드는 항상 답변을 반환한다")
+}
+
+/// CLI 프로세스 한 번 실행. `tools`면 도구 블록 응답을 화면에 흘려보내지 않는다.
+fn run_cli_round(
+    provider: AiProvider,
+    binary: &Path,
+    workdir: &Path,
+    prompt: &str,
+    request: &ActiveRequest,
+    tools: bool,
+    emit: &dyn Fn(AiStreamEvent),
+) -> Result<String, String> {
+    let mut command = base_command(binary);
     command.current_dir(workdir);
     match provider {
         AiProvider::Claude => {
@@ -457,6 +635,8 @@ pub fn chat(
                 "stream-json",
                 "--verbose",
                 "--include-partial-messages",
+                "--disallowedTools",
+                danger_gate::CLAUDE_FORBIDDEN_TOOLS,
             ]);
         }
         AiProvider::Codex => {
@@ -465,7 +645,7 @@ pub fn chat(
                 "--json",
                 "--skip-git-repo-check",
                 "--sandbox",
-                "read-only",
+                danger_gate::CODEX_SANDBOX,
                 "--color",
                 "never",
                 "-",
@@ -477,10 +657,16 @@ pub fn chat(
         text: "생각 중…".to_string(),
     });
 
+    let gate = RefCell::new(DeltaGate::default());
+    let gated = |event: AiStreamEvent| match event {
+        AiStreamEvent::Delta { text } if tools => gate.borrow_mut().push(text, emit),
+        other => emit(other),
+    };
+
     let mut state = StreamState::default();
-    let outcome = run_streaming(command, &prompt, &request, |line| match provider {
-        AiProvider::Claude => stream::handle_claude_line(line, &mut state, emit),
-        AiProvider::Codex => stream::handle_codex_line(line, &mut state, emit),
+    let outcome = run_streaming(command, prompt, request, |line| match provider {
+        AiProvider::Claude => stream::handle_claude_line(line, &mut state, &gated),
+        AiProvider::Codex => stream::handle_codex_line(line, &mut state, &gated),
     })?;
 
     let reply = state
@@ -489,6 +675,17 @@ pub fn chat(
         .unwrap_or(&state.text)
         .trim()
         .to_string();
+
+    if tools {
+        let mut gate = gate.borrow_mut();
+        if remote_tool::parse_tool_block(&reply).is_some() || github_tool::parse(&reply).is_some() {
+            if gate.mode == GateMode::Streaming {
+                emit(AiStreamEvent::Reset);
+            }
+        } else {
+            gate.flush(emit);
+        }
+    }
 
     if let Some(error) = state.error.filter(|_| reply.is_empty() || !outcome.success) {
         return Err(format!("{} 오류: {error}", provider.label()));

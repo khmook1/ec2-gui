@@ -7,6 +7,7 @@ use tauri::{AppHandle, Manager, Runtime};
 
 const SETTINGS_FILE_NAME: &str = "settings.json";
 const FAVORITES_FILE_NAME: &str = "favorites.json";
+const LOGIN_HISTORY_FILE_NAME: &str = "login-history.json";
 const WALLPAPER_DIR_NAME: &str = "wallpapers";
 
 #[derive(Debug, Clone, Serialize)]
@@ -15,6 +16,7 @@ pub struct AppStoragePaths {
     pub app_data: String,
     pub settings_file: String,
     pub favorites_file: String,
+    pub login_history_file: String,
     pub server_history: String,
     pub wallpapers: String,
     pub cache: String,
@@ -28,6 +30,7 @@ pub enum StorageLocation {
     AppData,
     SettingsFile,
     FavoritesFile,
+    LoginHistoryFile,
     ServerHistory,
     Wallpapers,
     Cache,
@@ -93,6 +96,10 @@ pub fn resolve_paths<R: Runtime>(app: &AppHandle<R>) -> Result<AppStoragePaths, 
             .join(FAVORITES_FILE_NAME)
             .to_string_lossy()
             .into_owned(),
+        login_history_file: app_data
+            .join(LOGIN_HISTORY_FILE_NAME)
+            .to_string_lossy()
+            .into_owned(),
         server_history: app_data
             .join(super::local_history::HISTORY_DIR_NAME)
             .to_string_lossy()
@@ -141,6 +148,7 @@ pub fn open_location<R: Runtime>(
         StorageLocation::AppData => paths.app_data,
         StorageLocation::SettingsFile => paths.settings_file,
         StorageLocation::FavoritesFile => paths.favorites_file,
+        StorageLocation::LoginHistoryFile => paths.login_history_file,
         StorageLocation::ServerHistory => paths.server_history,
         StorageLocation::Wallpapers => paths.wallpapers,
         StorageLocation::Cache => paths.cache,

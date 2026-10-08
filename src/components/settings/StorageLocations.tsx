@@ -30,6 +30,7 @@ const LOCAL_ITEMS: LocalStorageItem[] = [
   { location: "appData", title: "앱 데이터", kind: "folder" },
   { location: "settingsFile", title: "설정", kind: "file" },
   { location: "favoritesFile", title: "즐겨찾기", kind: "file" },
+  { location: "loginHistoryFile", title: "접속 기록", kind: "file" },
   { location: "serverHistory", title: "서버 사용률 기록", kind: "folder" },
   { location: "wallpapers", title: "배경 이미지", kind: "folder" },
   // TODO: 폴더 열기가 동작하지 않아 숨김

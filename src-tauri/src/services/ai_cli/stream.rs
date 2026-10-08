@@ -1,6 +1,8 @@
 use serde::Serialize;
 use serde_json::Value;
 
+use super::danger_gate::ApprovalCommand;
+
 #[derive(Clone, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum AiStreamEvent {
@@ -8,6 +10,13 @@ pub enum AiStreamEvent {
     Delta { text: String },
     /// 진행 상태 안내 (생각 중, 명령 실행 중 등)
     Status { text: String },
+    /// 지금까지 받은 응답 본문을 지운다 (본문 중간에 도구 블록이 나온 경우)
+    Reset,
+    /// 상태 변경·민감·설치 명령 실행 전 사용자 승인 요청
+    ApprovalRequired {
+        id: u64,
+        commands: Vec<ApprovalCommand>,
+    },
 }
 
 #[derive(Default)]

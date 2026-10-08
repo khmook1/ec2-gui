@@ -1,157 +1,218 @@
-.ai-markdown {
+/* github-markdown-css(.markdown-body) 위에 말풍선용 크기·여백만 덮어쓴다 */
+.markdown-body.ai-markdown {
   --ai-md-ink: var(--ai-bubble-ink, #1d1d1f);
-  --ai-md-muted: color-mix(in srgb, var(--ai-md-ink) 60%, transparent);
-  --ai-md-line: color-mix(in srgb, var(--ai-md-ink) 18%, transparent);
-  --ai-md-code-bg: color-mix(in srgb, var(--ai-md-ink) 6%, transparent);
+  --ai-md-code-bg: #f6f8fa;
+  --ai-md-border: #d1d9e0;
+  --ai-md-strong: #0b0b0d;
+  --ai-md-accent: #3b5bdb;
+  --ai-md-highlight: rgba(255, 214, 10, 0.38);
+  --ai-md-inline-code-bg: rgba(59, 91, 219, 0.09);
+  --ai-md-inline-code-ink: #c2255c;
 
-  font-size: 0.9375rem;
-  font-weight: 520;
-  line-height: 1.6;
+  background: transparent;
+  color: var(--ai-md-ink);
+  font-size: 0.875rem;
+  line-height: 1.65;
   word-break: break-word;
   user-select: text;
 }
 
-.ai-markdown > :first-child {
-  margin-top: 0;
+.markdown-body.ai-markdown > :first-child {
+  margin-top: 0 !important;
 }
 
-.ai-markdown > :last-child {
-  margin-bottom: 0;
+.markdown-body.ai-markdown > :last-child {
+  margin-bottom: 0 !important;
 }
 
-.ai-markdown p,
-.ai-markdown ul,
-.ai-markdown ol,
-.ai-markdown blockquote,
-.ai-markdown table,
-.ai-markdown .ai-markdown__pre {
-  margin: 0 0 0.7em;
+.markdown-body.ai-markdown :is(p, ul, ol, blockquote, table, .ai-markdown__code) {
+  margin-bottom: 0.85em;
 }
 
-.ai-markdown h1,
-.ai-markdown h2,
-.ai-markdown h3,
-.ai-markdown h4,
-.ai-markdown h5,
-.ai-markdown h6 {
-  margin: 1em 0 0.45em;
+/* 강조 문구: 굵게는 형광펜 밑줄로 한 번 더 띄운다 */
+.markdown-body.ai-markdown :is(strong, b) {
+  color: var(--ai-md-strong);
+  font-weight: 800;
+  background: linear-gradient(transparent 62%, var(--ai-md-highlight) 62%);
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+.markdown-body.ai-markdown :is(em, i) {
+  color: var(--ai-md-accent);
+  font-weight: 600;
+}
+
+.markdown-body.ai-markdown :is(strong em, em strong, strong i, b em) {
+  color: var(--ai-md-accent);
+}
+
+.markdown-body.ai-markdown del {
+  color: #868e96;
+  text-decoration-thickness: 1.5px;
+}
+
+.markdown-body.ai-markdown mark {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: var(--ai-md-highlight);
+  color: inherit;
+}
+
+.markdown-body.ai-markdown a {
+  color: var(--ai-md-accent);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+}
+
+.markdown-body.ai-markdown a:hover {
+  text-decoration-thickness: 2px;
+}
+
+.markdown-body.ai-markdown :not(pre) > code {
+  padding: 0.12em 0.4em;
+  border: 1px solid rgba(59, 91, 219, 0.14);
+  border-radius: 5px;
+  background: var(--ai-md-inline-code-bg);
+  color: var(--ai-md-inline-code-ink);
+  font-size: 0.86em;
+  font-weight: 600;
+}
+
+.markdown-body.ai-markdown :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.1em 0 0.5em;
+  color: var(--ai-md-strong);
   font-weight: 800;
   line-height: 1.35;
 }
 
-.ai-markdown h1 {
-  font-size: 1.2rem;
+.markdown-body.ai-markdown h1 {
+  padding-bottom: 0.25em;
+  border-bottom: 2px solid var(--ai-md-ink);
+  font-size: 1.25em;
 }
 
-.ai-markdown h2 {
-  font-size: 1.1rem;
+.markdown-body.ai-markdown h2 {
+  padding-bottom: 0.2em;
+  border-bottom: 1px solid var(--ai-md-border);
+  font-size: 1.15em;
 }
 
-.ai-markdown h3 {
-  font-size: 1rem;
+.markdown-body.ai-markdown h3 {
+  padding-left: 0.5em;
+  border-left: 3px solid var(--ai-md-accent);
 }
 
-.ai-markdown h4,
-.ai-markdown h5,
-.ai-markdown h6 {
-  font-size: 0.9375rem;
+.markdown-body.ai-markdown li::marker {
+  color: var(--ai-md-accent);
+  font-weight: 700;
 }
 
-.ai-markdown strong {
-  font-weight: 800;
+.markdown-body.ai-markdown h3 {
+  font-size: 1.05em;
 }
 
-.ai-markdown ul,
-.ai-markdown ol {
-  padding-left: 1.35em;
+.markdown-body.ai-markdown :is(h4, h5, h6) {
+  font-size: 1em;
 }
 
-.ai-markdown li + li {
-  margin-top: 0.2em;
+.markdown-body.ai-markdown :is(ul, ol) {
+  padding-left: 1.5em;
 }
 
-.ai-markdown li > ul,
-.ai-markdown li > ol {
-  margin: 0.2em 0 0;
+.markdown-body.ai-markdown li + li {
+  margin-top: 0.3em;
 }
 
-.ai-markdown li > p {
-  margin: 0;
+.markdown-body.ai-markdown blockquote {
+  padding: 0.4em 0.9em;
+  border-left: 3px solid var(--ai-md-accent);
+  border-radius: 0 6px 6px 0;
+  background: rgba(59, 91, 219, 0.06);
+  color: #343a40;
 }
 
-.ai-markdown li:has(> input[type="checkbox"]) {
-  list-style: none;
-  margin-left: -1.2em;
+.markdown-body.ai-markdown table th {
+  background: #f1f3f5;
+  color: var(--ai-md-strong);
+  font-weight: 700;
 }
 
-.ai-markdown input[type="checkbox"] {
-  margin: 0 0.4em 0 0;
-  vertical-align: middle;
+.markdown-body.ai-markdown hr {
+  height: 1px;
+  margin: 1em 0;
 }
 
-.ai-markdown a {
-  color: #1a5fd0;
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.ai-markdown blockquote {
-  padding: 0.1em 0 0.1em 0.8em;
-  border-left: 3px solid var(--ai-md-line);
-  color: var(--ai-md-muted);
-}
-
-.ai-markdown hr {
-  margin: 0.9em 0;
-  border: none;
-  border-top: 2px dashed var(--ai-md-line);
-}
-
-.ai-markdown__inline-code {
-  padding: 0.1em 0.35em;
-  border-radius: 5px;
-  background: var(--ai-md-code-bg);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.85em;
-}
-
-.ai-markdown .ai-markdown__pre {
-  padding: 10px 12px !important;
-  overflow-x: auto;
-  border: 2px solid var(--ai-md-ink);
-  border-radius: 12px;
-  background: var(--ai-md-code-bg) !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 0.78125rem;
-  line-height: 1.55;
-  white-space: pre-wrap;
-}
-
-.ai-markdown .ai-markdown__pre code {
-  font-family: inherit;
-  font-size: inherit;
-  background: none !important;
-}
-
-.ai-markdown table {
-  display: block;
-  max-width: 100%;
-  overflow-x: auto;
-  border-collapse: collapse;
+.markdown-body.ai-markdown table {
   font-size: 0.8125rem;
 }
 
-.ai-markdown th,
-.ai-markdown td {
-  padding: 4px 8px;
-  border: 1.5px solid var(--ai-md-line);
-  text-align: left;
+.markdown-body.ai-markdown table :is(th, td) {
+  padding: 5px 10px;
 }
 
-.ai-markdown th {
+/* 코드 블록: 헤더(언어 + 복사) + 본문 */
+.ai-markdown__code {
+  overflow: hidden;
+  border: 1px solid var(--ai-md-border);
+  border-radius: 10px;
   background: var(--ai-md-code-bg);
-  font-weight: 800;
+}
+
+.ai-markdown__code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 6px 4px 12px;
+  border-bottom: 1px solid var(--ai-md-border);
+  background: #eef1f4;
+}
+
+.ai-markdown__code-lang {
+  color: #59636e;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.ai-markdown__copy {
+  padding: 2px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #59636e;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ai-markdown__copy:hover {
+  border-color: var(--ai-md-border);
+  background: #ffffff;
+  color: #1f2328;
+}
+
+.markdown-body.ai-markdown .ai-markdown__pre {
+  margin: 0 !important;
+  padding: 10px 12px !important;
+  overflow-x: auto;
+  border-radius: 0;
+  background: transparent !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78125rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.markdown-body.ai-markdown .ai-markdown__pre code {
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  background: none !important;
+  white-space: inherit;
 }
 
 /* 타이핑 중이면 마지막 텍스트 블록 끝에 캐럿을 붙인다 */

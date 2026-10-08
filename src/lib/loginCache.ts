@@ -1,13 +1,18 @@
+import { LazyStore } from "@tauri-apps/plugin-store";
 import type { SshAuthMethod, SshCredentials } from "@/types/connection";
 
-/** 이전 접속 기록 (연결 해제 후에도 유지) */
+/** 이전 접속 기록 파일 (앱 데이터 폴더, 만료 없음) */
+const HISTORY_STORE_FILE = "login-history.json";
+const HISTORY_STORE_KEY = "entries";
+/** 이전 접속 기록 — store 플러그인이 없는 브라우저 실행용 미러 */
 const HISTORY_STORAGE_KEY = "ec2-gui-login-history";
 /** 앱 시작 시 자동 접속용 (연결 해제 시 삭제) */
 const AUTO_LOGIN_STORAGE_KEY = "ec2-gui-auto-login";
 /** 레거시 단일 키 — 마이그레이션 후 제거 */
 const LEGACY_STORAGE_KEY = "ec2-gui-login-cache";
 
-const TTL_MS = 24 * 60 * 60 * 1000;
+/** 자동 접속 캐시 유효 시간 */
+const AUTO_LOGIN_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_HISTORY = 8;
 
 export interface CachedLoginForm {
@@ -41,6 +46,22 @@ interface LoginCachePayload {
 
 /** 연결 해제 후 자동 로그인을 막을 때 사용. 다음 수동/성공 로그인까지 유지 */
 let skipAutoLogin = false;
+
+/** `hydrateLoginHistory` 이후 파일 내용과 동기화되는 메모리 사본 */
+let historyCache: LoginCachePayload[] = [];
+let historyStorePromise: Promise<LazyStore> | null = null;
+
+function getHistoryStore(): Promise<LazyStore> {
+  if (!historyStorePromise) {
+    historyStorePromise = Promise.resolve(
+      new LazyStore(HISTORY_STORE_FILE, {
+        autoSave: true,
+        defaults: {},
+      }),
+    );
+  }
+  return historyStorePromise;
+}
 
 function isAuthMethod(value: unknown): value is SshAuthMethod {
   return value === "pem" || value === "password";
@@ -76,6 +97,16 @@ function parseCachePayload(value: unknown): LoginCachePayload | null {
     password: parsed.password,
     memo: memo || undefined,
   };
+}
+
+function parsePayloadList(value: unknown): LoginCachePayload[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => parseCachePayload(item))
+      .filter((item): item is LoginCachePayload => item !== null);
+  }
+  const single = parseCachePayload(value);
+  return single ? [single] : [];
 }
 
 function payloadToForm(payload: LoginCachePayload): CachedLoginForm {
@@ -120,8 +151,8 @@ export function makeHistoryId(
   ].join("|");
 }
 
-function isFresh(savedAt: number): boolean {
-  return Date.now() - savedAt <= TTL_MS;
+function isAutoLoginFresh(savedAt: number): boolean {
+  return Date.now() - savedAt <= AUTO_LOGIN_TTL_MS;
 }
 
 function readJson(key: string): unknown {
@@ -153,23 +184,27 @@ function removeKey(key: string): void {
   localStorage.removeItem(key);
 }
 
-function readPayloadList(key: string): LoginCachePayload[] {
-  const parsed = readJson(key);
-  if (Array.isArray(parsed)) {
-    return parsed
-      .map((item) => parseCachePayload(item))
-      .filter((item): item is LoginCachePayload => item !== null);
-  }
-  const single = parseCachePayload(parsed);
-  return single ? [single] : [];
-}
-
-function writeHistoryPayloads(payloads: LoginCachePayload[]): void {
+function writeLocalHistory(payloads: LoginCachePayload[]): void {
   if (payloads.length === 0) {
     removeKey(HISTORY_STORAGE_KEY);
     return;
   }
   writeJson(HISTORY_STORAGE_KEY, payloads);
+}
+
+async function writeHistoryFile(payloads: LoginCachePayload[]): Promise<void> {
+  try {
+    const store = await getHistoryStore();
+    await store.set(HISTORY_STORE_KEY, payloads);
+  } catch {
+    // 브라우저(vite only)에서는 store 플러그인이 없을 수 있음
+  }
+}
+
+function persistHistory(payloads: LoginCachePayload[]): void {
+  historyCache = payloads.slice(0, MAX_HISTORY);
+  writeLocalHistory(historyCache);
+  void writeHistoryFile(historyCache);
 }
 
 function migrateLegacyCacheIfNeeded(): void {
@@ -182,17 +217,19 @@ function migrateLegacyCacheIfNeeded(): void {
     return;
   }
 
-  const legacyItems = readPayloadList(LEGACY_STORAGE_KEY);
-  const existingHistory = readPayloadList(HISTORY_STORAGE_KEY);
+  const legacyItems = parsePayloadList(readJson(LEGACY_STORAGE_KEY));
+  const existingHistory = parsePayloadList(readJson(HISTORY_STORAGE_KEY));
   const existingAuto = parseCachePayload(readJson(AUTO_LOGIN_STORAGE_KEY));
 
   if (legacyItems.length > 0) {
     if (existingHistory.length === 0) {
-      writeHistoryPayloads(
-        legacyItems.filter((item) => isFresh(item.savedAt)).slice(0, MAX_HISTORY),
-      );
+      writeLocalHistory(legacyItems.slice(0, MAX_HISTORY));
     }
-    if (!existingAuto && legacyItems[0] && isFresh(legacyItems[0].savedAt)) {
+    if (
+      !existingAuto &&
+      legacyItems[0] &&
+      isAutoLoginFresh(legacyItems[0].savedAt)
+    ) {
       writeJson(AUTO_LOGIN_STORAGE_KEY, legacyItems[0]);
     }
   }
@@ -200,20 +237,38 @@ function migrateLegacyCacheIfNeeded(): void {
   removeKey(LEGACY_STORAGE_KEY);
 }
 
-export function loadLoginHistory(): CachedLoginHistoryEntry[] {
+/**
+ * 앱 시작 시 한 번 호출. `login-history.json`을 읽어 메모리에 올리고,
+ * 파일이 아직 없으면 기존 localStorage 기록을 파일로 옮긴다.
+ */
+export async function hydrateLoginHistory(): Promise<void> {
   migrateLegacyCacheIfNeeded();
-  const fresh = readPayloadList(HISTORY_STORAGE_KEY).filter((item) =>
-    isFresh(item.savedAt),
-  );
-  writeHistoryPayloads(fresh);
-  return fresh.map(payloadToHistoryEntry);
+  const localHistory = parsePayloadList(readJson(HISTORY_STORAGE_KEY));
+
+  try {
+    const store = await getHistoryStore();
+    const stored = await store.get<unknown>(HISTORY_STORE_KEY);
+    if (Array.isArray(stored)) {
+      historyCache = parsePayloadList(stored).slice(0, MAX_HISTORY);
+      writeLocalHistory(historyCache);
+      return;
+    }
+    historyCache = localHistory.slice(0, MAX_HISTORY);
+    await store.set(HISTORY_STORE_KEY, historyCache);
+  } catch {
+    historyCache = localHistory.slice(0, MAX_HISTORY);
+  }
+}
+
+export function loadLoginHistory(): CachedLoginHistoryEntry[] {
+  return historyCache.map(payloadToHistoryEntry);
 }
 
 /** 자동 접속용 캐시 (연결 해제 시 비움) */
 export function loadAutoLoginCache(): CachedLoginForm | null {
   migrateLegacyCacheIfNeeded();
   const payload = parseCachePayload(readJson(AUTO_LOGIN_STORAGE_KEY));
-  if (!payload || !isFresh(payload.savedAt)) {
+  if (!payload || !isAutoLoginFresh(payload.savedAt)) {
     clearAutoLoginCache();
     return null;
   }
@@ -246,19 +301,14 @@ export function saveLoginHistory(
   credentials: SshCredentials,
   memo?: string,
 ): void {
-  migrateLegacyCacheIfNeeded();
   const nextId = makeHistoryId(credentials);
-  const existing = readPayloadList(HISTORY_STORAGE_KEY).find(
-    (item) => makeHistoryId(item) === nextId,
-  );
+  const existing = historyCache.find((item) => makeHistoryId(item) === nextId);
   const nextPayload = credentialsToPayload(
     credentials,
     memo !== undefined ? memo : existing?.memo,
   );
-  const rest = readPayloadList(HISTORY_STORAGE_KEY).filter(
-    (item) => isFresh(item.savedAt) && makeHistoryId(item) !== nextId,
-  );
-  writeHistoryPayloads([nextPayload, ...rest].slice(0, MAX_HISTORY));
+  const rest = historyCache.filter((item) => makeHistoryId(item) !== nextId);
+  persistHistory([nextPayload, ...rest]);
 }
 
 export function saveAutoLoginCache(credentials: SshCredentials): void {
@@ -280,15 +330,13 @@ export function updateLoginHistoryMemo(
   id: string,
   memo: string,
 ): CachedLoginHistoryEntry[] {
-  migrateLegacyCacheIfNeeded();
   const normalized = normalizeMemo(memo);
-  const next = readPayloadList(HISTORY_STORAGE_KEY)
-    .filter((item) => isFresh(item.savedAt))
-    .map((item) =>
+  persistHistory(
+    historyCache.map((item) =>
       makeHistoryId(item) === id ? { ...item, memo: normalized } : item,
-    );
-  writeHistoryPayloads(next);
-  return next.map(payloadToHistoryEntry);
+    ),
+  );
+  return loadLoginHistory();
 }
 
 export function clearAutoLoginCache(): void {
@@ -296,12 +344,8 @@ export function clearAutoLoginCache(): void {
 }
 
 export function removeLoginHistoryEntry(id: string): CachedLoginHistoryEntry[] {
-  migrateLegacyCacheIfNeeded();
-  const remaining = readPayloadList(HISTORY_STORAGE_KEY).filter(
-    (item) => isFresh(item.savedAt) && makeHistoryId(item) !== id,
-  );
-  writeHistoryPayloads(remaining);
-  return remaining.map(payloadToHistoryEntry);
+  persistHistory(historyCache.filter((item) => makeHistoryId(item) !== id));
+  return loadLoginHistory();
 }
 
 export function cachedFormToCredentials(form: CachedLoginForm): SshCredentials {

@@ -521,6 +521,75 @@ pub fn exec_remote_command(session: &Session, command: &str) -> Result<String, S
     Ok(output.trim().to_string())
 }
 
+pub struct RemoteCommandOutput {
+    /// stdout과 stderr를 터미널처럼 합친 출력
+    pub output: String,
+    pub exit_code: Option<i32>,
+    pub truncated: bool,
+    pub timed_out: bool,
+}
+
+/// stderr를 stdout에 합쳐 읽는다. 따로 읽으면 stderr가 많을 때(`find /` 등) 채널 윈도가 차서 멈춘다.
+/// 세션 타임아웃에 걸리면 에러 대신 그때까지의 출력을 `timed_out`으로 돌려준다.
+pub fn exec_remote_command_output(
+    session: &Session,
+    command: &str,
+    max_bytes: usize,
+) -> Result<RemoteCommandOutput, String> {
+    let mut channel = session
+        .channel_session()
+        .map_err(|error| error.to_string())?;
+    channel
+        .handle_extended_data(ssh2::ExtendedData::Merge)
+        .map_err(|error| error.to_string())?;
+    channel
+        .exec(command)
+        .map_err(|error| format!("원격 명령 실행 실패: {error}"))?;
+    channel.send_eof().ok();
+
+    let mut buffer: Vec<u8> = Vec::new();
+    let mut chunk = [0u8; 8192];
+    let mut truncated = false;
+    let mut timed_out = false;
+    loop {
+        match channel.read(&mut chunk) {
+            Ok(0) => break,
+            Ok(read) => {
+                let room = max_bytes.saturating_sub(buffer.len());
+                if read >= room {
+                    buffer.extend_from_slice(&chunk[..room]);
+                    truncated = true;
+                    break;
+                }
+                buffer.extend_from_slice(&chunk[..read]);
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::TimedOut => {
+                timed_out = true;
+                break;
+            }
+            Err(error) => {
+                channel.close().ok();
+                return Err(format!("원격 명령 출력 읽기 실패: {error}"));
+            }
+        }
+    }
+
+    let exit_code = if truncated || timed_out {
+        channel.close().ok();
+        None
+    } else {
+        channel.wait_close().ok();
+        channel.exit_status().ok()
+    };
+
+    Ok(RemoteCommandOutput {
+        output: String::from_utf8_lossy(&buffer).into_owned(),
+        exit_code,
+        truncated,
+        timed_out,
+    })
+}
+
 pub fn exec_remote_command_checked(session: &Session, command: &str) -> Result<String, String> {
     exec_remote_command_checked_with_input(session, command, None)
 }

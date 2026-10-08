@@ -1,4 +1,4 @@
-# EC2 GUI
+# OpsDeck
 
 Tauri 2 + React + TypeScript 기반 데스크톱 앱입니다.
 
@@ -13,14 +13,14 @@ Tauri 2 + React + TypeScript 기반 데스크톱 앱입니다.
 | `src-tauri/tauri.conf.json` | `app.windows[0].title` | 창 상단바 제목 |
 
 ```env
-VITE_APP_NAME=EC2 GUI
+VITE_APP_NAME=OpsDeck
 ```
 
 ```json
 {
-  "productName": "EC2 GUI",
+  "productName": "OpsDeck",
   "app": {
-    "windows": [{ "title": "EC2 GUI" }]
+    "windows": [{ "title": "OpsDeck" }]
   }
 }
 ```

@@ -11,7 +11,11 @@ import {
 import { createPortal } from "react-dom";
 import { AiCommandBar } from "@/components/ai/AiCommandBar";
 import { AiSpeechBubble } from "@/components/ai/AiSpeechBubble";
-import { useCancelAiChatMutation, useSendAiChatMutation } from "@/hooks/query";
+import {
+  useCancelAiChatMutation,
+  useRespondAiCommandApprovalMutation,
+  useSendAiChatMutation,
+} from "@/hooks/query";
 import { AI_CHAT_CANCELLED, type AiChatMessage } from "@/services/tauri/ai";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { AiExchange } from "@/types/ai";
@@ -111,6 +115,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
   const partialAnswerRef = useRef("");
   const sendMutation = useSendAiChatMutation();
   const cancelMutation = useCancelAiChatMutation();
+  const approvalMutation = useRespondAiCommandApprovalMutation();
 
   const openCommand = useCallback(() => setCommandOpen(true), []);
   const closeCommand = useCallback(() => setCommandOpen(false), []);
@@ -128,6 +133,16 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
     if (!exchange?.pending) return;
     cancelMutation.mutate();
   }, [cancelMutation, exchange?.pending]);
+
+  const respondApproval = useCallback(
+    (approved: boolean) => {
+      const approval = exchange?.approval;
+      if (!exchange || !approval) return;
+      approvalMutation.mutate({ id: approval.id, approved });
+      updateExchange(exchange.id, (current) => ({ ...current, approval: null }));
+    },
+    [approvalMutation, exchange, updateExchange],
+  );
 
   const ask = useCallback(
     (input: string) => {
@@ -148,6 +163,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
         error: null,
         pending: true,
         cancelled: false,
+        approval: null,
       });
 
       sendMutation
@@ -156,14 +172,34 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
           messages,
           onEvent: (event) => {
             if (requestId !== requestIdRef.current) return;
-            if (event.type === "delta") {
-              partialAnswerRef.current += event.text;
+            switch (event.type) {
+              case "delta":
+                partialAnswerRef.current += event.text;
+                updateExchange(requestId, (current) => ({
+                  ...current,
+                  answer: current.answer + event.text,
+                  status: null,
+                  approval: null,
+                }));
+                break;
+              case "status":
+                updateExchange(requestId, (current) => ({
+                  ...current,
+                  status: event.text,
+                  approval: null,
+                }));
+                break;
+              case "reset":
+                partialAnswerRef.current = "";
+                updateExchange(requestId, (current) => ({ ...current, answer: "" }));
+                break;
+              case "approvalRequired":
+                updateExchange(requestId, (current) => ({
+                  ...current,
+                  approval: { id: event.id, commands: event.commands },
+                }));
+                break;
             }
-            updateExchange(requestId, (current) =>
-              event.type === "delta"
-                ? { ...current, answer: current.answer + event.text, status: null }
-                : { ...current, status: event.text },
-            );
           },
         })
         .then((reply) => {
@@ -178,6 +214,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
             answer: reply,
             status: null,
             pending: false,
+            approval: null,
           }));
         })
         .catch((err: unknown) => {
@@ -197,6 +234,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
             status: null,
             pending: false,
             cancelled,
+            approval: null,
             error: cancelled ? null : message,
           }));
         });
@@ -251,6 +289,8 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
               exchange={exchange}
               canReset={history.length > 0}
               onCancel={cancel}
+              onApprove={() => respondApproval(true)}
+              onReject={() => respondApproval(false)}
               onDismiss={dismiss}
               onReset={resetConversation}
             />

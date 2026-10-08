@@ -21,6 +21,8 @@ const SSH_KEEPALIVE_INTERVAL_SECS: u32 = 10;
 const KEEPALIVE_TICK_INTERVAL: Duration = Duration::from_secs(5);
 const TCP_KEEPALIVE_TIME: Duration = Duration::from_secs(30);
 const TCP_KEEPALIVE_INTERVAL: Duration = Duration::from_secs(10);
+/// AI 도구 명령은 연결 잠금을 쥔 채 실행되므로 다른 SSH 작업이 오래 막히지 않게 제한한다.
+const AI_EXEC_MAX_OUTPUT_BYTES: usize = 64 * 1024;
 
 static NEXT_SHELL_ID: AtomicU64 = AtomicU64::new(1);
 static NEXT_CONNECTION_ID: AtomicU64 = AtomicU64::new(1);
@@ -1042,6 +1044,39 @@ impl SshConnectionManager {
         })
     }
 
+    /// 현재 활성 연결의 (host, username)
+    pub fn active_target(&self) -> Option<(String, String)> {
+        let active_id = self.active_id.lock().ok()?.clone()?;
+        let connections = self.connections.lock().ok()?;
+        let connection = connections.get(&active_id)?;
+        Some((connection.host.clone(), connection.username.clone()))
+    }
+
+    /// AI 도구용: 접속 계정 권한 그대로 임의 명령을 실행한다.
+    pub fn exec_for_ai(
+        &self,
+        command: &str,
+        timeout: Duration,
+    ) -> Result<super::remote_fs::RemoteCommandOutput, String> {
+        let wrapped = format!(
+            "env LC_ALL=C sh -c {}",
+            super::remote_fs::shell_quote(command)
+        );
+        let timeout_ms = u32::try_from(timeout.as_millis()).unwrap_or(u32::MAX);
+        self.with_connection(|connection| {
+            let session = &connection.session;
+            let previous_timeout = session.timeout();
+            session.set_timeout(timeout_ms);
+            let result = super::remote_fs::exec_remote_command_output(
+                session,
+                &wrapped,
+                AI_EXEC_MAX_OUTPUT_BYTES,
+            );
+            session.set_timeout(previous_timeout);
+            result
+        })
+    }
+
     pub fn list_ssh_sessions(&self) -> Result<Vec<super::remote_ssh_sessions::RemoteSshSession>, String> {
         self.with_connection(|connection| {
             super::remote_ssh_sessions::list_ssh_sessions(&connection.session)
@@ -1348,6 +1383,21 @@ fn open_ssh_session_with_password(
     ensure_authenticated(&session)?;
     configure_session_keepalive(&session);
     Ok(session)
+}
+
+impl super::ai_cli::RemoteExecutor for SshConnectionManager {
+    fn target(&self) -> Option<super::ai_cli::RemoteTarget> {
+        self.active_target()
+            .map(|(host, username)| super::ai_cli::RemoteTarget { host, username })
+    }
+
+    fn exec_with_timeout(
+        &self,
+        command: &str,
+        timeout: Duration,
+    ) -> Result<super::remote_fs::RemoteCommandOutput, String> {
+        self.exec_for_ai(command, timeout)
+    }
 }
 
 fn ensure_authenticated(session: &Session) -> Result<(), String> {

@@ -4,6 +4,7 @@ export interface AppStoragePaths {
   appData: string;
   settingsFile: string;
   favoritesFile: string;
+  loginHistoryFile: string;
   serverHistory: string;
   wallpapers: string;
   cache: string;

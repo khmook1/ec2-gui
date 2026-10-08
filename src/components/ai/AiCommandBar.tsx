@@ -1,6 +1,12 @@
-import { useEffect, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type KeyboardEvent,
+} from "react";
 import { createPortal } from "react-dom";
 import { useForm } from "react-hook-form";
+import { AiProviderIcon } from "@/components/icons/AiProviderIcons";
 import { getAiProviderLabel, type AiProvider } from "@/types/settings";
 import "./css/ai-command-bar.css";
 
@@ -17,40 +23,49 @@ interface AiCommandBarProps {
   onClose: () => void;
 }
 
-export function AiCommandBar({
+export function AiCommandBar({ 
   provider,
   shortcutLabel,
   pending,
   onSubmit,
   onClose,
 }: AiCommandBarProps) {
-  const { register, handleSubmit, setFocus } = useForm<AiCommandFormValues>({
-    defaultValues: { question: "" },
-  });
+  const { register, handleSubmit, setFocus, watch } =
+    useForm<AiCommandFormValues>({
+      defaultValues: { question: "" },
+    });
+  const { ref: questionRef, ...questionField } = register("question");
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const question = watch("question");
 
   useEffect(() => {
     setFocus("question");
   }, [setFocus]);
+
+  useLayoutEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [question]);
 
   const submit = handleSubmit(({ question }) => {
     if (!question.trim()) return;
     onSubmit(question);
   });
 
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
       event.stopPropagation();
       onClose();
       return;
     }
+    if (event.key !== "Enter" || event.shiftKey) return;
     // 한글 조합 확정용 Enter는 전송하지 않는다 (WebKit은 keyCode 229로 온다)
-    if (
-      event.key === "Enter" &&
-      (event.nativeEvent.isComposing || event.keyCode === 229)
-    ) {
-      event.preventDefault();
-    }
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
+    event.preventDefault();
+    void submit();
   }
 
   return createPortal(
@@ -63,19 +78,27 @@ export function AiCommandBar({
         onSubmit={(event) => void submit(event)}
       >
         <img className="ai-command__avatar" src="/ai-icon2.png" alt="" draggable={false} />
-        <input
+        <textarea
           className="ai-command__input"
-          type="text"
+          rows={1}
           autoComplete="off"
           spellCheck={false}
           placeholder="무엇이든 물어보세요…"
           onKeyDown={handleKeyDown}
-          {...register("question")}
+          {...questionField}
+          ref={(element) => {
+            questionRef(element);
+            textareaRef.current = element;
+          }}
         />
         <div className="ai-command__meta">
-          <span className="ai-command__provider">{getAiProviderLabel(provider)}</span>
+          <span className={`ai-command__provider ai-command__provider--${provider}`}>
+            <AiProviderIcon provider={provider} className="ai-command__provider-icon" />
+            {getAiProviderLabel(provider)}
+          </span>
           <span className="ai-command__keys">
-            <kbd>↵</kbd> 전송 <kbd>esc</kbd> 닫기 <kbd>{shortcutLabel}</kbd>
+            <kbd>↵</kbd> 전송 <kbd>⇧↵</kbd> 줄바꿈 <kbd>esc</kbd> 닫기{" "}
+            <kbd>{shortcutLabel}</kbd>
           </span>
         </div>
         {pending ? (

@@ -1,19 +1,24 @@
 .ai-bubble {
   --ai-bubble-ink: #1d1d1f;
   --ai-bubble-paper: #fffef8;
-  /* 캐릭터 중심(오른쪽에서 toggle-right + size/2)에 꼬리를 맞춘다 */
   --ai-bubble-right: calc(var(--ai-toggle-right) - 12px);
-  --ai-bubble-tail-x: calc(var(--ai-toggle-size) / 2 + 12px);
+  --ai-bubble-bottom: calc(var(--ai-toggle-bottom) + var(--ai-toggle-size) + 20px);
+  --ai-bubble-top-gap: 24px;
+  /* 캐릭터 중심(오른쪽에서 toggle-right + size/2)에 꼬리를 맞춘다 */
+  --ai-bubble-tail-x: calc(
+    var(--ai-toggle-right) + var(--ai-toggle-size) / 2 - var(--ai-bubble-right)
+  );
 
   position: fixed;
   right: var(--ai-bubble-right);
-  bottom: calc(var(--ai-toggle-bottom) + var(--ai-toggle-size) + 20px);
+  bottom: var(--ai-bubble-bottom);
   z-index: 2401;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: min(440px, calc(100vw - 48px));
-  max-height: min(54vh, 520px);
+  width: min(540px, calc(100vw - 48px));
+  max-height: calc(100vh - var(--ai-bubble-bottom) - var(--ai-bubble-top-gap));
+  max-height: calc(100dvh - var(--ai-bubble-bottom) - var(--ai-bubble-top-gap));
   padding: 14px 18px 10px;
   border: 3px solid var(--ai-bubble-ink);
   border-radius: 28px;
@@ -185,6 +190,115 @@
   transform: scale(0.95);
 }
 
+.ai-bubble__action--danger {
+  border-color: #c4271d;
+  color: #c4271d;
+}
+
+.ai-bubble__action--danger:hover {
+  background: #c4271d;
+  color: var(--ai-bubble-paper);
+}
+
+.ai-bubble__approval {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 2px dashed var(--ai-bubble-ink);
+  border-radius: 14px;
+}
+
+.ai-bubble__approval-title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.ai-bubble__approval-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-bubble__approval-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-bubble__approval-meta {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ai-bubble__approval-badge {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ai-bubble__approval-badge--destructive {
+  border-color: #b3141f;
+  background: #b3141f;
+  color: #ffffff;
+}
+
+.ai-bubble__approval-badge--mutating {
+  color: #c4271d;
+}
+
+.ai-bubble__approval-badge--sensitive {
+  color: #a35a00;
+}
+
+.ai-bubble__approval-badge--dockerInstall {
+  color: #1d63ed;
+}
+
+.ai-bubble__approval-reason {
+  color: color-mix(in srgb, var(--ai-bubble-ink) 70%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.ai-bubble__approval-commands {
+  max-height: 140px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ai-bubble-ink) 7%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: text;
+}
+
+.ai-bubble__approval-commands--script {
+  max-height: 200px;
+  white-space: pre;
+  word-break: normal;
+}
+
+.ai-bubble__approval-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
 @keyframes ai-bubble-pop {
   from {
     opacity: 0;
@@ -206,6 +320,22 @@
   40% {
     opacity: 1;
     transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-bubble {
+    --ai-bubble-right: 12px;
+    --ai-bubble-bottom: calc(var(--ai-toggle-bottom) + var(--ai-toggle-size) + 16px);
+    --ai-bubble-top-gap: 12px;
+
+    width: calc(100vw - 24px);
+    padding: 12px 14px 8px;
+    border-radius: 22px;
+  }
+
+  .ai-bubble__approval-commands--script {
+    max-height: 160px;
   }
 }
 
