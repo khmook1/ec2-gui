@@ -4,7 +4,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Manager};
 
 use crate::services::ai_cli::{
-    self, AiChatMessage, AiCliStatus, AiProvider, AiStreamEvent, RemoteExecutor,
+    self, AiChatMessage, AiCliStatus, AiProvider, AiStreamEvent, ExplorerContext, RemoteExecutor,
 };
 use crate::services::{storage_service, SshConnectionManager};
 
@@ -25,6 +25,7 @@ pub async fn send_ai_chat(
     binary_path: Option<String>,
     messages: Vec<AiChatMessage>,
     github_repo: Option<String>,
+    explorer: Option<ExplorerContext>,
     on_event: Channel<AiStreamEvent>,
 ) -> Result<String, String> {
     let paths = storage_service::resolve_and_ensure(&app)?;
@@ -44,6 +45,7 @@ pub async fn send_ai_chat(
             &messages,
             executor,
             github_repo.as_deref(),
+            explorer.as_ref(),
             &emit,
         )
     })
@@ -59,4 +61,9 @@ pub fn cancel_ai_chat() {
 #[tauri::command]
 pub fn respond_ai_command_approval(id: u64, approved: bool) -> Result<(), String> {
     ai_cli::respond_approval(id, approved)
+}
+
+#[tauri::command]
+pub fn respond_ai_sudo_password(id: u64, password: Option<String>) -> Result<(), String> {
+    ai_cli::respond_sudo_password(id, password)
 }

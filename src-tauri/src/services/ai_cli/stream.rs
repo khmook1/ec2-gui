@@ -17,6 +17,10 @@ pub enum AiStreamEvent {
         id: u64,
         commands: Vec<ApprovalCommand>,
     },
+    /// 승인된 파일 쓰기에 sudo 비밀번호가 필요함
+    SudoPasswordRequired { id: u64, path: String },
+    /// AI 도구가 서버 파일·폴더를 바꿈 (탐색기 갱신용)
+    FileChanged { path: String },
 }
 
 #[derive(Default)]

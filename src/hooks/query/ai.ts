@@ -3,6 +3,7 @@ import {
   cancelAiChat,
   checkAiCli,
   respondAiCommandApproval,
+  respondAiSudoPassword,
   sendAiChat,
   type AiChatMessage,
   type AiConnectionInput,
@@ -21,6 +22,7 @@ export function useSendAiChatMutation() {
     onSettled: () => {
       // 승인된 변경은 취소/오류 전에 이미 실행되었을 수도 있다.
       void queryClient.invalidateQueries({ queryKey: ["github"] });
+      void queryClient.invalidateQueries({ queryKey: ["fs"] });
     },
     mutationFn: ({
       connection,
@@ -37,6 +39,13 @@ export function useSendAiChatMutation() {
 export function useCancelAiChatMutation() {
   return useMutation({
     mutationFn: cancelAiChat,
+  });
+}
+
+export function useRespondAiSudoPasswordMutation() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: number; password: string | null }) =>
+      respondAiSudoPassword(id, password),
   });
 }
 

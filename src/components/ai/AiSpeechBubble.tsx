@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import type { AiApprovalCommand, AiApprovalRisk, AiExchange } from "@/types/ai";
+import { SudoPasswordPrompt } from "@/components/explorer/SudoPasswordPrompt";
+import { AiDiffView } from "./AiDiffView";
 import { AiMarkdown } from "./AiMarkdown";
 import "./css/ai-speech-bubble.css";
 
@@ -13,6 +15,7 @@ const RISK_LABELS: Record<AiApprovalRisk, string> = {
   dockerInstall: "Docker 설치",
   mutating: "상태 변경",
   sensitive: "민감 정보 노출",
+  fileWrite: "파일 쓰기",
 };
 
 function approvalTitle(commands: AiApprovalCommand[]): string {
@@ -21,6 +24,7 @@ function approvalTitle(commands: AiApprovalCommand[]): string {
     return "삭제·종료처럼 되돌릴 수 없는 작업이 포함되어 있습니다. 대상을 직접 확인한 뒤에만 실행하세요.";
   if (risks.has("dockerInstall")) return "서버에 Docker를 설치합니다. 아래 스크립트를 실행할까요?";
   if (risks.has("mutating")) return "서버 또는 GitHub 상태를 바꾸는 작업입니다. 실행할까요?";
+  if (risks.has("fileWrite")) return "서버 파일을 수정합니다. 변경 내용을 확인한 뒤 실행하세요.";
   return "비밀정보가 노출될 수 있는 조회입니다. 실행할까요?";
 }
 
@@ -30,6 +34,8 @@ interface AiSpeechBubbleProps {
   onCancel: () => void;
   onApprove: () => void;
   onReject: () => void;
+  /** null이면 비밀번호 입력 취소 */
+  onSudoPassword: (password: string | null) => void;
   onDismiss: () => void;
   onReset: () => void;
 }
@@ -40,22 +46,29 @@ export function AiSpeechBubble({
   onCancel,
   onApprove,
   onReject,
+  onSudoPassword,
   onDismiss,
   onReset,
 }: AiSpeechBubbleProps) {
-  const { question, answer, status, error, pending, cancelled, approval } = exchange;
+  const { question, answer, status, error, pending, cancelled, approval, sudoPrompt } =
+    exchange;
   const visibleAnswer = useTypewriter(answer);
   const typing = pending || visibleAnswer.length < answer.length;
   const bodyRef = useRef<HTMLDivElement>(null);
   const stickToBottomRef = useRef(true);
   const [copied, setCopied] = useState(false);
+  const [questionExpanded, setQuestionExpanded] = useState(false);
+
+  useEffect(() => {
+    setQuestionExpanded(false);
+  }, [question]);
 
   useEffect(() => {
     const body = bodyRef.current;
     if (body && stickToBottomRef.current) {
       body.scrollTop = body.scrollHeight;
     }
-  }, [visibleAnswer, status, error, approval]);
+  }, [visibleAnswer, status, error, approval, sudoPrompt]);
 
   useEffect(() => {
     if (!copied) return;
@@ -94,9 +107,18 @@ export function AiSpeechBubble({
         ×
       </button>
 
-      <p className="ai-bubble__question" title={question}>
-        {question}
-      </p>
+      <button
+        type="button"
+        className={`ai-bubble__question ${questionExpanded ? "ai-bubble__question--expanded" : ""}`}
+        aria-expanded={questionExpanded}
+        onClick={() => setQuestionExpanded((expanded) => !expanded)}
+      >
+        <span className="ai-bubble__question-label">Q.</span>
+        <span className="ai-bubble__question-text">{question}</span>
+        <span className="ai-bubble__question-toggle" aria-hidden="true">
+          {questionExpanded ? "접기" : "펼치기"}
+        </span>
+      </button>
 
       <div className="ai-bubble__body" ref={bodyRef} onScroll={handleScroll}>
         {visibleAnswer ? (
@@ -136,6 +158,7 @@ export function AiSpeechBubble({
                   >
                     {item.command}
                   </pre>
+                  {item.diff ? <AiDiffView diff={item.diff} /> : null}
                 </li>
               ))}
             </ul>
@@ -151,6 +174,20 @@ export function AiSpeechBubble({
                 거부
               </button>
             </div>
+          </div>
+        ) : null}
+
+        {sudoPrompt ? (
+          <div className="ai-bubble__approval" role="alertdialog" aria-label="sudo 비밀번호 입력">
+            <p className="ai-bubble__approval-title">
+              현재 계정에 쓰기 권한이 없습니다. sudo 비밀번호를 입력하면 저장합니다.
+            </p>
+            <code className="ai-bubble__sudo-path">{sudoPrompt.path}</code>
+            <SudoPasswordPrompt
+              key={sudoPrompt.id}
+              onSubmit={(password) => onSudoPassword(password)}
+              onCancel={() => onSudoPassword(null)}
+            />
           </div>
         ) : null}
 

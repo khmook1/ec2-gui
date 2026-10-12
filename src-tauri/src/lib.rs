@@ -25,6 +25,7 @@ pub fn run() {
             commands::ai::send_ai_chat,
             commands::ai::cancel_ai_chat,
             commands::ai::respond_ai_command_approval,
+            commands::ai::respond_ai_sudo_password,
             commands::app::get_app_info,
             commands::app::get_local_login_defaults,
             commands::ssh::connect_ssh,

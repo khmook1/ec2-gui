@@ -1398,6 +1398,27 @@ impl super::ai_cli::RemoteExecutor for SshConnectionManager {
     ) -> Result<super::remote_fs::RemoteCommandOutput, String> {
         self.exec_for_ai(command, timeout)
     }
+
+    fn read_file(&self, path: &str) -> Result<super::remote_fs::RemoteFileContent, String> {
+        SshConnectionManager::read_file(self, path)
+    }
+
+    fn write_file(&self, path: &str, content: &str) -> Result<(), String> {
+        SshConnectionManager::write_file(self, path, content)
+    }
+
+    fn write_file_with_sudo(
+        &self,
+        path: &str,
+        content: &str,
+        password: Option<&str>,
+    ) -> Result<(), String> {
+        SshConnectionManager::write_file_with_sudo(self, path, content, password)
+    }
+
+    fn create_directory(&self, path: &str) -> Result<(), String> {
+        SshConnectionManager::create_directory(self, path)
+    }
 }
 
 fn ensure_authenticated(session: &Session) -> Result<(), String> {

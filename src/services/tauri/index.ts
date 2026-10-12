@@ -3,6 +3,7 @@ export {
   cancelAiChat,
   checkAiCli,
   respondAiCommandApproval,
+  respondAiSudoPassword,
   sendAiChat,
 } from "./ai";
 export type {

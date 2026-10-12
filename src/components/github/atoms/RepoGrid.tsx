@@ -1,6 +1,7 @@
 import { SearchHighlight } from "@/components/common/SearchHighlight";
+import { ResourceCard } from "@/components/common/ResourceCard";
 import { RepoBadges } from "@/components/github/atoms/RepoBadges";
-import { GitHubNavIcon } from "@/components/icons/NavIcons";
+import { RepoGitHubIcon } from "@/components/icons/GitHubIcons";
 import {
   formatRepoPushedAt,
   useFilteredGitHubRepos,
@@ -34,7 +35,7 @@ export function RepoGrid({ repos }: RepoGridProps) {
 
   return (
     <div
-      className="explorer-icon-grid explorer-icon-grid--github"
+      className="explorer-icon-grid explorer-icon-grid--github resource-card-grid"
       role="list"
       aria-label="GitHub 저장소 카드 목록"
       onMouseDown={(event) => {
@@ -45,59 +46,46 @@ export function RepoGrid({ repos }: RepoGridProps) {
     >
       {filtered.map((repo) => {
         const selected = selectedKey === repo.fullName;
-        const meta = [
-          repo.language,
-          repo.stargazers > 0
-            ? `★ ${repo.stargazers.toLocaleString("ko-KR")}`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(" · ");
+
         return (
-          <div
+          <ResourceCard
             key={repo.fullName}
-            role="listitem"
-            className="github-grid__cell"
-          >
-            <button
-              type="button"
-              className={[
-                "explorer-icon-grid__item",
-                "explorer-icon-grid__item--github",
-                "github-grid__card--clickable",
-                selected ? "explorer-icon-grid__item--selected" : "",
-              ]
+            tone="github"
+            selected={selected}
+            icon={<RepoGitHubIcon />}
+            overline={repo.owner}
+            name={<SearchHighlight text={repo.name} query={query} />}
+            description={
+              <SearchHighlight
+                text={repo.description || "설명이 없는 저장소"}
+                query={query}
+              />
+            }
+            badges={<RepoBadges repo={repo} />}
+            accessory={<span aria-hidden="true">↗</span>}
+            footer={
+              <>
+                <span>업데이트 {formatRepoPushedAt(repo.pushedAt)}</span>
+                {repo.stargazers > 0 ? (
+                  <span className="resource-card__footer-end">
+                    <span aria-hidden="true">★</span>
+                    {repo.stargazers.toLocaleString("ko-KR")}
+                  </span>
+                ) : null}
+              </>
+            }
+            buttonProps={{
+              title: [repo.fullName, repo.description]
                 .filter(Boolean)
-                .join(" ")}
-              title={[repo.fullName, repo.description]
-                .filter(Boolean)
-                .join("\n")}
-              aria-pressed={selected}
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
+                .join("\n"),
+              onMouseDown: (event) => event.stopPropagation(),
+              onClick: (event) => {
                 event.stopPropagation();
                 select(repo.fullName);
                 openRepo(repo.fullName);
-              }}
-            >
-              <GitHubNavIcon className="github-grid__icon" />
-              <span className="explorer-icon-grid__name github-grid__name">
-                <SearchHighlight text={repo.name} query={query} />
-              </span>
-              <span className="github-grid__owner">{repo.owner}</span>
-              <RepoBadges repo={repo} />
-              <span className="github-grid__desc">
-                <SearchHighlight
-                  text={repo.description || "설명 없음"}
-                  query={query}
-                />
-              </span>
-              <span className="github-grid__meta">
-                {meta ? <SearchHighlight text={meta} query={query} /> : null}
-                <span>{formatRepoPushedAt(repo.pushedAt)}</span>
-              </span>
-            </button>
-          </div>
+              },
+            }}
+          />
         );
       })}
     </div>

@@ -881,6 +881,84 @@
   border: none;
 }
 
+.github-active-groups {
+  flex: 1;
+  min-height: 0;
+  padding-top: 16px;
+  overflow: auto;
+}
+
+.github-active-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 18px 8px;
+}
+
+.github-active-group__repo {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 8px 4px 4px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.github-active-group__repo:hover {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.github-active-group__repo:hover .github-active-group__name {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.github-active-group__avatar {
+  flex-shrink: 0;
+  border-radius: 6px;
+  background: var(--border);
+}
+
+.github-active-group__owner,
+.github-active-group__slash {
+  color: var(--text-secondary);
+}
+
+.github-active-group__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-active-group__counts {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+
+.github-active-group__count {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.github-active-group__count--running {
+  background: color-mix(in srgb, var(--warning) 18%, transparent);
+  color: color-mix(in srgb, var(--warning) 70%, var(--text));
+}
+
+.github-active-group__count--waiting {
+  background: color-mix(in srgb, var(--text-secondary) 15%, transparent);
+  color: var(--text-secondary);
+}
+
 .github-branch {
   display: flex;
   align-items: center;

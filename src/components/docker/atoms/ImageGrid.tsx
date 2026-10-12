@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import { ResourceCard } from "@/components/common/ResourceCard";
 import { SearchHighlight } from "@/components/common/SearchHighlight";
 import { DockerImagesNavIcon } from "@/components/icons/NavIcons";
 import {
@@ -7,6 +8,7 @@ import {
 } from "@/lib/useFilteredDockerResources";
 import { useListSelection } from "@/providers/ListSelectionProvider";
 import type { DockerImage } from "@/types/docker";
+import "@/components/explorer/css/file-icon-grid.css";
 import "../css/docker-grid.css";
 
 interface ImageGridProps {
@@ -42,7 +44,7 @@ export function ImageGrid({
 
   return (
     <div
-      className="explorer-icon-grid explorer-icon-grid--docker"
+      className="explorer-icon-grid explorer-icon-grid--docker resource-card-grid"
       role="list"
       aria-label="Docker 이미지 카드 목록"
       onMouseDown={(event) => {
@@ -56,44 +58,43 @@ export function ImageGrid({
         const key = imageKey(image);
         const selected = selectedKey === key;
         return (
-          <div key={key} role="listitem" className="docker-grid__cell">
-            <button
-              type="button"
-              className={[
-                "explorer-icon-grid__item",
-                "explorer-icon-grid__item--docker",
-                selected ? "explorer-icon-grid__item--selected" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              title={`${image.repository}:${image.tag}\n${image.id}\n${image.size}`}
-              aria-pressed={selected}
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
+          <ResourceCard
+            key={key}
+            tone="docker"
+            selected={selected}
+            icon={<DockerImagesNavIcon />}
+            overline="Docker 이미지"
+            name={<SearchHighlight text={image.repository} query={query} />}
+            description={
+              <SearchHighlight text={`태그 ${image.tag}`} query={query} />
+            }
+            footer={
+              <>
+                <span className="resource-card__footer-main">
+                  {shortDockerId(image.id)}
+                </span>
+                <span className="resource-card__footer-end">
+                  {image.size || "—"}
+                </span>
+              </>
+            }
+            buttonProps={{
+              title: `${image.repository}:${image.tag}\n${image.id}\n${image.size}`,
+              onMouseDown: (event) => event.stopPropagation(),
+              onClick: (event) => {
                 event.stopPropagation();
                 select(key);
-              }}
-              onDoubleClick={(event) => {
+              },
+              onDoubleClick: (event) => {
                 event.stopPropagation();
                 onOpenImage?.(image);
-              }}
-              onContextMenu={(event) => onImageContextMenu?.(event, image)}
-            >
-              <DockerImagesNavIcon className="docker-grid__icon" />
-              <span className="explorer-icon-grid__name docker-grid__name">
-                <SearchHighlight text={image.repository} query={query} />
-              </span>
-              <span className="docker-grid__meta">
-                <SearchHighlight text={image.tag} query={query} />
-              </span>
-              <span className="docker-grid__meta docker-grid__meta--status">
-                <SearchHighlight
-                  text={`${shortDockerId(image.id)} · ${image.size || "—"}`}
-                  query={query}
-                />
-              </span>
-            </button>
-          </div>
+              },
+              onContextMenu: (event) => {
+                event.stopPropagation();
+                onImageContextMenu?.(event, image);
+              },
+            }}
+          />
         );
       })}
     </div>

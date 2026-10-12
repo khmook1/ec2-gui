@@ -1,6 +1,7 @@
 mod command_policy;
 mod danger_gate;
 mod docker_tool;
+mod file_tool;
 mod github_tool;
 mod remote_tool;
 mod stream;
@@ -18,10 +19,11 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
-pub use danger_gate::respond_approval;
+pub use danger_gate::{respond_approval, respond_sudo_password};
+pub use file_tool::ExplorerContext;
 pub use remote_tool::{RemoteExecutor, RemoteTarget};
 pub use stream::AiStreamEvent;
-use danger_gate::{ApprovalCommand, PendingApproval};
+use danger_gate::{ApprovalCommand, PendingApproval, PendingSudoPassword};
 use remote_tool::{CommandOutcome, TOOL_FENCE};
 use stream::StreamState;
 
@@ -466,6 +468,8 @@ enum GateMode {
     Suppressed,
 }
 
+const TOOL_FENCES: [&str; 3] = [TOOL_FENCE, github_tool::TOOL_FENCE, file_tool::TOOL_FENCE];
+
 /// 도구 블록으로 시작하는 응답은 화면에 흘려보내지 않도록 앞부분 delta를 잠시 모아 둔다.
 #[derive(Default)]
 struct DeltaGate {
@@ -481,13 +485,13 @@ impl DeltaGate {
             GateMode::Pending => {
                 self.buffer.push_str(&text);
                 let head = self.buffer.trim_start();
-                if head.starts_with(TOOL_FENCE) || head.starts_with(github_tool::TOOL_FENCE) {
+                if TOOL_FENCES.iter().any(|fence| head.starts_with(fence)) {
                     self.mode = GateMode::Suppressed;
                     self.buffer.clear();
                     emit(AiStreamEvent::Status {
                         text: "도구 실행 준비 중…".to_string(),
                     });
-                } else if !TOOL_FENCE.starts_with(head) && !github_tool::TOOL_FENCE.starts_with(head) {
+                } else if !TOOL_FENCES.iter().any(|fence| fence.starts_with(head)) {
                     self.mode = GateMode::Streaming;
                     emit(AiStreamEvent::Delta {
                         text: std::mem::take(&mut self.buffer),
@@ -514,6 +518,7 @@ pub fn chat(
     messages: &[AiChatMessage],
     executor: Option<&dyn RemoteExecutor>,
     github_repo: Option<&str>,
+    explorer: Option<&ExplorerContext>,
     emit: &dyn Fn(AiStreamEvent),
 ) -> Result<String, String> {
     let request = ActiveRequest::register();
@@ -533,6 +538,9 @@ pub fn chat(
         executor.as_ref().map(|(_, target)| target),
         docker_section.as_deref(),
     )?;
+    if executor.is_some() {
+        base_prompt.push_str(&file_tool::instructions(explorer));
+    }
     base_prompt.push_str(&github_tool::instructions(github_repo));
     fs::create_dir_all(workdir)
         .map_err(|error| format!("AI 작업 폴더를 만들지 못했습니다: {error}"))?;
@@ -552,6 +560,26 @@ pub fn chat(
         pending.wait(&cancelled)
     };
     let status = |text: String| emit(AiStreamEvent::Status { text });
+    let mut ask_password = |path: &str| -> Result<Option<String>, String> {
+        let pending = PendingSudoPassword::register();
+        emit(AiStreamEvent::Status {
+            text: "sudo 비밀번호 입력을 기다리는 중…".to_string(),
+        });
+        emit(AiStreamEvent::SudoPasswordRequired {
+            id: pending.id,
+            path: path.to_string(),
+        });
+        let password = pending.wait(&cancelled)?;
+        emit(AiStreamEvent::Status {
+            text: "sudo로 파일 저장 중…".to_string(),
+        });
+        Ok(password)
+    };
+    let file_changed = |path: &str| {
+        emit(AiStreamEvent::FileChanged {
+            path: path.to_string(),
+        })
+    };
 
     let mut transcript = String::new();
     for round in 1..=MAX_TOOL_ROUNDS {
@@ -565,6 +593,23 @@ pub fn chat(
 
         let reply = run_cli_round(provider, &binary, workdir, &prompt, &request, true, emit)?;
         if !last_round {
+            if let Some(requests) = file_tool::parse(&reply) {
+                let output = match (requests, executor.as_ref()) {
+                    (Err(error), _) => format!("[실행 실패] {error}"),
+                    (Ok(_), None) => "[실행 실패] SSH 연결이 없습니다.".to_string(),
+                    (Ok(requests), Some((executor, _))) => file_tool::format_results(&file_tool::run(
+                        *executor,
+                        requests,
+                        &cancelled,
+                        &mut approve,
+                        &mut ask_password,
+                        &file_changed,
+                    )?),
+                };
+                transcript.push_str(&format!("\n\n[파일 도구 결과 {round}]\n{output}"));
+                status("파일 작업 결과 분석 중…".into());
+                continue;
+            }
             if let Some(requests) = github_tool::parse(&reply) {
                 let output = match requests {
                     Ok(requests) => remote_tool::format_results(&github_tool::run(requests, &cancelled, &mut approve, &github_tool::execute)?),
@@ -678,7 +723,10 @@ fn run_cli_round(
 
     if tools {
         let mut gate = gate.borrow_mut();
-        if remote_tool::parse_tool_block(&reply).is_some() || github_tool::parse(&reply).is_some() {
+        if remote_tool::parse_tool_block(&reply).is_some()
+            || github_tool::parse(&reply).is_some()
+            || file_tool::parse(&reply).is_some()
+        {
             if gate.mode == GateMode::Streaming {
                 emit(AiStreamEvent::Reset);
             }

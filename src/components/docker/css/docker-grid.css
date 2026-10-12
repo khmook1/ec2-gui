@@ -1,146 +1,19 @@
 .docker-grid__favorite {
   position: absolute;
-  top: 6px;
-  left: 6px;
-  z-index: 2;
-}
-
-.docker-grid__nginx-badge {
-  position: absolute;
-  top: 0.625rem;
-  left: 2.25rem;
-}
-
-.docker-grid__restart-badge {
-  position: absolute;
-  top: 0.625rem;
-  left: 2.25rem;
+  top: 0.75rem;
+  right: 0.75rem;
   z-index: 1;
 }
 
-.explorer-icon-grid__item--docker.explorer-icon-grid__item--nginx,
-.explorer-icon-grid__item--docker.explorer-icon-grid__item--restarting {
-  padding-top: 2.375rem;
-}
-
-.explorer-icon-grid__item--nginx .docker-grid__restart-badge {
-  left: auto;
-  right: 1.625rem;
-}
-
-.docker-grid__icon {
-  flex-shrink: 0;
-  width: var(--item-icon-size);
-  height: var(--item-icon-size);
-  color: var(--accent);
-}
-
-.explorer-icon-grid__name.docker-grid__name {
-  font-size: var(--item-docker-name-size);
-  font-weight: 600;
-}
-
-.docker-grid__meta {
-  width: 100%;
-  color: var(--text-secondary);
-  font-size: var(--item-docker-meta-size);
-  line-height: 1.35;
-  word-break: break-word;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.docker-grid__meta--status {
-  -webkit-line-clamp: 1;
-}
-
-.docker-grid__meta--status-restarting {
-  color: color-mix(in srgb, var(--danger) 72%, var(--text));
-  font-weight: 600;
-}
-
-.docker-grid__status-dot {
-  position: absolute;
-  top: 0.625rem;
-  right: 0.625rem;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-}
-
-.docker-grid__status-dot--running {
-  background: #34c759;
-  box-shadow: 0 0 0 3px rgba(52, 199, 89, 0.16);
-}
-
-.docker-grid__status-dot--stopped {
-  background: #8e8e93;
-  box-shadow: 0 0 0 3px rgba(142, 142, 147, 0.14);
-}
-
-.docker-grid__status-dot--restarting {
-  background: var(--danger);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 22%, transparent);
-  animation: docker-grid-restart-pulse 1.1s ease-in-out infinite;
-}
-
-.explorer-icon-grid__item--restarting {
-  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
-  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
-  box-shadow:
-    inset 3px 0 0 var(--danger),
-    0 0 0 1px color-mix(in srgb, var(--danger) 28%, transparent);
-}
-
-.explorer-icon-grid__item--restarting:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--danger) 70%, var(--border));
-  background: color-mix(in srgb, var(--danger) 16%, var(--surface));
-}
-
-.explorer-icon-grid__item--restarting.explorer-icon-grid__item--selected,
-.explorer-icon-grid__item--restarting.explorer-icon-grid__item--selected:hover:not(
-    :disabled
-  ) {
-  border-color: color-mix(in srgb, var(--danger) 82%, var(--border));
-  background: color-mix(in srgb, var(--danger) 20%, var(--surface));
-}
-
-.explorer-icon-grid__item--restarting .docker-grid__icon {
-  color: color-mix(in srgb, var(--danger) 78%, var(--text));
-}
-
-.explorer-icon-grid__item--restarting.explorer-icon-grid__item--nginx {
-  border-color: color-mix(in srgb, var(--danger) 55%, var(--border));
-  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
-  box-shadow:
-    inset 3px 0 0 var(--danger),
-    0 0 0 1px color-mix(in srgb, var(--danger) 28%, transparent);
-}
-
-html[data-theme="dark"] .explorer-icon-grid__item--restarting {
-  background: color-mix(in srgb, var(--danger) 14%, var(--surface));
-}
-
-html[data-theme="dark"] .explorer-icon-grid__item--restarting:hover:not(:disabled),
-html[data-theme="dark"]
-  .explorer-icon-grid__item--restarting.explorer-icon-grid__item--selected,
-html[data-theme="dark"]
-  .explorer-icon-grid__item--restarting.explorer-icon-grid__item--selected:hover:not(
-    :disabled
-  ) {
-  background: color-mix(in srgb, var(--danger) 20%, var(--surface));
-}
-
-@keyframes docker-grid-restart-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.45;
-    transform: scale(0.85);
-  }
+.docker-grid__nginx-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #009639;
+  color: #fff;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
 }

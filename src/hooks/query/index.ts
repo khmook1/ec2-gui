@@ -4,6 +4,7 @@ export {
   useCancelAiChatMutation,
   useCheckAiCliMutation,
   useRespondAiCommandApprovalMutation,
+  useRespondAiSudoPasswordMutation,
   useSendAiChatMutation,
 } from "./ai";
 export { useAppInfoQuery } from "./app";

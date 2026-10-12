@@ -23,7 +23,7 @@ const FILE_READERS: &[&str] = &[
 const ENV_REASON: &str = "환경 변수가 그대로 출력되어 비밀번호·토큰이 노출될 수 있습니다.";
 const INSPECT_REASON: &str = "컨테이너 설정의 환경 변수(비밀번호·토큰)가 노출될 수 있습니다.";
 const COMPOSE_CONFIG_REASON: &str = "compose 설정에 포함된 환경 변수·비밀값이 노출될 수 있습니다.";
-const SECRET_FILE_REASON: &str = "키·인증 정보·.env 같은 비밀 파일 내용을 읽습니다.";
+pub(crate) const SECRET_FILE_REASON: &str = "키·인증 정보·.env 같은 비밀 파일 내용을 읽습니다.";
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum CommandRisk {
@@ -155,7 +155,7 @@ fn inspect_format(args: &[String]) -> Option<&str> {
     None
 }
 
-fn is_secret_path(arg: &str) -> bool {
+pub(crate) fn is_secret_path(arg: &str) -> bool {
     let lower = arg.to_ascii_lowercase();
     let base = lower.rsplit('/').next().unwrap_or(&lower);
     let private_key = ["id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"]

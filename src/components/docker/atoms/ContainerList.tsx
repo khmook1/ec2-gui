@@ -15,6 +15,7 @@ import {
   isNginxContainer,
   type DockerContainer,
 } from "@/types/docker";
+import { ContainerStatePill } from "./ContainerStatePill";
 import "../css/docker-list.css";
 
 interface ContainerListProps {
@@ -69,24 +70,19 @@ export function ContainerList({
       },
       {
         name: "STATUS",
-        className: "table-list__cell-muted",
+        className: "table-list__cell-muted docker-list__td--status",
         render: (container) => {
-          const restarting =
-            getDockerContainerState(container.status) === "restarting";
+          const state = getDockerContainerState(container.status);
           return (
             <span
-              className={
-                restarting ? "docker-list__status--restarting" : undefined
-              }
+              className={[
+                "docker-list__status",
+                state === "restarting" ? "docker-list__status--restarting" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
             >
-              {restarting ? (
-                <span
-                  className="docker-list__restart-badge"
-                  aria-label="재시작 중"
-                >
-                  RESTART
-                </span>
-              ) : null}
+              <ContainerStatePill state={state} />
               <SearchHighlight text={container.status} query={query} />
             </span>
           );
@@ -129,17 +125,21 @@ export function ContainerList({
       onRowContextMenu={(container, _index, event) =>
         onContainerContextMenu?.(event, container)
       }
-      getRowClassName={(container) =>
-        [
-          selectedKey === container.id ? "table-list__row--selected" : "",
-          isNginxContainer(container) ? "table-list__row--nginx" : "",
-          getDockerContainerState(container.status) === "restarting"
-            ? "table-list__row--restarting"
-            : "",
-        ]
-          .filter(Boolean)
-          .join(" ") || undefined
-      }
+      getRowClassName={(container) => {
+        const state = getDockerContainerState(container.status);
+        return (
+          [
+            selectedKey === container.id ? "table-list__row--selected" : "",
+            isNginxContainer(container) ? "table-list__row--nginx" : "",
+            state === "restarting" ? "table-list__row--restarting" : "",
+            state === "stopped" || state === "unknown"
+              ? "table-list__row--stopped"
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ") || undefined
+        );
+      }}
     />
   );
 }

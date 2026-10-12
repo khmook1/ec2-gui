@@ -14,8 +14,10 @@ import { AiSpeechBubble } from "@/components/ai/AiSpeechBubble";
 import {
   useCancelAiChatMutation,
   useRespondAiCommandApprovalMutation,
+  useRespondAiSudoPasswordMutation,
   useSendAiChatMutation,
 } from "@/hooks/query";
+import { useQueryClient } from "@tanstack/react-query";
 import { AI_CHAT_CANCELLED, type AiChatMessage } from "@/services/tauri/ai";
 import { useSettingsStore } from "@/stores/settingsStore";
 import type { AiExchange } from "@/types/ai";
@@ -116,6 +118,8 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
   const sendMutation = useSendAiChatMutation();
   const cancelMutation = useCancelAiChatMutation();
   const approvalMutation = useRespondAiCommandApprovalMutation();
+  const sudoPasswordMutation = useRespondAiSudoPasswordMutation();
+  const queryClient = useQueryClient();
 
   const openCommand = useCallback(() => setCommandOpen(true), []);
   const closeCommand = useCallback(() => setCommandOpen(false), []);
@@ -144,6 +148,16 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
     [approvalMutation, exchange, updateExchange],
   );
 
+  const respondSudoPassword = useCallback(
+    (password: string | null) => {
+      const prompt = exchange?.sudoPrompt;
+      if (!exchange || !prompt) return;
+      sudoPasswordMutation.mutate({ id: prompt.id, password });
+      updateExchange(exchange.id, (current) => ({ ...current, sudoPrompt: null }));
+    },
+    [sudoPasswordMutation, exchange, updateExchange],
+  );
+
   const ask = useCallback(
     (input: string) => {
       const question = input.trim();
@@ -164,6 +178,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
         pending: true,
         cancelled: false,
         approval: null,
+        sudoPrompt: null,
       });
 
       sendMutation
@@ -180,6 +195,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
                   answer: current.answer + event.text,
                   status: null,
                   approval: null,
+                  sudoPrompt: null,
                 }));
                 break;
               case "status":
@@ -187,6 +203,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
                   ...current,
                   status: event.text,
                   approval: null,
+                  sudoPrompt: null,
                 }));
                 break;
               case "reset":
@@ -198,6 +215,15 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
                   ...current,
                   approval: { id: event.id, commands: event.commands },
                 }));
+                break;
+              case "sudoPasswordRequired":
+                updateExchange(requestId, (current) => ({
+                  ...current,
+                  sudoPrompt: { id: event.id, path: event.path },
+                }));
+                break;
+              case "fileChanged":
+                void queryClient.invalidateQueries({ queryKey: ["fs"] });
                 break;
             }
           },
@@ -215,6 +241,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
             status: null,
             pending: false,
             approval: null,
+            sudoPrompt: null,
           }));
         })
         .catch((err: unknown) => {
@@ -235,11 +262,12 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
             pending: false,
             cancelled,
             approval: null,
+            sudoPrompt: null,
             error: cancelled ? null : message,
           }));
         });
     },
-    [ai.provider, ai.binaryPath, history, sendMutation, updateExchange],
+    [ai.provider, ai.binaryPath, history, sendMutation, updateExchange, queryClient],
   );
 
   const dismiss = useCallback(() => {
@@ -253,6 +281,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
     requestIdRef.current += 1;
     setHistory([]);
     setExchange(null);
+    setCommandOpen(true);
   }, [cancel]);
 
   useEffect(() => {
@@ -291,6 +320,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
               onCancel={cancel}
               onApprove={() => respondApproval(true)}
               onReject={() => respondApproval(false)}
+              onSudoPassword={respondSudoPassword}
               onDismiss={dismiss}
               onReset={resetConversation}
             />

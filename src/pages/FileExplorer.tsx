@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useState, type MouseEvent } from "react";
 import {
   PageViewModeProvider,
   PageViewSwitch,
@@ -23,6 +23,7 @@ import {
   ListSelectionProvider,
   ListSelectionSurface,
 } from "@/providers/ListSelectionProvider";
+import { useExplorerContextStore } from "@/stores/explorerContextStore";
 import type { RemoteEntry } from "@/types/filesystem";
 import { getParentPath, splitPathSegments } from "@/utils/file";
 import "./css/file-explorer.css";
@@ -60,6 +61,16 @@ export function FileExplorerPage() {
   });
 
   const canGoUp = splitPathSegments(currentPath).length > 0;
+
+  const setExplorerContext = useExplorerContextStore((state) => state.setContext);
+  useEffect(() => {
+    setExplorerContext(
+      currentPath
+        ? { currentPath, selectedPath, openFile: previewPath }
+        : null,
+    );
+  }, [currentPath, selectedPath, previewPath, setExplorerContext]);
+  useEffect(() => () => setExplorerContext(null), [setExplorerContext]);
 
   const handleClosePreview = useCallback(() => {
     setPreviewPath(null);

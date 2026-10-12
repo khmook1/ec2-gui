@@ -1,7 +1,3 @@
-html[data-theme="dark"] .explorer-icon-grid__item--nginx {
-  background: color-mix(in srgb, #009639 14%, var(--surface));
-}
-
 .explorer-icon-grid {
   flex: 1;
   min-height: 0;
@@ -57,8 +53,8 @@ html[data-theme="dark"] .explorer-icon-grid__item--nginx {
 }
 
 .explorer-icon-grid__item--letter-focus:not(
-    .explorer-icon-grid__item--selected
-  ) {
+  .explorer-icon-grid__item--selected
+) {
   background: color-mix(in srgb, var(--accent) 8%, transparent);
   border-color: color-mix(in srgb, var(--accent) 24%, transparent);
 }
@@ -160,72 +156,4 @@ html[data-theme="dark"] .explorer-icon-grid__item--nginx {
   top: 6px;
   left: 6px;
   z-index: 1;
-}
-
-.explorer-icon-grid__item--docker {
-  position: relative;
-  cursor: default;
-  text-align: center;
-}
-
-.explorer-icon-grid--github {
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(var(--item-card-wide-min), 1fr)
-  );
-}
-
-.explorer-icon-grid--docker {
-  grid-template-columns: repeat(
-    auto-fill,
-    minmax(var(--item-docker-card-min), 1fr)
-  );
-}
-
-/* 정사각형 비율은 셀(div)에만 준다. <button>에 aspect-ratio를 주면 WebKit grid 행
-   높이 계산이 어긋나 다음 줄 카드와 겹친다. 카드(button)는 셀을 꽉 채운다. */
-.docker-grid__cell,
-.github-grid__cell {
-  position: relative;
-  display: flex;
-  min-width: 0;
-  aspect-ratio: 1 / 1;
-}
-
-.docker-grid__cell > .explorer-icon-grid__item,
-.github-grid__cell > .explorer-icon-grid__item {
-  flex: 1;
-  min-width: 0;
-}
-
-.explorer-icon-grid__item--docker,
-.explorer-icon-grid__item--github {
-  justify-content: center;
-  gap: var(--item-card-wide-gap);
-  overflow: hidden;
-}
-
-/* line-clamp(overflow: hidden) 텍스트가 flex 축소로 0 높이가 되어 사라지지 않게 한다 */
-.explorer-icon-grid__item--docker > *,
-.explorer-icon-grid__item--github > * {
-  flex-shrink: 0;
-}
-
-.explorer-icon-grid__item--nginx {
-  border-color: color-mix(in srgb, #009639 42%, var(--border));
-  background: color-mix(in srgb, #009639 12%, var(--surface));
-  box-shadow: inset 3px 0 0 #009639;
-}
-
-.explorer-icon-grid__item--nginx:hover:not(:disabled) {
-  border-color: color-mix(in srgb, #009639 58%, var(--border));
-  background: color-mix(in srgb, #009639 18%, var(--surface));
-}
-
-.explorer-icon-grid__item--nginx.explorer-icon-grid__item--selected,
-.explorer-icon-grid__item--nginx.explorer-icon-grid__item--selected:hover:not(
-    :disabled
-  ) {
-  border-color: color-mix(in srgb, #009639 70%, var(--border));
-  background: color-mix(in srgb, #009639 24%, var(--surface));
 }

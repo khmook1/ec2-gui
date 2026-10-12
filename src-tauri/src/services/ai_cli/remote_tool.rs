@@ -5,7 +5,7 @@ use std::time::Duration;
 use super::danger_gate::{self, ApprovalCommand};
 use super::docker_tool::{self, INSTALL_COMMAND};
 use super::AI_CHAT_CANCELLED;
-use crate::services::remote_fs::RemoteCommandOutput;
+use crate::services::remote_fs::{RemoteCommandOutput, RemoteFileContent};
 
 pub const TOOL_FENCE: &str = "```ec2gui-ssh";
 pub const MAX_COMMANDS_PER_ROUND: usize = 5;
@@ -46,7 +46,31 @@ pub trait RemoteExecutor: Sync {
     fn exec(&self, command: &str) -> Result<RemoteCommandOutput, String> {
         self.exec_with_timeout(command, COMMAND_TIMEOUT)
     }
+
+    fn read_file(&self, _path: &str) -> Result<RemoteFileContent, String> {
+        Err(UNSUPPORTED_FILE_OP.to_string())
+    }
+
+    fn write_file(&self, _path: &str, _content: &str) -> Result<(), String> {
+        Err(UNSUPPORTED_FILE_OP.to_string())
+    }
+
+    /// `password`가 없으면 `sudo -n`. 비밀번호가 필요하면 `SUDO_PASSWORD_REQUIRED` 오류.
+    fn write_file_with_sudo(
+        &self,
+        _path: &str,
+        _content: &str,
+        _password: Option<&str>,
+    ) -> Result<(), String> {
+        Err(UNSUPPORTED_FILE_OP.to_string())
+    }
+
+    fn create_directory(&self, _path: &str) -> Result<(), String> {
+        Err(UNSUPPORTED_FILE_OP.to_string())
+    }
 }
+
+const UNSUPPORTED_FILE_OP: &str = "이 연결에서는 파일 작업을 지원하지 않습니다.";
 
 pub fn tool_instructions(target: &RemoteTarget) -> String {
     let RemoteTarget { host, username } = target;
@@ -62,6 +86,7 @@ pub fn tool_instructions(target: &RemoteTarget) -> String {
 - 정보 조회가 목적이면 조회 명령만 쓰세요. 삭제·상태 변경 명령과 비밀정보(환경 변수, .env, 키·인증 파일)를 출력하는 명령은 [위험 작업 정책]에 따라 사람의 승인 없이는 절대 실행되지 않습니다.\n\
 - 결과에 [사용자 거부]가 있으면 같은 명령을 다시 요청하지 말고, 거부되어 실행하지 않았다고 알려 주세요.\n\
 - 이 컴퓨터(로컬)의 셸이나 파일 도구는 쓰지 마세요. 서버 정보는 이 블록으로만 얻을 수 있습니다.\n\
+- 서버 파일을 만들거나 고칠 때는 리다이렉트(`>`), heredoc, `sed -i`, `tee` 대신 [서버 파일 도구]를 쓰세요. 이 블록은 줄마다 별도 명령으로 실행되어 여러 줄 입력이 깨집니다.\n\
 - 실행 결과에 [권한 없음]이 있으면 \"현재 계정({username})에는 ... 권한이 없습니다\"라고 어떤 작업에 권한이 없는지 분명히 알려 주세요. \
 일부 출력이 있으면 얻은 정보는 분석하되 권한 제한도 함께 알려 주세요.\n\
 - 결과를 받으면 원본을 그대로 옮기지 말고 핵심을 분석·요약해 답하세요."

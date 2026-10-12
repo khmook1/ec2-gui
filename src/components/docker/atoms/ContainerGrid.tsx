@@ -1,14 +1,18 @@
 import type { MouseEvent } from "react";
 import { FavoriteStarButton } from "@/components/common/FavoriteStarButton";
+import { ResourceCard } from "@/components/common/ResourceCard";
 import { SearchHighlight } from "@/components/common/SearchHighlight";
 import { DockerNavIcon } from "@/components/icons/NavIcons";
 import { useFilteredDockerContainers } from "@/lib/useFilteredDockerContainers";
+import { shortDockerId } from "@/lib/useFilteredDockerResources";
 import { useListSelection } from "@/providers/ListSelectionProvider";
 import {
   getDockerContainerState,
   isNginxContainer,
   type DockerContainer,
 } from "@/types/docker";
+import { ContainerStatePill } from "./ContainerStatePill";
+import "@/components/explorer/css/file-icon-grid.css";
 import "../css/docker-grid.css";
 
 interface ContainerGridProps {
@@ -48,7 +52,7 @@ export function ContainerGrid({
 
   return (
     <div
-      className="explorer-icon-grid explorer-icon-grid--docker"
+      className="explorer-icon-grid explorer-icon-grid--docker resource-card-grid"
       role="list"
       aria-label="Docker 컨테이너 카드 목록"
       onMouseDown={(event) => {
@@ -62,90 +66,76 @@ export function ContainerGrid({
         const selected = selectedKey === container.id;
         const state = getDockerContainerState(container.status);
         const restarting = state === "restarting";
-        const running = state === "running" || state === "paused" || restarting;
+        const stopped = state === "stopped" || state === "unknown";
         const nginx = isNginxContainer(container);
         const favorite = isFavorite?.(container) ?? false;
 
         return (
-          <div key={container.id} role="listitem" className="docker-grid__cell">
-            <button
-              type="button"
-              className={[
-                "explorer-icon-grid__item",
-                "explorer-icon-grid__item--docker",
-                nginx ? "explorer-icon-grid__item--nginx" : "",
-                restarting ? "explorer-icon-grid__item--restarting" : "",
-                selected ? "explorer-icon-grid__item--selected" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              title={`${container.names}\n${container.image}\n${container.status}`}
-              aria-pressed={selected}
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
+          <ResourceCard
+            key={container.id}
+            tone={
+              restarting
+                ? "restarting"
+                : nginx
+                  ? "nginx"
+                  : state === "paused"
+                    ? "paused"
+                    : stopped
+                      ? "stopped"
+                      : "docker"
+            }
+            selected={selected}
+            icon={<DockerNavIcon />}
+            overline="Docker 컨테이너"
+            name={<SearchHighlight text={container.names} query={query} />}
+            description={
+              <SearchHighlight text={container.image} query={query} />
+            }
+            badges={
+              <>
+                <ContainerStatePill state={state} />
+                {nginx ? (
+                  <span className="docker-grid__nginx-badge">NGINX</span>
+                ) : null}
+              </>
+            }
+            footer={
+              <>
+                <span className="resource-card__footer-main">
+                  <SearchHighlight text={container.status} query={query} />
+                </span>
+                <span className="resource-card__footer-end">
+                  {shortDockerId(container.id)}
+                </span>
+              </>
+            }
+            cornerAction={
+              onToggleFavorite ? (
+                <FavoriteStarButton
+                  active={favorite}
+                  name={container.names}
+                  className="docker-grid__favorite"
+                  onToggle={() => onToggleFavorite(container)}
+                />
+              ) : null
+            }
+            buttonProps={{
+              title: `${container.names}\n${container.image}\n${container.status}`,
+              onMouseDown: (event) => event.stopPropagation(),
+              onClick: (event) => {
                 event.stopPropagation();
                 select(container.id);
-              }}
-              onDoubleClick={(event) => {
+              },
+              onDoubleClick: (event) => {
                 event.stopPropagation();
                 onOpenContainer?.(container);
-              }}
-              onContextMenu={(event) =>
-                onContainerContextMenu?.(event, container)
-              }
-            >
-              {nginx ? (
-                <span className="docker-grid__nginx-badge" aria-label="nginx">
-                  NGINX
-                </span>
-              ) : null}
-              {restarting ? (
-                <span
-                  className="docker-grid__restart-badge"
-                  aria-label="재시작 중"
-                >
-                  RESTART
-                </span>
-              ) : null}
-              <span
-                className={[
-                  "docker-grid__status-dot",
-                  restarting
-                    ? "docker-grid__status-dot--restarting"
-                    : running
-                      ? "docker-grid__status-dot--running"
-                      : "docker-grid__status-dot--stopped",
-                ].join(" ")}
-                aria-hidden
-              />
-              <DockerNavIcon className="docker-grid__icon" />
-              <span className="explorer-icon-grid__name docker-grid__name">
-                <SearchHighlight text={container.names} query={query} />
-              </span>
-              <span className="docker-grid__meta">
-                <SearchHighlight text={container.image} query={query} />
-              </span>
-              <span
-                className={[
-                  "docker-grid__meta",
-                  "docker-grid__meta--status",
-                  restarting ? "docker-grid__meta--status-restarting" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <SearchHighlight text={container.status} query={query} />
-              </span>
-            </button>
-            {onToggleFavorite ? (
-              <FavoriteStarButton
-                active={favorite}
-                name={container.names}
-                className="docker-grid__favorite"
-                onToggle={() => onToggleFavorite(container)}
-              />
-            ) : null}
-          </div>
+              },
+              onContextMenu: (event) => {
+                event.stopPropagation();
+                onContainerContextMenu?.(event, container);
+              },
+            }}
+          />
         );
       })}
     </div>

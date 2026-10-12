@@ -12,10 +12,7 @@
   min-width: 0;
 }
 
-.docker-list__nginx-badge,
-.docker-grid__nginx-badge,
-.docker-list__restart-badge,
-.docker-grid__restart-badge {
+.docker-list__nginx-badge {
   display: inline-flex;
   align-items: center;
   flex-shrink: 0;
@@ -29,18 +26,28 @@
   line-height: 1.2;
 }
 
-.docker-list__restart-badge,
-.docker-grid__restart-badge {
-  background: var(--danger);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--danger) 40%, transparent);
-}
-
-.docker-list__status--restarting {
+.docker-list__status {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.docker-list__status--restarting {
   color: color-mix(in srgb, var(--danger) 72%, var(--text));
   font-weight: 600;
+}
+
+.table-list__row--stopped .table-list__td {
+  color: var(--text-secondary);
+}
+
+.table-list__row--stopped .table-list__td:not(.docker-list__td--status) > *,
+.table-list__row--stopped
+  .docker-list__td--status
+  .docker-list__status
+  > :not(.docker-state-pill) {
+  opacity: 0.6;
 }
 
 .docker-list .explorer-list__header,
@@ -60,10 +67,6 @@
   color: var(--text-secondary);
 }
 
-.explorer-icon-grid__item--nginx .docker-grid__icon {
-  color: #009639;
-}
-
 .table-list__row--restarting .table-list__td {
   background: color-mix(in srgb, var(--danger) 8%, transparent);
 }
@@ -81,7 +84,8 @@
   background: color-mix(in srgb, var(--danger) 18%, transparent);
 }
 
-.table-list__row--restarting.table-list__row--nginx .table-list__td:first-child {
+.table-list__row--restarting.table-list__row--nginx
+  .table-list__td:first-child {
   box-shadow: inset 3px 0 0 var(--danger);
 }
 

@@ -18,7 +18,7 @@ use std::time::{Duration, Instant};
 
 use serde::Serialize;
 
-use super::command_policy::{classify, CommandRisk};
+use super::command_policy::{classify, is_secret_path, CommandRisk, SECRET_FILE_REASON};
 use super::github_tool::Request as GithubRequest;
 use super::AI_CHAT_CANCELLED;
 
@@ -37,6 +37,8 @@ const DOCKER_INSTALL_REASON: &str =
     "Docker를 설치합니다. 패키지 저장소 등록, 패키지 설치, 서비스 시작, docker 그룹 추가가 함께 실행됩니다.";
 const GITHUB_MUTATING_REASON: &str =
     "GitHub 상태를 변경합니다. 저장소·대상·내용을 확인해 주세요. Actions는 배포를 실행할 수 있습니다.";
+const FILE_WRITE_REASON: &str =
+    "서버 파일을 만들거나 수정합니다. 경로와 변경 내용을 직접 확인하세요.";
 const GITHUB_DESTRUCTIVE_REASON: &str =
     "GitHub 작업을 닫거나 취소합니다. 대상 저장소와 번호를 반드시 직접 확인하세요.";
 
@@ -58,6 +60,8 @@ pub enum ApprovalRisk {
     Mutating,
     Sensitive,
     DockerInstall,
+    /// 서버 파일 생성·수정
+    FileWrite,
 }
 
 /// 사람에게 보여 줄 승인 카드 항목 하나
@@ -68,6 +72,9 @@ pub struct ApprovalCommand {
     pub command: String,
     pub risk: ApprovalRisk,
     pub reason: String,
+    /// 파일 변경 전/후 unified diff
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diff: Option<String>,
 }
 
 impl ApprovalCommand {
@@ -76,7 +83,23 @@ impl ApprovalCommand {
             command: command.into(),
             risk,
             reason: reason.to_string(),
+            diff: None,
         }
+    }
+}
+
+/// 서버 파일 조회. 비밀 파일(.env, 키 등)만 승인이 필요하다.
+pub fn file_read_approval(path: &str) -> Option<ApprovalCommand> {
+    is_secret_path(path).then(|| {
+        ApprovalCommand::new(format!("파일 읽기: {path}"), ApprovalRisk::Sensitive, SECRET_FILE_REASON)
+    })
+}
+
+/// 서버 파일 생성·수정·폴더 생성. 항상 승인이 필요하다.
+pub fn file_write_approval(summary: impl Into<String>, diff: Option<String>) -> ApprovalCommand {
+    ApprovalCommand {
+        diff,
+        ..ApprovalCommand::new(summary, ApprovalRisk::FileWrite, FILE_WRITE_REASON)
     }
 }
 
@@ -211,6 +234,70 @@ pub fn respond_approval(id: u64, approved: bool) -> Result<(), String> {
         other => {
             *guard = other;
             Err("이미 처리되었거나 만료된 실행 요청입니다.".to_string())
+        }
+    }
+}
+
+static PENDING_SUDO_PASSWORD: Mutex<Option<(u64, mpsc::Sender<Option<String>>)>> = Mutex::new(None);
+
+/// 승인된 파일 쓰기에 sudo 비밀번호가 필요할 때 사람의 입력을 기다린다.
+/// 비밀번호는 쓰기에만 쓰고 AI 대화·로그에 남기지 않는다.
+pub struct PendingSudoPassword {
+    pub id: u64,
+    receiver: mpsc::Receiver<Option<String>>,
+}
+
+impl PendingSudoPassword {
+    pub fn register() -> Self {
+        let id = NEXT_APPROVAL_ID.fetch_add(1, Ordering::SeqCst);
+        let (sender, receiver) = mpsc::channel();
+        if let Ok(mut guard) = PENDING_SUDO_PASSWORD.lock() {
+            *guard = Some((id, sender));
+        }
+        Self { id, receiver }
+    }
+
+    /// 입력한 비밀번호. 취소·시간 초과·채널 끊김은 `None`.
+    pub fn wait(&self, cancelled: &dyn Fn() -> bool) -> Result<Option<String>, String> {
+        let started = Instant::now();
+        loop {
+            if cancelled() {
+                return Err(AI_CHAT_CANCELLED.to_string());
+            }
+            if started.elapsed() >= APPROVAL_TIMEOUT {
+                return Ok(None);
+            }
+            match self.receiver.recv_timeout(Duration::from_millis(100)) {
+                Ok(password) => return Ok(password),
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => return Ok(None),
+            }
+        }
+    }
+}
+
+impl Drop for PendingSudoPassword {
+    fn drop(&mut self) {
+        if let Ok(mut guard) = PENDING_SUDO_PASSWORD.lock() {
+            if guard.as_ref().is_some_and(|(id, _)| *id == self.id) {
+                guard.take();
+            }
+        }
+    }
+}
+
+pub fn respond_sudo_password(id: u64, password: Option<String>) -> Result<(), String> {
+    let mut guard = PENDING_SUDO_PASSWORD
+        .lock()
+        .map_err(|_| "비밀번호 요청 상태 잠금에 실패했습니다.".to_string())?;
+    match guard.take() {
+        Some((pending_id, sender)) if pending_id == id => {
+            let _ = sender.send(password.filter(|value| !value.is_empty()));
+            Ok(())
+        }
+        other => {
+            *guard = other;
+            Err("이미 처리되었거나 만료된 비밀번호 요청입니다.".to_string())
         }
     }
 }
@@ -369,6 +456,29 @@ mod tests {
         assert!(respond_approval(pending.id + 1, true).is_err());
         assert!(respond_approval(pending.id, true).is_ok());
         assert_eq!(pending.wait(&|| false), Ok(true));
+    }
+
+    #[test]
+    fn file_writes_always_need_approval_and_secret_reads_are_sensitive() {
+        let item = file_write_approval("write /srv/a.txt", Some("+a".into()));
+        assert_eq!(item.risk, ApprovalRisk::FileWrite);
+        assert_eq!(item.diff.as_deref(), Some("+a"));
+        let decision = require_human_approval(vec![item], &mut |_| Ok(false)).unwrap();
+        assert!(!decision.permits(true));
+
+        assert!(file_read_approval("/srv/app/README.md").is_none());
+        assert_eq!(
+            file_read_approval("/srv/app/.env").unwrap().risk,
+            ApprovalRisk::Sensitive
+        );
+    }
+
+    #[test]
+    fn sudo_password_requires_matching_id_and_empty_is_cancel() {
+        let pending = PendingSudoPassword::register();
+        assert!(respond_sudo_password(pending.id + 1, Some("pw".into())).is_err());
+        assert!(respond_sudo_password(pending.id, Some(String::new())).is_ok());
+        assert_eq!(pending.wait(&|| false), Ok(None));
     }
 
     #[test]

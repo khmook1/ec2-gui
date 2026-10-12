@@ -78,19 +78,62 @@
 }
 
 .ai-bubble__question {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  flex-shrink: 0;
+  width: 100%;
   margin: 0;
-  padding-right: 24px;
-  overflow: hidden;
-  color: color-mix(in srgb, var(--ai-bubble-ink) 55%, transparent);
-  font-size: 0.75rem;
+  padding: 4px 28px 4px 0;
+  border: 0;
+  background: transparent;
+  color: color-mix(in srgb, var(--ai-bubble-ink) 75%, transparent);
+  font: inherit;
+  font-size: 0.8125rem;
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
 }
 
-.ai-bubble__question::before {
-  content: "Q. ";
+.ai-bubble__question:hover {
+  color: var(--ai-bubble-ink);
+}
+
+.ai-bubble__question:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.ai-bubble__question-label {
+  flex-shrink: 0;
   font-weight: 800;
+}
+
+.ai-bubble__question-text {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ai-bubble__question--expanded .ai-bubble__question-text {
+  display: block;
+  max-height: min(240px, 35dvh);
+  overflow-y: auto;
+  -webkit-line-clamp: unset;
+}
+
+.ai-bubble__question-toggle {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--ai-bubble-ink) 65%, transparent);
+  font-size: 0.6875rem;
+  white-space: nowrap;
 }
 
 .ai-bubble__body {
@@ -291,6 +334,56 @@
   max-height: 200px;
   white-space: pre;
   word-break: normal;
+}
+
+.ai-bubble__approval-badge--fileWrite {
+  color: #7a3fd1;
+}
+
+.ai-diff {
+  max-height: 260px;
+  margin: 6px 0 0;
+  padding: 6px 0;
+  overflow: auto;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ai-bubble-ink) 5%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.71875rem;
+  line-height: 1.5;
+  white-space: pre;
+  user-select: text;
+}
+
+.ai-diff__line {
+  display: block;
+  padding: 0 10px;
+}
+
+.ai-diff__line--add {
+  background: rgba(46, 160, 67, 0.18);
+  color: #1a7f37;
+}
+
+.ai-diff__line--remove {
+  background: rgba(248, 81, 73, 0.16);
+  color: #b3141f;
+}
+
+.ai-diff__line--hunk {
+  color: #1d63ed;
+}
+
+.ai-diff__line--header {
+  color: color-mix(in srgb, var(--ai-bubble-ink) 60%, transparent);
+  font-weight: 600;
+}
+
+.ai-bubble__sudo-path {
+  display: block;
+  margin-bottom: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.75rem;
+  word-break: break-all;
 }
 
 .ai-bubble__approval-actions {

@@ -5,7 +5,7 @@ import { IconButton } from "@/components/common/IconButton";
 import { LoadingIndicator } from "@/components/common/LoadingIndicator";
 import { PageToolbar } from "@/components/common/PageToolbar";
 import { WorkflowRunDetail } from "@/components/github/WorkflowRunDetail";
-import { RunList } from "@/components/github/atoms/RunList";
+import { ActiveRunGroups } from "@/components/github/atoms/ActiveRunGroups";
 import { RefreshIcon } from "@/components/icons/ToolbarIcons";
 import { useGitHubActiveRunsQuery, useGitHubRepoQuery } from "@/hooks/query";
 import { githubErrorMessage } from "@/lib/github";
@@ -69,13 +69,10 @@ export function GitHubActiveRunsPage() {
         ) : null}
 
         {data ? (
-          <div className="github-tab-list">
-            <RunList
-              runs={data.runs}
-              emptyText="진행중인 액션이 없습니다."
-              onOpen={(run) => setOpenRun({ repo: run.repo, runId: run.id })}
-            />
-          </div>
+          <ActiveRunGroups
+            runs={data.runs}
+            onOpen={(run) => setOpenRun({ repo: run.repo, runId: run.id })}
+          />
         ) : null}
 
         <footer className="explorer-statusbar">

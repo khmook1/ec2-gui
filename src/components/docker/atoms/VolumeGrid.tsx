@@ -1,9 +1,11 @@
 import type { MouseEvent } from "react";
+import { ResourceCard } from "@/components/common/ResourceCard";
 import { SearchHighlight } from "@/components/common/SearchHighlight";
 import { DockerVolumesNavIcon } from "@/components/icons/NavIcons";
 import { useFilteredDockerVolumes } from "@/lib/useFilteredDockerResources";
 import { useListSelection } from "@/providers/ListSelectionProvider";
 import type { DockerVolume } from "@/types/docker";
+import "@/components/explorer/css/file-icon-grid.css";
 import "../css/docker-grid.css";
 
 interface VolumeGridProps {
@@ -38,7 +40,7 @@ export function VolumeGrid({
 
   return (
     <div
-      className="explorer-icon-grid explorer-icon-grid--docker"
+      className="explorer-icon-grid explorer-icon-grid--docker resource-card-grid"
       role="list"
       aria-label="Docker 볼륨 카드 목록"
       onMouseDown={(event) => {
@@ -51,41 +53,43 @@ export function VolumeGrid({
       {filtered.map((volume) => {
         const selected = selectedKey === volume.name;
         return (
-          <div key={volume.name} role="listitem" className="docker-grid__cell">
-            <button
-              type="button"
-              className={[
-                "explorer-icon-grid__item",
-                "explorer-icon-grid__item--docker",
-                selected ? "explorer-icon-grid__item--selected" : "",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              title={`${volume.name}\n${volume.driver}\n${volume.mountpoint}`}
-              aria-pressed={selected}
-              onMouseDown={(event) => event.stopPropagation()}
-              onClick={(event) => {
+          <ResourceCard
+            key={volume.name}
+            tone="docker"
+            selected={selected}
+            icon={<DockerVolumesNavIcon />}
+            overline="Docker 볼륨"
+            name={<SearchHighlight text={volume.name} query={query} />}
+            description={
+              <SearchHighlight text={volume.mountpoint || "—"} query={query} />
+            }
+            footer={
+              <>
+                <span className="resource-card__footer-main">
+                  <SearchHighlight text={volume.driver || "—"} query={query} />
+                </span>
+                <span className="resource-card__footer-end">
+                  {volume.scope || "—"}
+                </span>
+              </>
+            }
+            buttonProps={{
+              title: `${volume.name}\n${volume.driver}\n${volume.mountpoint}`,
+              onMouseDown: (event) => event.stopPropagation(),
+              onClick: (event) => {
                 event.stopPropagation();
                 select(volume.name);
-              }}
-              onDoubleClick={(event) => {
+              },
+              onDoubleClick: (event) => {
                 event.stopPropagation();
                 onOpenVolume?.(volume);
-              }}
-              onContextMenu={(event) => onVolumeContextMenu?.(event, volume)}
-            >
-              <DockerVolumesNavIcon className="docker-grid__icon" />
-              <span className="explorer-icon-grid__name docker-grid__name">
-                <SearchHighlight text={volume.name} query={query} />
-              </span>
-              <span className="docker-grid__meta">
-                <SearchHighlight text={volume.driver || "—"} query={query} />
-              </span>
-              <span className="docker-grid__meta docker-grid__meta--status">
-                <SearchHighlight text={volume.scope || "—"} query={query} />
-              </span>
-            </button>
-          </div>
+              },
+              onContextMenu: (event) => {
+                event.stopPropagation();
+                onVolumeContextMenu?.(event, volume);
+              },
+            }}
+          />
         );
       })}
     </div>

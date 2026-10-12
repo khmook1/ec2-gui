@@ -2,15 +2,13 @@ import { RunStatusBadge } from "@/components/github/atoms/RunStatusBadge";
 import { formatDuration, formatGitHubTime } from "@/lib/github";
 import type { GitHubWorkflowRun } from "@/types/github";
 
-type RunItem = GitHubWorkflowRun & { repo?: string };
-
-interface RunListProps<T extends RunItem> {
+interface RunListProps<T extends GitHubWorkflowRun> {
   runs: T[];
   emptyText: string;
   onOpen: (run: T) => void;
 }
 
-export function RunList<T extends RunItem>({
+export function RunList<T extends GitHubWorkflowRun>({
   runs,
   emptyText,
   onOpen,
@@ -34,11 +32,6 @@ export function RunList<T extends RunItem>({
                 {run.displayTitle || run.name}
               </span>
               <span className="github-list__sub">
-                {run.repo ? (
-                  <>
-                    <code className="github-ref">{run.repo}</code> ·{" "}
-                  </>
-                ) : null}
                 <strong>{run.name}</strong> #{run.runNumber}: {run.event} ·{" "}
                 {run.actor.login}
                 {run.headBranch ? (
