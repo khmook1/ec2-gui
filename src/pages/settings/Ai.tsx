@@ -1,6 +1,7 @@
 import { FormSection } from "@/components/common/FormField";
 import { PageToolbar } from "@/components/common/PageToolbar";
 import { AiConnectionSettings } from "@/components/settings/AiConnectionSettings";
+import { AiIconSettings } from "@/components/settings/AiIconSettings";
 import "../css/settings.css";
 
 export function AiSettingsPage() {
@@ -16,6 +17,9 @@ export function AiSettingsPage() {
       <div className="settings-page__content">
         <FormSection title="AI 연결">
           <AiConnectionSettings />
+        </FormSection>
+        <FormSection title="AI 아이콘">
+          <AiIconSettings />
         </FormSection>
       </div>
     </section>

@@ -1,0 +1,62 @@
+.ai-icon-settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 640px;
+}
+
+.ai-icon-settings__option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 36px 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-icon-settings__option:hover {
+  border-color: var(--accent);
+}
+.ai-icon-settings__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ai-icon-settings__option--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.ai-icon-settings__preview {
+  display: grid;
+  flex: 0 0 70px;
+  place-items: center;
+  width: 70px;
+  height: 70px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+.ai-icon-settings__preview img {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+}
+.ai-icon-settings__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ai-icon-settings__text strong {
+  font-size: 0.9rem;
+}
+.ai-icon-settings__text small {
+  color: var(--text-secondary);
+  font-size: 0.74rem;
+}

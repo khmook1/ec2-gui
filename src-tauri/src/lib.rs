@@ -22,6 +22,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::ai::check_ai_cli,
+            commands::ai::list_ai_skills,
             commands::ai::send_ai_chat,
             commands::ai::list_ai_conversations,
             commands::ai::get_ai_conversation,

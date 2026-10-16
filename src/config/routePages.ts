@@ -9,6 +9,7 @@ import {
   DockerVolumesPage,
 } from "@/pages/docker";
 import { FileExplorerPage } from "@/pages/FileExplorer";
+import { StudioPage } from "@/pages/Studio";
 import { GitHubPage } from "@/pages/GitHub";
 import { GitHubActiveRunsPage } from "@/pages/GitHubActiveRuns";
 import { GitHubRepoPage } from "@/pages/GitHubRepo";
@@ -22,6 +23,7 @@ export type RoutePage = ComponentType;
 const ROUTE_PAGES: Partial<Record<RouteId, RoutePage>> = {
   [ROUTE_ID.dashboard]: DashboardPage,
   [ROUTE_ID.fileExplorer]: FileExplorerPage,
+  [ROUTE_ID.studio]: StudioPage,
   [ROUTE_ID.dockerContainers]: DockerContainersPage,
   [ROUTE_ID.dockerImages]: DockerImagesPage,
   [ROUTE_ID.dockerNetworks]: DockerNetworksPage,

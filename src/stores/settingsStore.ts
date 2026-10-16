@@ -8,6 +8,7 @@ import {
   clampFontSize,
   DEFAULT_APP_SETTINGS,
   type AiSettings,
+  type AiIconVariant,
   type AppSettings,
   type ThemeMode,
   type WallpaperPreset,
@@ -21,7 +22,10 @@ interface SettingsState extends AppSettings {
   setCustomWallpaper: (customDataUrl: string) => Promise<void>;
   clearCustomWallpaper: () => Promise<void>;
   setFontSize: (fontSize: number) => Promise<void>;
-  setAiSettings: (ai: AiSettings) => Promise<void>;
+  setAiSettings: (
+    ai: Pick<AiSettings, "provider" | "binaryPath">,
+  ) => Promise<void>;
+  setAiIcon: (icon: AiIconVariant) => Promise<void>;
 }
 
 async function persistAndApply(settings: AppSettings): Promise<void> {
@@ -74,7 +78,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => {
 
     setAiSettings: (ai) =>
       update({
-        ai: { provider: ai.provider, binaryPath: ai.binaryPath?.trim() || null },
+        ai: {
+          ...get().ai,
+          provider: ai.provider,
+          binaryPath: ai.binaryPath?.trim() || null,
+        },
       }),
+    setAiIcon: (icon) => update({ ai: { ...get().ai, icon } }),
   };
 });

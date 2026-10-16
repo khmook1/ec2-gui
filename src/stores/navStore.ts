@@ -6,20 +6,34 @@ import {
   syncBrowserPath,
 } from "@/config/routeUtils";
 
-interface NavState {
+export interface NavSnapshot {
   activeId: RouteId;
   /** 뒤로 갈 수 있는 이전 화면들 (오래된 → 최근) */
   history: RouteId[];
   /** 앞으로 갈 수 있는 화면들 (가까운 → 먼) */
   forward: RouteId[];
   dockerInstalled: boolean | null;
+}
+
+interface NavState extends NavSnapshot {
   setActiveId: (id: RouteId) => void;
   /** URL 등에서 초기 화면을 복원할 때 히스토리 없이 설정 */
   hydrateActiveId: (id: RouteId) => void;
   goBack: () => boolean;
   goForward: () => boolean;
   setDockerInstalled: (installed: boolean) => void;
+  getSnapshot: () => NavSnapshot;
+  restore: (snapshot: NavSnapshot) => void;
   reset: () => void;
+}
+
+export function defaultNavSnapshot(): NavSnapshot {
+  return {
+    activeId: DEFAULT_ROUTE_ID,
+    history: [],
+    forward: [],
+    dockerInstalled: null,
+  };
 }
 
 function applyActiveId(activeId: RouteId): void {
@@ -96,13 +110,26 @@ export const useNavStore = create<NavState>((set, get) => ({
     return true;
   },
   setDockerInstalled: (dockerInstalled) => set({ dockerInstalled }),
+  getSnapshot: () => {
+    const { activeId, history, forward, dockerInstalled } = get();
+    return {
+      activeId,
+      history: [...history],
+      forward: [...forward],
+      dockerInstalled,
+    };
+  },
+  restore: (snapshot) => {
+    applyActiveId(snapshot.activeId);
+    set({
+      activeId: snapshot.activeId,
+      history: [...snapshot.history],
+      forward: [...snapshot.forward],
+      dockerInstalled: snapshot.dockerInstalled,
+    });
+  },
   reset: () => {
     applyActiveId(DEFAULT_ROUTE_ID);
-    set({
-      activeId: DEFAULT_ROUTE_ID,
-      history: [],
-      forward: [],
-      dockerInstalled: null,
-    });
+    set(defaultNavSnapshot());
   },
 }));

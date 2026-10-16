@@ -3,6 +3,7 @@ import type { GitHubRepoQuery } from "@/types/github";
 export const queryKeys = {
   appInfo: ["appInfo"] as const,
   storagePaths: ["settings", "storagePaths"] as const,
+  aiSkills: ["ai", "skills"] as const,
   aiConversations: ["ai", "conversations"] as const,
   aiConversation: (id: string) => ["ai", "conversations", id] as const,
   githubViewer: ["github", "viewer"] as const,

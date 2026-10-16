@@ -1,17 +1,11 @@
-import {
-  markSkipAutoLogin,
-  saveLoginCache,
-} from "@/lib/loginCache";
+import { markSkipAutoLogin, saveLoginCache } from "@/lib/loginCache";
 import { useConnectSshMutation, useDisconnectSshMutation } from "@/hooks/query";
 import { useToast } from "@/providers/ToastProvider";
 import { useConnectionStore } from "@/stores/connectionStore";
 import { useNavStore } from "@/stores/navStore";
 import { useSshSessionStore } from "@/stores/sshSessionStore";
 import { useTerminalStore } from "@/stores/terminalStore";
-import {
-  disconnectSshSession,
-  setActiveSshSession,
-} from "@/services/tauri";
+import { disconnectSshSession, setActiveSshSession } from "@/services/tauri";
 import type { SshAuthMethod, SshCredentials } from "@/types/connection";
 
 function getErrorMessage(error: unknown): string {
@@ -35,17 +29,41 @@ function getErrorMessage(error: unknown): string {
   return "SSH 접속에 실패했습니다.";
 }
 
-function persistActiveTerminalSnapshot() {
+/** 같은 IPv4 주소의 앞자리 0 표기도 동일한 서버로 취급한다. */
+function normalizeHost(host: string): string {
+  const trimmed = host.trim();
+  const parts = trimmed.split(".");
+  if (
+    parts.length === 4 &&
+    parts.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255)
+  ) {
+    return parts.map((part) => String(Number(part))).join(".");
+  }
+  return trimmed.toLowerCase();
+}
+
+const connectingHosts = new Set<string>();
+
+function persistActiveSessionSnapshot() {
   const activeId = useSshSessionStore.getState().activeSessionId;
   if (!activeId) {
     return;
   }
-  useSshSessionStore
-    .getState()
-    .updateSessionTerminal(activeId, useTerminalStore.getState().getSnapshot());
+  const sessionStore = useSshSessionStore.getState();
+  sessionStore.updateSessionTerminal(
+    activeId,
+    useTerminalStore.getState().getSnapshot(),
+  );
+  sessionStore.updateSessionNavigation(
+    activeId,
+    useNavStore.getState().getSnapshot(),
+  );
 }
 
-export async function activateSshSession(sessionId: string): Promise<void> {
+export async function activateSshSession(
+  sessionId: string,
+  saveCurrent = true,
+): Promise<void> {
   const session = useSshSessionStore
     .getState()
     .sessions.find((item) => item.id === sessionId);
@@ -53,17 +71,23 @@ export async function activateSshSession(sessionId: string): Promise<void> {
     return;
   }
 
-  persistActiveTerminalSnapshot();
+  if (saveCurrent) {
+    persistActiveSessionSnapshot();
+  }
 
   await setActiveSshSession(sessionId);
 
+  const currentSession =
+    useSshSessionStore
+      .getState()
+      .sessions.find((item) => item.id === sessionId) ?? session;
   useSshSessionStore.getState().setActiveSessionId(sessionId);
   useConnectionStore.getState().mirrorConnection({
-    ...session.connection,
-    connectionId: session.id,
+    ...currentSession.connection,
+    connectionId: currentSession.id,
   });
-  useTerminalStore.getState().hydrate(session.terminal);
-  useNavStore.getState().reset();
+  useTerminalStore.getState().hydrate(currentSession.terminal);
+  useNavStore.getState().restore(currentSession.navigation);
 }
 
 export function useSshLogin() {
@@ -83,7 +107,30 @@ export function useSshLogin() {
     credentials: SshCredentials,
     options?: { memo?: string },
   ) {
-    persistActiveTerminalSnapshot();
+    const host = normalizeHost(credentials.host);
+    const existing = useSshSessionStore
+      .getState()
+      .sessions.find(
+        (session) => normalizeHost(session.connection.host) === host,
+      );
+    if (existing) {
+      try {
+        await activateSshSession(existing.id);
+        useSshSessionStore.getState().cancelAddSession();
+        toast.info(`${existing.connection.host}의 열린 세션으로 이동했습니다.`);
+        return true;
+      } catch (error) {
+        toast.error(getErrorMessage(error));
+        return false;
+      }
+    }
+
+    if (connectingHosts.has(host)) {
+      toast.info(`${credentials.host.trim()}에 연결 중입니다.`);
+      return false;
+    }
+    connectingHosts.add(host);
+    persistActiveSessionSnapshot();
     setConnecting();
 
     try {
@@ -115,11 +162,13 @@ export function useSshLogin() {
       setError(message);
       toast.error(message);
       return false;
+    } finally {
+      connectingHosts.delete(host);
     }
   }
 
   async function closeSession(sessionId: string) {
-    persistActiveTerminalSnapshot();
+    persistActiveSessionSnapshot();
     const wasActive =
       useSshSessionStore.getState().activeSessionId === sessionId;
 
@@ -142,7 +191,7 @@ export function useSshLogin() {
     }
 
     if (wasActive) {
-      await activateSshSession(nextActive);
+      await activateSshSession(nextActive, false);
     }
     toast.info("세션을 닫았습니다.");
   }
@@ -168,7 +217,7 @@ export function useSshLogin() {
   }
 
   function beginAddSession() {
-    persistActiveTerminalSnapshot();
+    persistActiveSessionSnapshot();
     useSshSessionStore.getState().beginAddSession();
   }
 

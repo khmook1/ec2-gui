@@ -206,6 +206,15 @@ export function SettingsAiNavIcon(props: NavIconProps) {
   );
 }
 
+export function StudioNavIcon(props: NavIconProps) {
+  return (
+    <NavSvg {...props}>
+      <path d="M12 3 14 9l6 2-6 2-2 6-2-6-6-2 6-2 2-6Z" />
+      <path d="m19 17 .6 1.4L21 19l-1.4.6L19 21l-.6-1.4L17 19l1.4-.6L19 17Z" />
+    </NavSvg>
+  );
+}
+
 export function ChevronDownNavIcon(props: NavIconProps) {
   return (
     <NavSvg {...props}>

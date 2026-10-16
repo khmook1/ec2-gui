@@ -4,7 +4,7 @@ import { useConnectionStore } from "@/stores/connectionStore";
 import "./css/server-sync-overlay.css";
 
 const CHARACTER_SRC = [
-  "/ai-icon.png",
+  "/ai/default/ai-icon.png",
   "/lodding-icon.png",
   "/bg.png",
 ] as const;

@@ -12,6 +12,7 @@ import { createPortal } from "react-dom";
 import { AiCommandBar } from "@/components/ai/AiCommandBar";
 import { AiConversationList } from "@/components/ai/AiConversationList";
 import { AiSpeechBubble } from "@/components/ai/AiSpeechBubble";
+import { ROUTE_ID } from "@/config/Route";
 import {
   queryKeys,
   useAiConversationQuery,
@@ -27,7 +28,9 @@ import {
 } from "@/lib/aiChatPersistence";
 import { AI_CHAT_CANCELLED, getAiConversation } from "@/services/tauri/ai";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useNavStore } from "@/stores/navStore";
 import type { AiConversation, AiExchange } from "@/types/ai";
+import { AI_ICON_SOURCES, type AiIconVariant } from "@/types/settings";
 import "./css/ai-chatbot.css";
 
 interface AiChatbotContextValue {
@@ -38,6 +41,16 @@ interface AiChatbotContextValue {
   closeCommand: () => void;
   toggleCommand: () => void;
   ask: (question: string) => void;
+  conversation: AiConversation | null;
+  conversationLoading: boolean;
+  activeConversationId: string | null;
+  exchange: AiExchange | null;
+  newConversation: () => void;
+  selectConversation: (id: string) => Promise<void>;
+  conversationDeleted: (id: string) => void;
+  cancel: () => void;
+  respondApproval: (approved: boolean) => void;
+  respondSudoPassword: (password: string | null) => void;
 }
 
 const AiChatbotContext = createContext<AiChatbotContextValue | null>(null);
@@ -57,8 +70,10 @@ function isEditableTarget(target: EventTarget | null): boolean {
 }
 
 function isCommandShortcut(event: KeyboardEvent): boolean {
-  if (event.code !== "Space" || !event.shiftKey || event.isComposing) return false;
-  if (event.altKey || event.ctrlKey || event.metaKey || event.repeat) return false;
+  if (event.code !== "Space" || !event.shiftKey || event.isComposing)
+    return false;
+  if (event.altKey || event.ctrlKey || event.metaKey || event.repeat)
+    return false;
   // 입력 중 Shift+Space(대문자 뒤 공백 등)를 가로채지 않는다. 터미널(xterm)도 textarea라 제외된다.
   return !isEditableTarget(event.target);
 }
@@ -66,9 +81,11 @@ function isCommandShortcut(event: KeyboardEvent): boolean {
 function AiChatbotToggle({
   busy,
   onToggle,
+  icon,
 }: {
   busy: boolean;
   onToggle: () => void;
+  icon: AiIconVariant;
 }) {
   const [showActiveIcon, setShowActiveIcon] = useState(false);
 
@@ -96,13 +113,13 @@ function AiChatbotToggle({
       <span className="ai-chatbot-toggle__icons" aria-hidden>
         <img
           className="ai-chatbot-toggle__icon ai-chatbot-toggle__icon--idle"
-          src="/ai-icon2.png"
+          src={AI_ICON_SOURCES[icon].idle}
           alt=""
           draggable={false}
         />
         <img
           className="ai-chatbot-toggle__icon ai-chatbot-toggle__icon--active"
-          src="/ai-icon1.png"
+          src={AI_ICON_SOURCES[icon].active}
           alt=""
           draggable={false}
         />
@@ -116,10 +133,13 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
   const hydrated = useSettingsStore((state) => state.hydrated);
   const ai = useSettingsStore((state) => state.ai);
   const enabled = hydrated && ai.provider !== null;
+  const inStudio = useNavStore((state) => state.activeId === ROUTE_ID.studio);
 
   const [commandOpen, setCommandOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
-  const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
+  const [activeConversationId, setActiveConversationIdState] = useState<
+    string | null
+  >(null);
   const [exchange, setExchange] = useState<AiExchange | null>(null);
   const conversationQuery = useAiConversationQuery(activeConversationId);
   const conversation = conversationQuery.data ?? null;
@@ -148,14 +168,26 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
 
   // 저장된 대화 파일이 사라졌으면 새 대화로 시작한다.
   useEffect(() => {
-    if (activeConversationId && conversationQuery.isSuccess && conversationQuery.data === null) {
+    if (
+      activeConversationId &&
+      conversationQuery.isSuccess &&
+      conversationQuery.data === null
+    ) {
       setActiveConversationId(null);
     }
-  }, [activeConversationId, conversationQuery.isSuccess, conversationQuery.data, setActiveConversationId]);
+  }, [
+    activeConversationId,
+    conversationQuery.isSuccess,
+    conversationQuery.data,
+    setActiveConversationId,
+  ]);
 
   const openCommand = useCallback(() => setCommandOpen(true), []);
   const closeCommand = useCallback(() => setCommandOpen(false), []);
-  const toggleCommand = useCallback(() => setCommandOpen((current) => !current), []);
+  const toggleCommand = useCallback(
+    () => setCommandOpen((current) => !current),
+    [],
+  );
 
   const updateExchange = useCallback(
     (requestId: number, patch: (current: AiExchange) => AiExchange) => {
@@ -175,7 +207,10 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
       const approval = exchange?.approval;
       if (!exchange || !approval) return;
       approvalMutation.mutate({ id: approval.id, approved });
-      updateExchange(exchange.id, (current) => ({ ...current, approval: null }));
+      updateExchange(exchange.id, (current) => ({
+        ...current,
+        approval: null,
+      }));
     },
     [approvalMutation, exchange, updateExchange],
   );
@@ -185,7 +220,10 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
       const prompt = exchange?.sudoPrompt;
       if (!exchange || !prompt) return;
       sudoPasswordMutation.mutate({ id: prompt.id, password });
-      updateExchange(exchange.id, (current) => ({ ...current, sudoPrompt: null }));
+      updateExchange(exchange.id, (current) => ({
+        ...current,
+        sudoPrompt: null,
+      }));
     },
     [sudoPasswordMutation, exchange, updateExchange],
   );
@@ -240,7 +278,10 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
                 }));
                 break;
               case "reset":
-                updateExchange(requestId, (current) => ({ ...current, answer: "" }));
+                updateExchange(requestId, (current) => ({
+                  ...current,
+                  answer: "",
+                }));
                 break;
               case "approvalRequired":
                 updateExchange(requestId, (current) => ({
@@ -313,7 +354,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
     setActiveConversationId(null);
     setExchange(null);
     setListOpen(false);
-    setCommandOpen(true);
+    setCommandOpen(useNavStore.getState().activeId !== ROUTE_ID.studio);
   }, [cancel, setActiveConversationId]);
 
   const openList = useCallback(() => {
@@ -343,7 +384,7 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
       const answer = stored[stored.length - 1];
       if (question?.role !== "user" || answer?.role !== "assistant") {
         setExchange(null);
-        setCommandOpen(true);
+        setCommandOpen(useNavStore.getState().activeId !== ROUTE_ID.studio);
         return;
       }
       setExchange({
@@ -379,7 +420,14 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
   }, [enabled]);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (inStudio) {
+      setCommandOpen(false);
+      setListOpen(false);
+    }
+  }, [inStudio]);
+
+  useEffect(() => {
+    if (!enabled || inStudio) return;
     function handleKeyDown(event: KeyboardEvent) {
       if (!isCommandShortcut(event)) return;
       event.preventDefault();
@@ -388,17 +436,51 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
     }
     window.addEventListener("keydown", handleKeyDown, true);
     return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [enabled]);
+  }, [enabled, inStudio]);
 
   const value = useMemo<AiChatbotContextValue>(
-    () => ({ enabled, commandOpen, openCommand, closeCommand, toggleCommand, ask }),
-    [enabled, commandOpen, openCommand, closeCommand, toggleCommand, ask],
+    () => ({
+      enabled,
+      commandOpen,
+      openCommand,
+      closeCommand,
+      toggleCommand,
+      ask,
+      conversation,
+      conversationLoading: conversationQuery.isLoading,
+      activeConversationId,
+      exchange,
+      newConversation: resetConversation,
+      selectConversation,
+      conversationDeleted: handleConversationDeleted,
+      cancel,
+      respondApproval,
+      respondSudoPassword,
+    }),
+    [
+      enabled,
+      commandOpen,
+      openCommand,
+      closeCommand,
+      toggleCommand,
+      ask,
+      conversation,
+      conversationQuery.isLoading,
+      activeConversationId,
+      exchange,
+      resetConversation,
+      selectConversation,
+      handleConversationDeleted,
+      cancel,
+      respondApproval,
+      respondSudoPassword,
+    ],
   );
 
   return (
     <AiChatbotContext.Provider value={value}>
       {children}
-      {enabled && ai.provider ? (
+      {enabled && ai.provider && !inStudio ? (
         <>
           {listOpen ? (
             <AiConversationList
@@ -423,13 +505,19 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
               onOpenList={openList}
             />
           ) : null}
-          <AiChatbotToggle busy={exchange?.pending ?? false} onToggle={toggleCommand} />
+          <AiChatbotToggle
+            busy={exchange?.pending ?? false}
+            onToggle={toggleCommand}
+            icon={ai.icon}
+          />
           {commandOpen ? (
             <AiCommandBar
               provider={ai.provider}
               shortcutLabel={AI_COMMAND_SHORTCUT_LABEL}
               pending={exchange?.pending ?? false}
-              conversationTitle={activeConversationId ? (conversation?.title ?? null) : null}
+              conversationTitle={
+                activeConversationId ? (conversation?.title ?? null) : null
+              }
               onSubmit={(question) => {
                 setListOpen(false);
                 ask(question);

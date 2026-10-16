@@ -29,6 +29,39 @@
   animation: ai-command-rise 0.22s cubic-bezier(0.2, 1.1, 0.4, 1) both;
 }
 
+.ai-command--inline {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: auto;
+  width: 100%;
+  max-width: 780px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  translate: none;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+  animation: none;
+}
+
+.ai-command--inline:focus-within {
+  border-color: color-mix(in srgb, var(--accent) 60%, var(--border));
+}
+
+.ai-command--inline .ai-command__avatar {
+  width: 34px;
+  height: 34px;
+}
+
+.ai-command--inline .ai-command__input {
+  font-size: 1rem;
+  max-height: calc(1rem * 1.4 * 8 + 20px);
+}
+
+.ai-command--inline .ai-command__meta,
+.ai-command--inline .ai-command__notice {
+  margin-left: 48px;
+}
+
 .ai-command__avatar {
   flex-shrink: 0;
   width: 44px;

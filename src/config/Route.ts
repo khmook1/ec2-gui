@@ -15,11 +15,13 @@ import {
   SettingsAiNavIcon,
   SettingsGeneralNavIcon,
   SettingsNavIcon,
+  StudioNavIcon,
 } from "@/components/icons/NavIcons";
 
 export const ROUTE_ID = {
   dashboard: "dashboard",
   fileExplorer: "file-explorer",
+  studio: "studio",
   docker: "docker",
   dockerContainers: "docker-containers",
   dockerImages: "docker-images",
@@ -77,6 +79,14 @@ export const ROUTES: readonly AppRoute[] = [
     label: "파일 탐색기",
     headerTitle: "파일",
     icon: FileExplorerNavIcon,
+    showInSidebar: true,
+  },
+  {
+    id: ROUTE_ID.studio,
+    path: "/studio",
+    label: "Studio",
+    headerTitle: "Studio",
+    icon: StudioNavIcon,
     showInSidebar: true,
   },
   {

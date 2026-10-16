@@ -1,12 +1,7 @@
 export type ThemeMode = "light" | "dark" | "system";
 
 export type WallpaperPreset =
-  | "none"
-  | "aurora"
-  | "mesh"
-  | "dusk"
-  | "agent"
-  | "custom";
+  "none" | "aurora" | "mesh" | "dusk" | "agent" | "custom";
 
 export interface WallpaperSettings {
   preset: WallpaperPreset;
@@ -15,12 +10,25 @@ export interface WallpaperSettings {
 }
 
 export type AiProvider = "codex" | "claude";
+export type AiIconVariant = "default" | "kurimanjyu";
+
+export const AI_ICON_SOURCES: Record<
+  AiIconVariant,
+  { idle: string; active: string }
+> = {
+  default: { idle: "/ai/default/ai-icon2.png", active: "/ai/default/ai-icon1.png" },
+  kurimanjyu: {
+    idle: "/ai/kurimanju/ai-icon-kurimanjyu-v2.png",
+    active: "/ai/kurimanju/ai-icon-kurimanjyu.png",
+  },
+};
 
 export interface AiSettings {
   /** null이면 AI 미연결 (캐릭터 숨김) */
   provider: AiProvider | null;
   /** 비우면 PATH에서 자동 탐색 */
   binaryPath: string | null;
+  icon: AiIconVariant;
 }
 
 export interface AppSettings {
@@ -53,6 +61,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   ai: {
     provider: null,
     binaryPath: null,
+    icon: "default",
   },
 };
 

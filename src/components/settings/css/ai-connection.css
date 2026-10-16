@@ -13,6 +13,7 @@
 
 .ai-provider-card {
   --ai-provider-ring: var(--accent);
+  --selection-check-color: var(--ai-provider-ring);
 
   position: relative;
   display: flex;
@@ -153,39 +154,6 @@
   border-radius: 50%;
   background: #34c759;
   animation: ai-provider-live 1.8s ease-in-out infinite;
-}
-
-.ai-provider-card__check {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--border);
-  border-radius: 50%;
-  background: var(--surface);
-  transition:
-    background-color 0.18s ease,
-    border-color 0.18s ease,
-    transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
-}
-
-.ai-provider-card--selected .ai-provider-card__check {
-  border-color: var(--ai-provider-ring);
-  background: var(--ai-provider-ring);
-  transform: scale(1.08);
-}
-
-.ai-provider-card--selected .ai-provider-card__check::after {
-  content: "";
-  position: absolute;
-  top: 3px;
-  left: 5.5px;
-  width: 4px;
-  height: 8px;
-  border: solid #fff;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
 }
 
 .ai-connection__detail {

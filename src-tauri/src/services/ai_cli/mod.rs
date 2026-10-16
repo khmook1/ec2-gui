@@ -4,7 +4,9 @@ mod danger_gate;
 mod docker_tool;
 mod file_tool;
 mod github_tool;
+mod icon_persona;
 mod remote_tool;
+mod skill;
 mod stream;
 mod weekly_report;
 
@@ -24,7 +26,9 @@ use serde::{Deserialize, Serialize};
 pub use conversation::{AiChatRole, AiStoredMessage};
 pub use danger_gate::{respond_approval, respond_sudo_password};
 pub use file_tool::ExplorerContext;
+pub use icon_persona::AiIcon;
 pub use remote_tool::{RemoteExecutor, RemoteTarget};
+pub use skill::{AiSkill, SKILLS as AI_SKILLS};
 pub use stream::AiStreamEvent;
 pub use weekly_report::{generate as generate_weekly_report, ReportPeriod};
 use danger_gate::{ApprovalCommand, PendingApproval, PendingSudoPassword};
@@ -51,6 +55,7 @@ const SYSTEM_PROMPT: &str = "당신은 EC2 서버·Docker·원격 파일·GitHub
 - 질문의 깊이에 맞춰 답의 길이를 정하세요. 단순한 질문은 짧게, 설계·원인 분석 질문은 근거와 대안을 함께 제시하세요.
 - 불확실한 내용은 추측임을 밝히고, 확인할 방법을 함께 제시하세요.
 - 명령어나 코드는 코드 블록으로 보여 주고, 파괴적인 작업은 위험성을 먼저 알려 주세요.
+- 서버 운영·명령·보안 관련 답변의 정확성과 안전 지침은 AI 아이콘 성격 표현보다 우선합니다.
 - 사용자가 쓴 언어로 답하세요.";
 
 /// 프론트 route id 접두사 → (화면 이름, 우선할 전문 분야)
@@ -334,6 +339,7 @@ struct PromptContext<'a> {
     explorer: Option<&'a ExplorerContext>,
     github_repo: Option<&'a str>,
     active_page: Option<&'a str>,
+    icon: AiIcon,
 }
 
 impl PromptContext<'_> {
@@ -343,13 +349,20 @@ impl PromptContext<'_> {
             .target
             .map(|target| format!("{}@{}", target.username, target.host))
             .unwrap_or_else(|| "-".to_string());
-        format!("ssh={target}|repo={}", self.github_repo.unwrap_or("-"))
+        let personality = self.icon.personality();
+        format!(
+            "ssh={target}|repo={}|personality={}:{:016x}",
+            self.github_repo.unwrap_or("-"),
+            personality.id,
+            personality.fingerprint(),
+        )
     }
 
     /// 시스템 프롬프트와 모든 도구 지침
     fn instructions(&self) -> String {
         let mut out = String::from(SYSTEM_PROMPT);
         out.push_str(&page_section(self.active_page));
+        out.push_str(&skill::prompt_section());
         out.push_str(danger_gate::AI_DANGER_POLICY);
         if let Some(target) = self.target {
             out.push_str(&remote_tool::tool_instructions(target));
@@ -357,6 +370,8 @@ impl PromptContext<'_> {
             out.push_str(&file_tool::instructions(self.explorer));
         }
         out.push_str(&github_tool::instructions(self.github_repo));
+        out.push_str("\n\n[현재 AI 아이콘 성격]\n");
+        out.push_str(self.icon.personality().description);
         out
     }
 
@@ -387,6 +402,9 @@ impl PromptContext<'_> {
         if let Some(status) = self.docker_status {
             out.push_str(&format!("- Docker 상태:\n{}\n", status.summary()));
         }
+        out.push_str("\n[현재 AI 아이콘 성격]\n");
+        out.push_str(self.icon.personality().description);
+        out.push('\n');
         out
     }
 }
@@ -426,9 +444,66 @@ fn resume_prompt(context: &PromptContext, fingerprint_matches: bool, question: &
         format!("{}\n[새 질문]\n{question}", context.situation())
     } else {
         format!(
-            "[지침 갱신] 접속 서버 또는 저장소가 바뀌어 지침을 다시 전달합니다. 이전 지침 대신 아래를 따르세요.\n\n{}\n\n[새 질문]\n{question}",
+            "[지침 갱신] 접속 서버, 저장소 또는 AI 아이콘 성격이 바뀌어 지침을 다시 전달합니다. 이전 지침 대신 아래를 따르세요.\n\n{}\n\n[새 질문]\n{question}",
             context.instructions()
         )
+    }
+}
+
+#[cfg(test)]
+mod icon_prompt_tests {
+    use super::icon_persona::IconPersonality;
+    use super::{fresh_prompt, resume_prompt, AiIcon, PromptContext};
+
+    fn context(icon: AiIcon) -> PromptContext<'static> {
+        PromptContext {
+            target: None,
+            docker_status: None,
+            explorer: None,
+            github_repo: None,
+            active_page: None,
+            icon,
+        }
+    }
+
+    #[test]
+    fn changing_icon_refreshes_the_persona_instruction() {
+        let default = context(AiIcon::Default);
+        let kurimanjyu = context(AiIcon::Kurimanjyu);
+        assert_ne!(default.fingerprint(), kurimanjyu.fingerprint());
+        let prompt = resume_prompt(&kurimanjyu, false, "안녕");
+        assert!(prompt.contains("[지침 갱신]"));
+        assert!(prompt.contains("아저씨 말투"));
+        assert!(prompt.contains("술을 한 모금 마셨다고 표현한 뒤에는 항상 '키야'"));
+        assert!(!default.instructions().contains("키야"));
+    }
+
+    #[test]
+    fn personality_is_sent_on_every_resumed_turn() {
+        let prompt = resume_prompt(&context(AiIcon::Kurimanjyu), true, "안녕");
+        assert!(prompt.contains("[현재 AI 아이콘 성격]"));
+        assert!(prompt.contains("아저씨 말투"));
+    }
+
+    #[test]
+    fn safety_priority_is_shared_by_all_personalities() {
+        for icon in [AiIcon::Default, AiIcon::Kurimanjyu] {
+            let prompt = fresh_prompt(&context(icon), &[], "서버 상태 확인해 줘");
+            assert!(prompt.contains("정확성과 안전 지침은 AI 아이콘 성격 표현보다 우선합니다"));
+        }
+    }
+
+    #[test]
+    fn editing_personality_description_changes_its_fingerprint() {
+        let before = IconPersonality {
+            id: "sample",
+            description: "기존 성격",
+        };
+        let after = IconPersonality {
+            id: "sample",
+            description: "바뀐 성격",
+        };
+        assert_ne!(before.fingerprint(), after.fingerprint());
     }
 }
 
@@ -622,6 +697,7 @@ pub struct ChatEnvironment<'a> {
     pub github_repo: Option<&'a str>,
     pub explorer: Option<&'a ExplorerContext>,
     pub active_page: Option<&'a str>,
+    pub icon: AiIcon,
 }
 
 pub struct ChatOutcome {
@@ -664,6 +740,7 @@ pub fn chat(
         explorer: environment.explorer,
         github_repo: environment.github_repo,
         active_page: environment.active_page,
+        icon: environment.icon,
     };
     let fingerprint = context.fingerprint();
     let mut run = ToolLoop {

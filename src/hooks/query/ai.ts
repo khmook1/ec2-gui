@@ -5,6 +5,7 @@ import {
   deleteAiConversation,
   getAiConversation,
   listAiConversations,
+  listAiSkills,
   respondAiCommandApproval,
   respondAiSudoPassword,
   sendAiChat,
@@ -17,6 +18,14 @@ import { queryKeys } from "./keys";
 export function useCheckAiCliMutation() {
   return useMutation({
     mutationFn: (input: AiConnectionInput) => checkAiCli(input),
+  });
+}
+
+export function useAiSkillsQuery() {
+  return useQuery({
+    queryKey: queryKeys.aiSkills,
+    queryFn: listAiSkills,
+    staleTime: Infinity,
   });
 }
 

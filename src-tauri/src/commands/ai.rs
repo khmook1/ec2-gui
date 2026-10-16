@@ -8,8 +8,8 @@ use tauri::{AppHandle, Manager};
 
 use crate::services::ai_cli::conversation::{self, AiConversation, AiConversationSummary};
 use crate::services::ai_cli::{
-    self, AiCliStatus, AiProvider, AiStreamEvent, ChatEnvironment, ChatRequest, ChatSession,
-    ExplorerContext, RemoteExecutor, AI_CHAT_CANCELLED,
+    self, AiCliStatus, AiIcon, AiProvider, AiSkill, AiStreamEvent, ChatEnvironment, ChatRequest,
+    ChatSession, ExplorerContext, RemoteExecutor, AI_CHAT_CANCELLED, AI_SKILLS,
 };
 use crate::services::{storage_service, SshConnectionManager};
 
@@ -39,6 +39,11 @@ pub async fn check_ai_cli(
 }
 
 #[tauri::command]
+pub fn list_ai_skills() -> Vec<AiSkill> {
+    AI_SKILLS.to_vec()
+}
+
+#[tauri::command]
 #[allow(clippy::too_many_arguments)]
 pub async fn send_ai_chat(
     app: AppHandle,
@@ -49,6 +54,7 @@ pub async fn send_ai_chat(
     github_repo: Option<String>,
     explorer: Option<ExplorerContext>,
     active_page: Option<String>,
+    ai_icon: Option<AiIcon>,
     on_event: Channel<AiStreamEvent>,
 ) -> Result<AiChatReply, String> {
     let paths = storage_service::resolve_and_ensure(&app)?;
@@ -85,6 +91,7 @@ pub async fn send_ai_chat(
             github_repo: github_repo.as_deref(),
             explorer: explorer.as_ref(),
             active_page: active_page.as_deref(),
+            icon: ai_icon.unwrap_or_default(),
         };
         let request = ChatRequest {
             history: &conversation.messages,

@@ -3,6 +3,7 @@ import {
   clampFontSize,
   DEFAULT_APP_SETTINGS,
   type AiProvider,
+  type AiIconVariant,
   type AiSettings,
   type AppSettings,
   type ThemeMode,
@@ -48,6 +49,10 @@ function isAiProvider(value: unknown): value is AiProvider {
   return value === "codex" || value === "claude";
 }
 
+function isAiIconVariant(value: unknown): value is AiIconVariant {
+  return value === "default" || value === "kurimanjyu";
+}
+
 function normalizeAiSettings(value: unknown): AiSettings {
   if (!value || typeof value !== "object") {
     return { ...DEFAULT_APP_SETTINGS.ai };
@@ -60,6 +65,7 @@ function normalizeAiSettings(value: unknown): AiSettings {
   return {
     provider: isAiProvider(record.provider) ? record.provider : null,
     binaryPath,
+    icon: isAiIconVariant(record.icon) ? record.icon : "default",
   };
 }
 
@@ -92,7 +98,9 @@ function normalizeSettings(value: unknown): AppSettings {
       : null;
 
   return {
-    theme: isThemeMode(record.theme) ? record.theme : DEFAULT_APP_SETTINGS.theme,
+    theme: isThemeMode(record.theme)
+      ? record.theme
+      : DEFAULT_APP_SETTINGS.theme,
     wallpaper: {
       preset,
       customDataUrl: preset === "custom" ? customDataUrl : null,
@@ -136,7 +144,9 @@ export async function loadPersistedSettings(): Promise<AppSettings> {
   }
 }
 
-export async function savePersistedSettings(settings: AppSettings): Promise<void> {
+export async function savePersistedSettings(
+  settings: AppSettings,
+): Promise<void> {
   writeBrowserFallback(settings);
   try {
     const store = await getStore();

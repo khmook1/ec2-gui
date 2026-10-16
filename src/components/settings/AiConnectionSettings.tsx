@@ -3,6 +3,7 @@ import { useForm } from "react-hook-form";
 import { Alert } from "@/components/common/Alert";
 import { Button } from "@/components/common/Button";
 import { FormField } from "@/components/common/FormField";
+import { SelectionCheck } from "@/components/common/SelectionCheck";
 import { AiProviderIcon } from "@/components/icons/AiProviderIcons";
 import { useCheckAiCliMutation } from "@/hooks/query";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -192,7 +193,7 @@ export function AiConnectionSettings() {
               {connected ? (
                 <span className="ai-provider-card__badge">연결됨</span>
               ) : null}
-              <span className="ai-provider-card__check" aria-hidden />
+              <SelectionCheck checked={selected} />
             </button>
           );
         })}

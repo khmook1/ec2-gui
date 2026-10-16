@@ -1,0 +1,38 @@
+.selection-check {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface);
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.25s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+
+.selection-check--checked {
+  border-color: var(--selection-check-color, var(--accent));
+  background: var(--selection-check-color, var(--accent));
+  transform: scale(1.08);
+}
+
+.selection-check--checked::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 5.5px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-check {
+    transition: none;
+  }
+}

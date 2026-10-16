@@ -2,11 +2,13 @@ import { ROUTE_ID } from "@/config/Route";
 import { useExplorerContextStore } from "@/stores/explorerContextStore";
 import { useGitHubStore } from "@/stores/githubStore";
 import { useNavStore } from "@/stores/navStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 import { Channel, invoke } from "@tauri-apps/api/core";
 import type {
   AiApprovalCommand,
   AiConversation,
   AiConversationSummary,
+  AiSkill,
 } from "@/types/ai";
 import type { AiProvider } from "@/types/settings";
 
@@ -68,8 +70,13 @@ export async function sendAiChat(
         ? useExplorerContextStore.getState().context
         : null,
     activePage,
+    aiIcon: useSettingsStore.getState().ai.icon,
     onEvent: channel,
   });
+}
+
+export async function listAiSkills(): Promise<AiSkill[]> {
+  return invoke<AiSkill[]>("list_ai_skills");
 }
 
 export async function listAiConversations(): Promise<AiConversationSummary[]> {

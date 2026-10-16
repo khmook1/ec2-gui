@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { TerminalPanel } from "@/components/terminal/Panel";
 import { useAppInfo } from "@/hooks/useAppInfo";
 import { useNewSshSessionShortcut } from "@/hooks/useNewSshSessionShortcut";
+import { useCloseSshSessionShortcut } from "@/hooks/useCloseSshSessionShortcut";
 import { useTerminalShortcut } from "@/hooks/useTerminalShortcut";
 import { useSidebarStore } from "@/stores/sidebarStore";
 import "./css/app-layout.css";
@@ -23,6 +24,7 @@ export function AppLayout({
   const isSidebarOpen = useSidebarStore((state) => state.isOpen);
   useTerminalShortcut();
   useNewSshSessionShortcut();
+  useCloseSshSessionShortcut();
 
   return (
     <div

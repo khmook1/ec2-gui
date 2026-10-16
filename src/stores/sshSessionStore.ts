@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { SshConnectionInfo } from "@/types/connection";
 import type { TerminalSnapshot } from "@/stores/terminalStore";
+import { defaultNavSnapshot, type NavSnapshot } from "@/stores/navStore";
 
 export type SshSessionTerminalSnapshot = TerminalSnapshot;
 
@@ -10,6 +11,7 @@ export interface SshAppSession {
   memo: string | null;
   connection: SshConnectionInfo;
   terminal: SshSessionTerminalSnapshot;
+  navigation: NavSnapshot;
 }
 
 interface SshSessionState {
@@ -28,6 +30,7 @@ interface SshSessionState {
     id: string,
     terminal: SshSessionTerminalSnapshot,
   ) => void;
+  updateSessionNavigation: (id: string, navigation: NavSnapshot) => void;
   removeSession: (id: string) => string | null;
   reset: () => void;
 }
@@ -87,6 +90,7 @@ export const useSshSessionStore = create<SshSessionState>((set, get) => ({
         memo: trimmedMemo,
         connection,
         terminal: defaultTerminalSnapshot(),
+        navigation: defaultNavSnapshot(),
       };
 
       return {
@@ -100,6 +104,12 @@ export const useSshSessionStore = create<SshSessionState>((set, get) => ({
     set((state) => ({
       sessions: state.sessions.map((session) =>
         session.id === id ? { ...session, terminal } : session,
+      ),
+    })),
+  updateSessionNavigation: (id, navigation) =>
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === id ? { ...session, navigation } : session,
       ),
     })),
   removeSession: (id) => {

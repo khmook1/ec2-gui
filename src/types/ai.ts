@@ -40,6 +40,14 @@ export interface AiStoredMessage {
   createdAt: string;
 }
 
+/** 질문에 `@id`로 지정하는 AI 도구 (백엔드 `list_ai_skills`) */
+export interface AiSkill {
+  id: string;
+  label: string;
+  description: string;
+  requiresSsh: boolean;
+}
+
 /** 대화 목록에 표시되는 요약 */
 export interface AiConversationSummary {
   id: string;
