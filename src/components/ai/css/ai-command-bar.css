@@ -76,6 +76,43 @@
   white-space: nowrap;
 }
 
+.ai-command__conversation {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  margin-left: 58px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.ai-command__conversation-title {
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-command__link {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font: inherit;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ai-command__link:hover {
+  color: var(--text);
+}
+
 .ai-command__provider {
   --provider-color: var(--text);
   display: inline-flex;

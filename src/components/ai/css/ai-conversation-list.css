@@ -1,0 +1,96 @@
+.ai-conversations__title {
+  margin: 0;
+  padding: 4px 28px 4px 0;
+  font-size: 0.875rem;
+  font-weight: 800;
+}
+
+.ai-conversations__empty {
+  margin: 4px 0;
+  color: color-mix(in srgb, var(--ai-bubble-ink) 60%, transparent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.ai-conversations__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ai-conversations__item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+}
+
+.ai-conversations__item:hover {
+  background: color-mix(in srgb, var(--ai-bubble-ink) 6%, transparent);
+}
+
+.ai-conversations__item--active {
+  border-color: var(--ai-bubble-ink);
+}
+
+.ai-conversations__open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  color: var(--ai-bubble-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ai-conversations__item-title {
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ai-conversations__item-meta {
+  color: color-mix(in srgb, var(--ai-bubble-ink) 55%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.ai-conversations__delete {
+  flex-shrink: 0;
+  margin-right: 8px;
+  padding: 2px 8px;
+  border: 1.5px solid color-mix(in srgb, var(--ai-bubble-ink) 30%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--ai-bubble-ink) 65%, transparent);
+  font-size: 0.625rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-conversations__delete--confirm {
+  border-color: #c4271d;
+  background: #c4271d;
+  color: #ffffff;
+}
+
+.ai-conversations__delete:hover:not(:disabled):not(.ai-conversations__delete--confirm) {
+  border-color: #c4271d;
+  color: #c4271d;
+}
+
+.ai-conversations__delete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

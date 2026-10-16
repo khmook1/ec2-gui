@@ -16,6 +16,9 @@ import {
   setGitHubIssueState,
   setGitHubPullState,
   updateGitHubRepo,
+  generateWeeklyReport,
+  type AiConnectionInput,
+  type AiStreamEvent,
 } from "@/services/tauri";
 import type {
   GitHubIssueState,
@@ -293,6 +296,23 @@ export function useRerunGitHubWorkflowRunMutation(repo: string) {
     },
     onError: (error) => {
       toast.error(githubErrorMessage(error, "다시 실행하지 못했습니다."));
+    },
+  });
+}
+
+export interface GenerateWeeklyReportInput {
+  connection: AiConnectionInput;
+  onEvent: (event: AiStreamEvent) => void;
+}
+
+export function useGenerateWeeklyReportMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ connection, onEvent }: GenerateWeeklyReportInput) =>
+      generateWeeklyReport(connection, onEvent),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["github", "weeklyReport"] });
     },
   });
 }

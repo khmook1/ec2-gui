@@ -118,12 +118,23 @@ const components: Components = {
 interface AiMarkdownProps {
   content: string;
   typing?: boolean;
+  /** bubble: 밝은 말풍선 전용 색, theme: 앱 라이트/다크 테마 색 */
+  tone?: "bubble" | "theme";
 }
 
-export const AiMarkdown = memo(function AiMarkdown({ content, typing }: AiMarkdownProps) {
+export const AiMarkdown = memo(function AiMarkdown({
+  content,
+  typing,
+  tone = "bubble",
+}: AiMarkdownProps) {
   return (
     <div
-      className={["markdown-body", "ai-markdown", typing ? "ai-markdown--typing" : ""]
+      className={[
+        "markdown-body",
+        "ai-markdown",
+        tone === "theme" ? "ai-markdown--theme" : "",
+        typing ? "ai-markdown--typing" : "",
+      ]
         .filter(Boolean)
         .join(" ")}
     >

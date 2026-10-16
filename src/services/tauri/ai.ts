@@ -3,7 +3,11 @@ import { useExplorerContextStore } from "@/stores/explorerContextStore";
 import { useGitHubStore } from "@/stores/githubStore";
 import { useNavStore } from "@/stores/navStore";
 import { Channel, invoke } from "@tauri-apps/api/core";
-import type { AiApprovalCommand } from "@/types/ai";
+import type {
+  AiApprovalCommand,
+  AiConversation,
+  AiConversationSummary,
+} from "@/types/ai";
 import type { AiProvider } from "@/types/settings";
 
 export interface AiCliStatus {
@@ -11,11 +15,15 @@ export interface AiCliStatus {
   version: string;
 }
 
-export type AiChatRole = "user" | "assistant";
+export interface AiChatInput {
+  /** 새 대화면 프론트에서 만든 새 ID */
+  conversationId: string;
+  question: string;
+}
 
-export interface AiChatMessage {
-  role: AiChatRole;
-  content: string;
+export interface AiChatReply {
+  conversationId: string;
+  reply: string;
 }
 
 export interface AiConnectionInput {
@@ -43,22 +51,38 @@ export async function checkAiCli({
 
 export async function sendAiChat(
   { provider, binaryPath }: AiConnectionInput,
-  messages: AiChatMessage[],
+  { conversationId, question }: AiChatInput,
   onEvent: (event: AiStreamEvent) => void,
-): Promise<string> {
+): Promise<AiChatReply> {
   const channel = new Channel<AiStreamEvent>();
   channel.onmessage = onEvent;
-  return invoke<string>("send_ai_chat", {
+  const activePage = useNavStore.getState().activeId;
+  return invoke<AiChatReply>("send_ai_chat", {
     provider,
     binaryPath,
-    messages,
+    conversationId,
+    question,
     githubRepo: useGitHubStore.getState().selectedRepo,
     explorer:
-      useNavStore.getState().activeId === ROUTE_ID.fileExplorer
+      activePage === ROUTE_ID.fileExplorer
         ? useExplorerContextStore.getState().context
         : null,
+    activePage,
     onEvent: channel,
   });
+}
+
+export async function listAiConversations(): Promise<AiConversationSummary[]> {
+  return invoke<AiConversationSummary[]>("list_ai_conversations");
+}
+
+/** 파일이 없으면 null */
+export async function getAiConversation(id: string): Promise<AiConversation | null> {
+  return invoke<AiConversation | null>("get_ai_conversation", { id });
+}
+
+export async function deleteAiConversation(id: string): Promise<void> {
+  return invoke("delete_ai_conversation", { id });
 }
 
 export async function cancelAiChat(): Promise<void> {

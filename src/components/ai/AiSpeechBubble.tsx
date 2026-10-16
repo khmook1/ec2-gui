@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTypewriter } from "@/hooks/useTypewriter";
-import type { AiApprovalCommand, AiApprovalRisk, AiExchange } from "@/types/ai";
+import type {
+  AiApprovalCommand,
+  AiApprovalRisk,
+  AiExchange,
+  AiStoredMessage,
+} from "@/types/ai";
 import { SudoPasswordPrompt } from "@/components/explorer/SudoPasswordPrompt";
 import { AiDiffView } from "./AiDiffView";
 import { AiMarkdown } from "./AiMarkdown";
@@ -28,8 +33,47 @@ function approvalTitle(commands: AiApprovalCommand[]): string {
   return "비밀정보가 노출될 수 있는 조회입니다. 실행할까요?";
 }
 
+function PreviousTurns({ messages }: { messages: AiStoredMessage[] }) {
+  const [open, setOpen] = useState(false);
+  const turnCount = messages.filter((message) => message.role === "user").length;
+  if (turnCount === 0) return null;
+
+  return (
+    <div className="ai-bubble__history">
+      <button
+        type="button"
+        className="ai-bubble__history-toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+      >
+        이전 대화 {turnCount}개 {open ? "접기" : "보기"}
+      </button>
+      {open ? (
+        <ol className="ai-bubble__history-list">
+          {messages.map((message, index) => (
+            <li
+              key={`${message.createdAt}-${index}`}
+              className={`ai-bubble__history-item ai-bubble__history-item--${message.role}`}
+            >
+              {message.role === "user" ? (
+                <p className="ai-bubble__history-question">
+                  <span className="ai-bubble__question-label">Q.</span> {message.content}
+                </p>
+              ) : (
+                <AiMarkdown content={message.content} typing={false} />
+              )}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
 interface AiSpeechBubbleProps {
   exchange: AiExchange;
+  /** 같은 대화에서 이번 질문 이전의 메시지 */
+  history: AiStoredMessage[];
   canReset: boolean;
   onCancel: () => void;
   onApprove: () => void;
@@ -38,10 +82,12 @@ interface AiSpeechBubbleProps {
   onSudoPassword: (password: string | null) => void;
   onDismiss: () => void;
   onReset: () => void;
+  onOpenList: () => void;
 }
 
 export function AiSpeechBubble({
   exchange,
+  history,
   canReset,
   onCancel,
   onApprove,
@@ -49,6 +95,7 @@ export function AiSpeechBubble({
   onSudoPassword,
   onDismiss,
   onReset,
+  onOpenList,
 }: AiSpeechBubbleProps) {
   const { question, answer, status, error, pending, cancelled, approval, sudoPrompt } =
     exchange;
@@ -106,6 +153,8 @@ export function AiSpeechBubble({
       >
         ×
       </button>
+
+      <PreviousTurns messages={history} />
 
       <button
         type="button"
@@ -215,6 +264,9 @@ export function AiSpeechBubble({
                   {copied ? "복사됨" : "복사"}
                 </button>
               ) : null}
+              <button type="button" className="ai-bubble__action" onClick={onOpenList}>
+                대화 목록
+              </button>
               {canReset ? (
                 <button type="button" className="ai-bubble__action" onClick={onReset}>
                   새 대화

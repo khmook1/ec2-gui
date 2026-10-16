@@ -19,16 +19,23 @@ interface AiCommandBarProps {
   shortcutLabel: string;
   /** 이전 응답이 아직 생성 중인지 (새 질문 시 이전 응답은 중단된다) */
   pending: boolean;
+  /** 이어서 질문할 대화 제목 (null이면 새 대화) */
+  conversationTitle: string | null;
   onSubmit: (question: string) => void;
   onClose: () => void;
+  onOpenList: () => void;
+  onNewConversation: () => void;
 }
 
-export function AiCommandBar({ 
+export function AiCommandBar({
   provider,
   shortcutLabel,
   pending,
+  conversationTitle,
   onSubmit,
   onClose,
+  onOpenList,
+  onNewConversation,
 }: AiCommandBarProps) {
   const { register, handleSubmit, setFocus, watch } =
     useForm<AiCommandFormValues>({
@@ -91,6 +98,19 @@ export function AiCommandBar({
             textareaRef.current = element;
           }}
         />
+        <div className="ai-command__conversation">
+          <span className="ai-command__conversation-title" title={conversationTitle ?? undefined}>
+            {conversationTitle ? `이어서: ${conversationTitle}` : "새 대화"}
+          </span>
+          {conversationTitle ? (
+            <button type="button" className="ai-command__link" onClick={onNewConversation}>
+              새 대화
+            </button>
+          ) : null}
+          <button type="button" className="ai-command__link" onClick={onOpenList}>
+            대화 목록
+          </button>
+        </div>
         <div className="ai-command__meta">
           <span className={`ai-command__provider ai-command__provider--${provider}`}>
             <AiProviderIcon provider={provider} className="ai-command__provider-icon" />

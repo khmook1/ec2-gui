@@ -21,6 +21,10 @@ import {
   listGitHubIssues,
   listGitHubPulls,
   listGitHubRepos,
+  getWeeklyReportStatus,
+  listWeeklyReports,
+  listRecentCommits,
+  getGitHubCommit,
 } from "@/services/tauri";
 import {
   GITHUB_DETAIL_PER_PAGE,
@@ -37,6 +41,43 @@ export function useGitHubViewerQuery() {
     queryKey: queryKeys.githubViewer,
     queryFn: getGitHubViewer,
     staleTime: 30 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useWeeklyReportStatusQuery() {
+  return useQuery({
+    queryKey: queryKeys.githubWeeklyReportStatus,
+    queryFn: getWeeklyReportStatus,
+    retry: false,
+  });
+}
+
+export function useWeeklyReportsQuery() {
+  return useQuery({
+    queryKey: queryKeys.githubWeeklyReports,
+    queryFn: listWeeklyReports,
+    retry: false,
+  });
+}
+
+export function useRecentCommitsQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.githubRecentCommits,
+    queryFn: listRecentCommits,
+    enabled,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+/** 커밋 내용은 바뀌지 않으므로 한 번 받으면 다시 요청하지 않는다. */
+export function useGitHubCommitQuery(repo: string, sha: string, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.githubCommit(repo, sha),
+    queryFn: () => getGitHubCommit(repo, sha),
+    enabled,
+    staleTime: Infinity,
     retry: false,
   });
 }

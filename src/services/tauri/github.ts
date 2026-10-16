@@ -1,8 +1,10 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
+import type { AiConnectionInput, AiStreamEvent } from "@/services/tauri/ai";
 import type {
   GitHubActiveRuns,
   GitHubBranch,
   GitHubComment,
+  GitHubCommitDetail,
   GitHubContentEntry,
   GitHubFile,
   GitHubIssue,
@@ -21,6 +23,9 @@ import type {
   GitHubWorkflow,
   GitHubWorkflowDispatch,
   GitHubWorkflowRun,
+  RecentCommits,
+  WeeklyReport,
+  WeeklyReportStatus,
 } from "@/types/github";
 
 export async function openExternalUrl(url: string): Promise<void> {
@@ -310,4 +315,37 @@ export async function cancelGitHubWorkflowRun(
   runId: number,
 ): Promise<void> {
   return invoke<void>("cancel_github_workflow_run", { repo, runId });
+}
+
+export async function getWeeklyReportStatus(): Promise<WeeklyReportStatus> {
+  return invoke<WeeklyReportStatus>("get_weekly_report_status");
+}
+
+export async function listWeeklyReports(): Promise<WeeklyReport[]> {
+  return invoke<WeeklyReport[]>("list_weekly_reports");
+}
+
+export async function getGitHubCommit(
+  repo: string,
+  sha: string,
+): Promise<GitHubCommitDetail> {
+  return invoke<GitHubCommitDetail>("get_github_commit", { repo, sha });
+}
+
+export async function listRecentCommits(): Promise<RecentCommits> {
+  return invoke<RecentCommits>("list_recent_commits");
+}
+
+/** 취소는 `cancelAiChat`으로 한다. */
+export async function generateWeeklyReport(
+  { provider, binaryPath }: AiConnectionInput,
+  onEvent: (event: AiStreamEvent) => void,
+): Promise<WeeklyReport> {
+  const channel = new Channel<AiStreamEvent>();
+  channel.onmessage = onEvent;
+  return invoke<WeeklyReport>("generate_weekly_report", {
+    provider,
+    binaryPath,
+    onEvent: channel,
+  });
 }

@@ -112,7 +112,9 @@ export function ListSearchProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const key = event.key.toLowerCase();
-      const isFindShortcut = key === "f" && (event.metaKey || event.ctrlKey);
+      // Cmd+Ctrl+F(macOS 전체 화면)는 가로채지 않는다
+      const isFindShortcut =
+        key === "f" && event.metaKey !== event.ctrlKey && !event.altKey;
 
       if (isFindShortcut) {
         // 터미널 찾기 등 하위 요소가 이미 처리한 단축키

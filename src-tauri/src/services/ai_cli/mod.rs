@@ -1,10 +1,12 @@
 mod command_policy;
+pub mod conversation;
 mod danger_gate;
 mod docker_tool;
 mod file_tool;
 mod github_tool;
 mod remote_tool;
 mod stream;
+mod weekly_report;
 
 use std::cell::RefCell;
 use std::ffi::OsString;
@@ -19,10 +21,12 @@ use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
 
+pub use conversation::{AiChatRole, AiStoredMessage};
 pub use danger_gate::{respond_approval, respond_sudo_password};
 pub use file_tool::ExplorerContext;
 pub use remote_tool::{RemoteExecutor, RemoteTarget};
 pub use stream::AiStreamEvent;
+pub use weekly_report::{generate as generate_weekly_report, ReportPeriod};
 use danger_gate::{ApprovalCommand, PendingApproval, PendingSudoPassword};
 use remote_tool::{CommandOutcome, TOOL_FENCE};
 use stream::StreamState;
@@ -34,16 +38,49 @@ const CHECK_TIMEOUT: Duration = Duration::from_secs(20);
 const CHAT_TIMEOUT: Duration = Duration::from_secs(300);
 const SHELL_PATH_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_HISTORY_MESSAGES: usize = 20;
+/// 대화 기록에 남기는 도구 결과 요약 길이
+const TOOL_CONTEXT_MAX_CHARS: usize = 2000;
 /// 명령 요청 → 실행 → 분석을 반복하는 최대 횟수 (마지막 라운드는 답변만)
 const MAX_TOOL_ROUNDS: usize = 4;
+const LAST_ROUND_NOTE: &str =
+    "\n\n[안내] 더 이상 도구를 실행할 수 없습니다. 지금까지의 결과만으로 답하세요.";
 const PATH_MARKER: &str = "__EC2GUI_PATH__";
 
-const SYSTEM_PROMPT: &str = "당신은 EC2 서버를 관리하는 데스크톱 앱(OpsDeck)에 내장된 AI 도우미입니다. \
-리눅스 서버 운영, SSH, Docker, 디스크·권한 관리, GitHub Actions 관련 질문에 간결하고 정확하게 답하세요. \
-명령어를 제안할 때는 코드 블록으로 보여 주고, 파괴적인 작업은 위험성을 먼저 알려 주세요. \
-사용자가 쓴 언어로 답하세요.";
+const SYSTEM_PROMPT: &str = "당신은 EC2 서버·Docker·원격 파일·GitHub를 관리하는 데스크톱 앱(OpsDeck)에 내장된 AI 도우미입니다.
+답하기 전에 사용자의 질문이 어떤 분야인지 스스로 판단하고(예: 리눅스/서버 운영, 네트워크·보안, Docker·배포, Git/GitHub·CI, 프론트엔드·백엔드 코드, 데이터베이스, 아키텍처 설계), 그 분야의 숙련된 전문가 관점으로 답하세요.
+- 질문의 깊이에 맞춰 답의 길이를 정하세요. 단순한 질문은 짧게, 설계·원인 분석 질문은 근거와 대안을 함께 제시하세요.
+- 불확실한 내용은 추측임을 밝히고, 확인할 방법을 함께 제시하세요.
+- 명령어나 코드는 코드 블록으로 보여 주고, 파괴적인 작업은 위험성을 먼저 알려 주세요.
+- 사용자가 쓴 언어로 답하세요.";
 
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+/// 프론트 route id 접두사 → (화면 이름, 우선할 전문 분야)
+const PAGE_CONTEXTS: [(&str, &str, &str); 5] = [
+    ("dashboard", "대시보드", "서버 리소스·디스크·성능 진단"),
+    ("file-explorer", "파일 탐색기", "리눅스 파일 시스템·설정 파일·권한"),
+    ("docker", "Docker", "컨테이너·이미지·네트워크·볼륨 운영과 배포"),
+    ("github", "GitHub", "Git 워크플로·PR 리뷰·GitHub Actions CI/CD"),
+    ("settings", "설정", "OpsDeck 앱 설정"),
+];
+
+fn page_context(active_page: Option<&str>) -> Option<&'static (&'static str, &'static str, &'static str)> {
+    active_page.and_then(|page| {
+        PAGE_CONTEXTS
+            .iter()
+            .find(|(prefix, _, _)| page.starts_with(prefix))
+    })
+}
+
+fn page_section(active_page: Option<&str>) -> String {
+    let Some((_, name, expertise)) = page_context(active_page) else {
+        return String::new();
+    };
+    format!(
+        "\n\n[현재 화면]\n사용자는 지금 OpsDeck의 {name} 화면을 보고 있습니다. \
+질문이 이 화면과 관련 있어 보이면 {expertise} 전문가 관점을 우선하고, 관련 없으면 질문 내용을 기준으로 분야를 판단하세요."
+    )
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AiProvider {
     Codex,
@@ -71,19 +108,6 @@ impl AiProvider {
 pub struct AiCliStatus {
     pub path: String,
     pub version: String,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum AiChatRole {
-    User,
-    Assistant,
-}
-
-#[derive(Deserialize)]
-pub struct AiChatMessage {
-    pub role: AiChatRole,
-    pub content: String,
 }
 
 struct ProcessOutput {
@@ -303,40 +327,109 @@ pub fn check(provider: AiProvider, custom_path: Option<&str>) -> Result<AiCliSta
     })
 }
 
-fn build_prompt(
-    messages: &[AiChatMessage],
-    target: Option<&RemoteTarget>,
-    docker_section: Option<&str>,
-) -> Result<String, String> {
-    let (last, history) = messages
-        .split_last()
-        .ok_or_else(|| "보낼 메시지가 없습니다.".to_string())?;
-    if !matches!(last.role, AiChatRole::User) || last.content.trim().is_empty() {
-        return Err("마지막 메시지는 사용자 질문이어야 합니다.".to_string());
+/// 프롬프트를 만드는 데 필요한 현재 앱 상황
+struct PromptContext<'a> {
+    target: Option<&'a RemoteTarget>,
+    docker_status: Option<&'a docker_tool::DockerStatus>,
+    explorer: Option<&'a ExplorerContext>,
+    github_repo: Option<&'a str>,
+    active_page: Option<&'a str>,
+}
+
+impl PromptContext<'_> {
+    /// 세션에 이미 보낸 지침이 지금도 맞는지 판단하는 기준
+    fn fingerprint(&self) -> String {
+        let target = self
+            .target
+            .map(|target| format!("{}@{}", target.username, target.host))
+            .unwrap_or_else(|| "-".to_string());
+        format!("ssh={target}|repo={}", self.github_repo.unwrap_or("-"))
     }
 
-    let start = history.len().saturating_sub(MAX_HISTORY_MESSAGES);
-    let mut prompt = String::from(SYSTEM_PROMPT);
-    prompt.push_str(danger_gate::AI_DANGER_POLICY);
-    if let Some(target) = target {
-        prompt.push_str(&remote_tool::tool_instructions(target));
-    }
-    if let Some(section) = docker_section {
-        prompt.push_str(section);
-    }
-    if start < history.len() {
-        prompt.push_str("\n\n[이전 대화]\n");
-        for message in &history[start..] {
-            let speaker = match message.role {
-                AiChatRole::User => "사용자",
-                AiChatRole::Assistant => "AI",
-            };
-            prompt.push_str(&format!("{speaker}: {}\n\n", message.content.trim()));
+    /// 시스템 프롬프트와 모든 도구 지침
+    fn instructions(&self) -> String {
+        let mut out = String::from(SYSTEM_PROMPT);
+        out.push_str(&page_section(self.active_page));
+        out.push_str(danger_gate::AI_DANGER_POLICY);
+        if let Some(target) = self.target {
+            out.push_str(&remote_tool::tool_instructions(target));
+            out.push_str(&docker_tool::instructions(self.docker_status));
+            out.push_str(&file_tool::instructions(self.explorer));
         }
+        out.push_str(&github_tool::instructions(self.github_repo));
+        out
     }
-    prompt.push_str("\n[새 질문]\n");
-    prompt.push_str(last.content.trim());
-    Ok(prompt)
+
+    /// 이어지는 세션에 매 질문마다 붙이는, 바뀔 수 있는 상황 요약
+    fn situation(&self) -> String {
+        let mut out = String::from("[현재 상황]\n");
+        let page = page_context(self.active_page).map_or("알 수 없음", |(_, name, _)| name);
+        out.push_str(&format!("- 보고 있는 화면: {page}\n"));
+        match self.target {
+            Some(target) => out.push_str(&format!(
+                "- SSH 접속: {}@{}\n",
+                target.username, target.host
+            )),
+            None => out.push_str("- SSH 접속: 없음 (서버 조회·파일 도구 사용 불가)\n"),
+        }
+        out.push_str(&format!(
+            "- 선택한 GitHub 저장소: {}\n",
+            self.github_repo.unwrap_or("없음")
+        ));
+        if let Some(explorer) = self.explorer {
+            out.push_str(&format!(
+                "- 파일 탐색기: 폴더 {}, 선택 {}, 열어 둔 파일 {}\n",
+                explorer.current_path,
+                explorer.selected_path.as_deref().unwrap_or("없음"),
+                explorer.open_file.as_deref().unwrap_or("없음"),
+            ));
+        }
+        if let Some(status) = self.docker_status {
+            out.push_str(&format!("- Docker 상태:\n{}\n", status.summary()));
+        }
+        out
+    }
+}
+
+fn history_section(history: &[AiStoredMessage]) -> String {
+    let start = history.len().saturating_sub(MAX_HISTORY_MESSAGES);
+    if start >= history.len() {
+        return String::new();
+    }
+    let mut out = String::from("\n\n[이전 대화]\n");
+    for message in &history[start..] {
+        let speaker = match message.role {
+            AiChatRole::User => "사용자",
+            AiChatRole::Assistant => "AI",
+        };
+        out.push_str(&format!("{speaker}: {}\n", message.content.trim()));
+        if let Some(context) = message.tool_context.as_deref() {
+            out.push_str(&format!("(이 답변에 사용한 도구 결과)\n{}\n", context.trim()));
+        }
+        out.push('\n');
+    }
+    out
+}
+
+/// 새 세션의 첫 프롬프트: 지침 → 이전 대화 → 새 질문
+fn fresh_prompt(context: &PromptContext, history: &[AiStoredMessage], question: &str) -> String {
+    format!(
+        "{}{}\n\n[새 질문]\n{question}",
+        context.instructions(),
+        history_section(history)
+    )
+}
+
+/// 이어지는 세션의 프롬프트. 지침 기준이 바뀌었으면 지침을 다시 보낸다.
+fn resume_prompt(context: &PromptContext, fingerprint_matches: bool, question: &str) -> String {
+    if fingerprint_matches {
+        format!("{}\n[새 질문]\n{question}", context.situation())
+    } else {
+        format!(
+            "[지침 갱신] 접속 서버 또는 저장소가 바뀌어 지침을 다시 전달합니다. 이전 지침 대신 아래를 따르세요.\n\n{}\n\n[새 질문]\n{question}",
+            context.instructions()
+        )
+    }
 }
 
 static ACTIVE_CANCEL: Mutex<Option<Arc<AtomicBool>>> = Mutex::new(None);
@@ -511,153 +604,275 @@ impl DeltaGate {
     }
 }
 
+/// 이어서 쓸 CLI 세션
+pub struct ChatSession<'a> {
+    pub id: &'a str,
+    pub fingerprint: Option<&'a str>,
+}
+
+pub struct ChatRequest<'a> {
+    /// 이번 질문 이전의 대화 (세션을 이어가지 못할 때 텍스트로 전달)
+    pub history: &'a [AiStoredMessage],
+    pub question: &'a str,
+    pub session: Option<ChatSession<'a>>,
+}
+
+pub struct ChatEnvironment<'a> {
+    pub executor: Option<&'a dyn RemoteExecutor>,
+    pub github_repo: Option<&'a str>,
+    pub explorer: Option<&'a ExplorerContext>,
+    pub active_page: Option<&'a str>,
+}
+
+pub struct ChatOutcome {
+    pub reply: String,
+    pub session_id: Option<String>,
+    pub fingerprint: String,
+    /// 이번 답변을 만들며 실행한 도구 결과 요약
+    pub tool_context: Option<String>,
+}
+
 pub fn chat(
     provider: AiProvider,
     custom_path: Option<&str>,
     workdir: &Path,
-    messages: &[AiChatMessage],
-    executor: Option<&dyn RemoteExecutor>,
-    github_repo: Option<&str>,
-    explorer: Option<&ExplorerContext>,
+    request: &ChatRequest,
+    environment: &ChatEnvironment,
     emit: &dyn Fn(AiStreamEvent),
-) -> Result<String, String> {
-    let request = ActiveRequest::register();
+) -> Result<ChatOutcome, String> {
+    let question = request.question.trim();
+    if question.is_empty() {
+        return Err("질문을 입력해 주세요.".to_string());
+    }
+    let active = ActiveRequest::register();
     let binary = resolve_binary(provider, custom_path)?;
-    let executor = executor.and_then(|executor| executor.target().map(|target| (executor, target)));
-    let mut docker_status = executor.as_ref().and_then(|(executor, _)| {
+    let executor = environment
+        .executor
+        .and_then(|executor| executor.target().map(|target| (executor, target)));
+    let docker_status = executor.as_ref().and_then(|(executor, _)| {
         emit(AiStreamEvent::Status {
             text: "서버 Docker 상태 확인 중…".to_string(),
         });
         docker_tool::probe(*executor)
     });
-    let docker_section = executor
-        .as_ref()
-        .map(|_| docker_tool::instructions(docker_status.as_ref()));
-    let mut base_prompt = build_prompt(
-        messages,
-        executor.as_ref().map(|(_, target)| target),
-        docker_section.as_deref(),
-    )?;
-    if executor.is_some() {
-        base_prompt.push_str(&file_tool::instructions(explorer));
-    }
-    base_prompt.push_str(&github_tool::instructions(github_repo));
     fs::create_dir_all(workdir)
         .map_err(|error| format!("AI 작업 폴더를 만들지 못했습니다: {error}"))?;
 
-
-    let cancelled = || request.cancelled();
-    let mut approve = |commands: Vec<ApprovalCommand>| -> Result<bool, String> {
-        let pending = PendingApproval::register();
-        // 프론트는 이후 상태 이벤트가 오면 승인 UI를 닫으므로 상태를 먼저 보낸다.
-        emit(AiStreamEvent::Status {
-            text: "실행 승인을 기다리는 중…".to_string(),
-        });
-        emit(AiStreamEvent::ApprovalRequired {
-            id: pending.id,
-            commands,
-        });
-        pending.wait(&cancelled)
+    let context = PromptContext {
+        target: executor.as_ref().map(|(_, target)| target),
+        docker_status: docker_status.as_ref(),
+        explorer: environment.explorer,
+        github_repo: environment.github_repo,
+        active_page: environment.active_page,
     };
-    let status = |text: String| emit(AiStreamEvent::Status { text });
-    let mut ask_password = |path: &str| -> Result<Option<String>, String> {
-        let pending = PendingSudoPassword::register();
-        emit(AiStreamEvent::Status {
-            text: "sudo 비밀번호 입력을 기다리는 중…".to_string(),
-        });
-        emit(AiStreamEvent::SudoPasswordRequired {
-            id: pending.id,
-            path: path.to_string(),
-        });
-        let password = pending.wait(&cancelled)?;
-        emit(AiStreamEvent::Status {
-            text: "sudo로 파일 저장 중…".to_string(),
-        });
-        Ok(password)
-    };
-    let file_changed = |path: &str| {
-        emit(AiStreamEvent::FileChanged {
-            path: path.to_string(),
-        })
+    let fingerprint = context.fingerprint();
+    let mut run = ToolLoop {
+        provider,
+        binary: &binary,
+        workdir,
+        request: &active,
+        executor: executor.as_ref().map(|(executor, _)| *executor),
+        docker_status: docker_status.clone(),
+        emit,
+        resume_failed: false,
     };
 
-    let mut transcript = String::new();
-    for round in 1..=MAX_TOOL_ROUNDS {
-        let last_round = round == MAX_TOOL_ROUNDS;
-        let mut prompt = format!("{base_prompt}{transcript}");
-        if last_round {
-            prompt.push_str(
-                "\n\n[안내] 더 이상 도구를 실행할 수 없습니다. 지금까지의 결과만으로 답하세요.",
-            );
-        }
-
-        let reply = run_cli_round(provider, &binary, workdir, &prompt, &request, true, emit)?;
-        if !last_round {
-            if let Some(requests) = file_tool::parse(&reply) {
-                let output = match (requests, executor.as_ref()) {
-                    (Err(error), _) => format!("[실행 실패] {error}"),
-                    (Ok(_), None) => "[실행 실패] SSH 연결이 없습니다.".to_string(),
-                    (Ok(requests), Some((executor, _))) => file_tool::format_results(&file_tool::run(
-                        *executor,
-                        requests,
-                        &cancelled,
-                        &mut approve,
-                        &mut ask_password,
-                        &file_changed,
-                    )?),
-                };
-                transcript.push_str(&format!("\n\n[파일 도구 결과 {round}]\n{output}"));
-                status("파일 작업 결과 분석 중…".into());
-                continue;
+    if let Some(session) = &request.session {
+        let matches = session.fingerprint == Some(fingerprint.as_str());
+        let prompt = resume_prompt(&context, matches, question);
+        match run.run(prompt, Some(session.id), fingerprint.clone()) {
+            Err(_) if run.resume_failed => {
+                emit(AiStreamEvent::Reset);
+                emit(AiStreamEvent::Status {
+                    text: "이전 세션을 이어가지 못해 대화 기록으로 다시 시작합니다…".to_string(),
+                });
             }
-            if let Some(requests) = github_tool::parse(&reply) {
-                let output = match requests {
-                    Ok(requests) => remote_tool::format_results(&github_tool::run(requests, &cancelled, &mut approve, &github_tool::execute)?),
-                    Err(error) => format!("[실행 실패] {error}"),
-                };
-                transcript.push_str(&format!("\n\n[GitHub 도구 결과 {round}]\n{output}"));
-                status("GitHub 결과 분석 중…".into());
-                continue;
-            }
+            other => return other,
         }
-        let commands = remote_tool::parse_tool_block(&reply).filter(|_| !last_round);
-        let Some(commands) = commands else {
-            return Ok(reply);
-        };
-
-        let Some((executor, _)) = executor.as_ref() else {
-            transcript.push_str("\n[실행 실패] SSH 연결이 없습니다.");
-            continue;
-        };
-        let executor = *executor;
-        let install_script = || docker_tool::install_script(docker_status.as_ref());
-        let results = remote_tool::run_commands(
-            executor,
-            commands,
-            &cancelled,
-            &mut approve,
-            &install_script,
-            &status,
-        )?;
-        transcript.push_str(&format!(
-            "\n\n[서버 명령 실행 결과 {round}]\n{}",
-            remote_tool::format_results(&results)
-        ));
-
-        let installed = results.iter().any(|result| {
-            result.command == docker_tool::INSTALL_COMMAND
-                && matches!(result.outcome, CommandOutcome::Executed(_))
-        });
-        if installed {
-            status("설치 결과 확인 중…".to_string());
-            docker_status = docker_tool::probe(executor);
-            if let Some(updated) = &docker_status {
-                transcript.push_str(&format!("\n\n[Docker 상태 갱신]\n{}", updated.summary()));
-            }
-        }
-        status("결과 분석 중…".to_string());
     }
-    unreachable!("마지막 라운드는 항상 답변을 반환한다")
+
+    let prompt = fresh_prompt(&context, request.history, question);
+    run.run(prompt, None, fingerprint)
+}
+
+fn record_tool_result(transcript: &mut String, pending: &mut String, text: &str) {
+    transcript.push_str(text);
+    pending.push_str(text);
+}
+
+/// 도구 요청 → 실행 → 결과 전달을 반복하는 한 번의 질문 처리
+struct ToolLoop<'a> {
+    provider: AiProvider,
+    binary: &'a Path,
+    workdir: &'a Path,
+    request: &'a ActiveRequest,
+    executor: Option<&'a dyn RemoteExecutor>,
+    docker_status: Option<docker_tool::DockerStatus>,
+    emit: &'a dyn Fn(AiStreamEvent),
+    /// 기존 세션으로 첫 호출부터 실패함 (새 세션으로 다시 시도해도 됨)
+    resume_failed: bool,
+}
+
+impl ToolLoop<'_> {
+    fn run(
+        &mut self,
+        opening: String,
+        resume: Option<&str>,
+        fingerprint: String,
+    ) -> Result<ChatOutcome, String> {
+        let emit = self.emit;
+        let request = self.request;
+        let executor = self.executor;
+        let cancelled = || request.cancelled();
+        let mut approve = |commands: Vec<ApprovalCommand>| -> Result<bool, String> {
+            let pending = PendingApproval::register();
+            // 프론트는 이후 상태 이벤트가 오면 승인 UI를 닫으므로 상태를 먼저 보낸다.
+            emit(AiStreamEvent::Status {
+                text: "실행 승인을 기다리는 중…".to_string(),
+            });
+            emit(AiStreamEvent::ApprovalRequired {
+                id: pending.id,
+                commands,
+            });
+            pending.wait(&cancelled)
+        };
+        let status = |text: String| emit(AiStreamEvent::Status { text });
+        let mut ask_password = |path: &str| -> Result<Option<String>, String> {
+            let pending = PendingSudoPassword::register();
+            emit(AiStreamEvent::Status {
+                text: "sudo 비밀번호 입력을 기다리는 중…".to_string(),
+            });
+            emit(AiStreamEvent::SudoPasswordRequired {
+                id: pending.id,
+                path: path.to_string(),
+            });
+            let password = pending.wait(&cancelled)?;
+            emit(AiStreamEvent::Status {
+                text: "sudo로 파일 저장 중…".to_string(),
+            });
+            Ok(password)
+        };
+        let file_changed = |path: &str| {
+            emit(AiStreamEvent::FileChanged {
+                path: path.to_string(),
+            })
+        };
+
+        let mut docker_status = self.docker_status.clone();
+        let mut session = resume.map(str::to_string);
+        // 이번 질문에서 실행한 모든 도구 결과 (세션이 없을 때 매 라운드 다시 보냄)
+        let mut transcript = String::new();
+        // 직전 CLI 호출 이후 새로 생긴 도구 결과 (세션을 이어갈 때만 보냄)
+        let mut pending = String::new();
+        for round in 1..=MAX_TOOL_ROUNDS {
+            let last_round = round == MAX_TOOL_ROUNDS;
+            let mut prompt = if round == 1 {
+                opening.clone()
+            } else if session.is_some() {
+                std::mem::take(&mut pending).trim_start().to_string()
+            } else {
+                format!("{opening}{transcript}")
+            };
+            pending.clear();
+            if last_round {
+                prompt.push_str(LAST_ROUND_NOTE);
+            }
+
+            let turn = match run_cli_turn(
+                self.provider,
+                self.binary,
+                self.workdir,
+                &prompt,
+                session.as_deref(),
+                request,
+                true,
+                emit,
+            ) {
+                Ok(turn) => turn,
+                Err(error) => {
+                    self.resume_failed =
+                        round == 1 && resume.is_some() && error != AI_CHAT_CANCELLED;
+                    return Err(error);
+                }
+            };
+            if turn.session_id.is_some() {
+                session = turn.session_id;
+            }
+            let reply = turn.reply;
+
+            if !last_round {
+                if let Some(requests) = file_tool::parse(&reply) {
+                    let output = match (requests, executor) {
+                        (Err(error), _) => format!("[실행 실패] {error}"),
+                        (Ok(_), None) => "[실행 실패] SSH 연결이 없습니다.".to_string(),
+                        (Ok(requests), Some(executor)) => file_tool::format_results(&file_tool::run(
+                            executor,
+                            requests,
+                            &cancelled,
+                            &mut approve,
+                            &mut ask_password,
+                            &file_changed,
+                        )?),
+                    };
+                    record_tool_result(&mut transcript, &mut pending, &format!("\n\n[파일 도구 결과 {round}]\n{output}"));
+                    status("파일 작업 결과 분석 중…".into());
+                    continue;
+                }
+                if let Some(requests) = github_tool::parse(&reply) {
+                    let output = match requests {
+                        Ok(requests) => remote_tool::format_results(&github_tool::run(requests, &cancelled, &mut approve, &github_tool::execute)?),
+                        Err(error) => format!("[실행 실패] {error}"),
+                    };
+                    record_tool_result(&mut transcript, &mut pending, &format!("\n\n[GitHub 도구 결과 {round}]\n{output}"));
+                    status("GitHub 결과 분석 중…".into());
+                    continue;
+                }
+            }
+            let commands = remote_tool::parse_tool_block(&reply).filter(|_| !last_round);
+            let Some(commands) = commands else {
+                let tool_context = (!transcript.trim().is_empty())
+                    .then(|| tail(&transcript, TOOL_CONTEXT_MAX_CHARS));
+                return Ok(ChatOutcome {
+                    reply,
+                    session_id: session,
+                    fingerprint,
+                    tool_context,
+                });
+            };
+
+            let Some(executor) = executor else {
+                record_tool_result(&mut transcript, &mut pending, "\n[실행 실패] SSH 연결이 없습니다.");
+                continue;
+            };
+            let install_script = || docker_tool::install_script(docker_status.as_ref());
+            let results = remote_tool::run_commands(
+                executor,
+                commands,
+                &cancelled,
+                &mut approve,
+                &install_script,
+                &status,
+            )?;
+            record_tool_result(&mut transcript, &mut pending, &format!(
+                "\n\n[서버 명령 실행 결과 {round}]\n{}",
+                remote_tool::format_results(&results)
+            ));
+
+            let installed = results.iter().any(|result| {
+                result.command == docker_tool::INSTALL_COMMAND
+                    && matches!(result.outcome, CommandOutcome::Executed(_))
+            });
+            if installed {
+                status("설치 결과 확인 중…".to_string());
+                docker_status = docker_tool::probe(executor);
+                if let Some(updated) = &docker_status {
+                    record_tool_result(&mut transcript, &mut pending, &format!("\n\n[Docker 상태 갱신]\n{}", updated.summary()));
+                }
+            }
+            status("결과 분석 중…".to_string());
+        }
+        unreachable!("마지막 라운드는 항상 답변을 반환한다")
+    }
 }
 
 /// CLI 프로세스 한 번 실행. `tools`면 도구 블록 응답을 화면에 흘려보내지 않는다.
@@ -670,10 +885,30 @@ fn run_cli_round(
     tools: bool,
     emit: &dyn Fn(AiStreamEvent),
 ) -> Result<String, String> {
+    run_cli_turn(provider, binary, workdir, prompt, None, request, tools, emit).map(|turn| turn.reply)
+}
+
+struct CliTurn {
+    reply: String,
+    session_id: Option<String>,
+}
+
+/// `resume`이 있으면 해당 CLI 세션을 이어서 실행한다.
+#[allow(clippy::too_many_arguments)]
+fn run_cli_turn(
+    provider: AiProvider,
+    binary: &Path,
+    workdir: &Path,
+    prompt: &str,
+    resume: Option<&str>,
+    request: &ActiveRequest,
+    tools: bool,
+    emit: &dyn Fn(AiStreamEvent),
+) -> Result<CliTurn, String> {
     let mut command = base_command(binary);
     command.current_dir(workdir);
-    match provider {
-        AiProvider::Claude => {
+    match (provider, resume) {
+        (AiProvider::Claude, _) => {
             command.args([
                 "-p",
                 "--output-format",
@@ -683,8 +918,24 @@ fn run_cli_round(
                 "--disallowedTools",
                 danger_gate::CLAUDE_FORBIDDEN_TOOLS,
             ]);
+            if let Some(id) = resume {
+                command.args(["--resume", id]);
+            }
         }
-        AiProvider::Codex => {
+        // `exec resume`은 `--sandbox`를 받지 않으므로 설정 덮어쓰기로 같은 샌드박스를 건다.
+        (AiProvider::Codex, Some(id)) => {
+            command.args([
+                "exec",
+                "resume",
+                "--json",
+                "--skip-git-repo-check",
+                "-c",
+                &format!("sandbox_mode=\"{}\"", danger_gate::CODEX_SANDBOX),
+                id,
+                "-",
+            ]);
+        }
+        (AiProvider::Codex, None) => {
             command.args([
                 "exec",
                 "--json",
@@ -749,5 +1000,8 @@ fn run_cli_round(
     if reply.is_empty() {
         return Err(format!("{}가 빈 응답을 반환했습니다.", provider.label()));
     }
-    Ok(reply)
+    Ok(CliTurn {
+        reply,
+        session_id: state.session_id,
+    })
 }

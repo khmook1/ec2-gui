@@ -10,17 +10,24 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { AiCommandBar } from "@/components/ai/AiCommandBar";
+import { AiConversationList } from "@/components/ai/AiConversationList";
 import { AiSpeechBubble } from "@/components/ai/AiSpeechBubble";
 import {
+  queryKeys,
+  useAiConversationQuery,
   useCancelAiChatMutation,
   useRespondAiCommandApprovalMutation,
   useRespondAiSudoPasswordMutation,
   useSendAiChatMutation,
 } from "@/hooks/query";
 import { useQueryClient } from "@tanstack/react-query";
-import { AI_CHAT_CANCELLED, type AiChatMessage } from "@/services/tauri/ai";
+import {
+  loadActiveConversationId,
+  saveActiveConversationId,
+} from "@/lib/aiChatPersistence";
+import { AI_CHAT_CANCELLED, getAiConversation } from "@/services/tauri/ai";
 import { useSettingsStore } from "@/stores/settingsStore";
-import type { AiExchange } from "@/types/ai";
+import type { AiConversation, AiExchange } from "@/types/ai";
 import "./css/ai-chatbot.css";
 
 interface AiChatbotContextValue {
@@ -111,15 +118,40 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
   const enabled = hydrated && ai.provider !== null;
 
   const [commandOpen, setCommandOpen] = useState(false);
-  const [history, setHistory] = useState<AiChatMessage[]>([]);
+  const [listOpen, setListOpen] = useState(false);
+  const [activeConversationId, setActiveConversationIdState] = useState<string | null>(null);
   const [exchange, setExchange] = useState<AiExchange | null>(null);
+  const conversationQuery = useAiConversationQuery(activeConversationId);
+  const conversation = conversationQuery.data ?? null;
+  const messages = useMemo(() => conversation?.messages ?? [], [conversation]);
   const requestIdRef = useRef(0);
-  const partialAnswerRef = useRef("");
   const sendMutation = useSendAiChatMutation();
   const cancelMutation = useCancelAiChatMutation();
   const approvalMutation = useRespondAiCommandApprovalMutation();
   const sudoPasswordMutation = useRespondAiSudoPasswordMutation();
   const queryClient = useQueryClient();
+
+  const setActiveConversationId = useCallback((id: string | null) => {
+    setActiveConversationIdState(id);
+    void saveActiveConversationId(id);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadActiveConversationId().then((id) => {
+      if (!cancelled && id) setActiveConversationIdState(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 저장된 대화 파일이 사라졌으면 새 대화로 시작한다.
+  useEffect(() => {
+    if (activeConversationId && conversationQuery.isSuccess && conversationQuery.data === null) {
+      setActiveConversationId(null);
+    }
+  }, [activeConversationId, conversationQuery.isSuccess, conversationQuery.data, setActiveConversationId]);
 
   const openCommand = useCallback(() => setCommandOpen(true), []);
   const closeCommand = useCallback(() => setCommandOpen(false), []);
@@ -164,13 +196,15 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
       if (!question || !ai.provider) return;
 
       const requestId = ++requestIdRef.current;
-      partialAnswerRef.current = "";
-      const messages: AiChatMessage[] = [
-        ...history,
-        { role: "user", content: question },
-      ];
+      const conversationId = activeConversationId ?? crypto.randomUUID();
+      if (!activeConversationId) setActiveConversationId(conversationId);
+      const refreshConversation = () =>
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.aiConversation(conversationId),
+        });
       setExchange({
         id: requestId,
+        historyCount: activeConversationId ? messages.length : 0,
         question,
         answer: "",
         status: null,
@@ -184,12 +218,11 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
       sendMutation
         .mutateAsync({
           connection: { provider: ai.provider, binaryPath: ai.binaryPath },
-          messages,
+          input: { conversationId, question },
           onEvent: (event) => {
             if (requestId !== requestIdRef.current) return;
             switch (event.type) {
               case "delta":
-                partialAnswerRef.current += event.text;
                 updateExchange(requestId, (current) => ({
                   ...current,
                   answer: current.answer + event.text,
@@ -207,7 +240,6 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
                 }));
                 break;
               case "reset":
-                partialAnswerRef.current = "";
                 updateExchange(requestId, (current) => ({ ...current, answer: "" }));
                 break;
               case "approvalRequired":
@@ -228,13 +260,9 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
             }
           },
         })
-        .then((reply) => {
+        .then(({ reply }) => {
+          refreshConversation();
           if (requestId !== requestIdRef.current) return;
-          setHistory((current) => [
-            ...current,
-            { role: "user", content: question },
-            { role: "assistant", content: reply },
-          ]);
           updateExchange(requestId, (current) => ({
             ...current,
             answer: reply,
@@ -245,17 +273,11 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
           }));
         })
         .catch((err: unknown) => {
+          // 취소된 요청도 부분 답변이 저장됐을 수 있다.
+          refreshConversation();
           if (requestId !== requestIdRef.current) return;
           const message = err instanceof Error ? err.message : String(err);
           const cancelled = message === AI_CHAT_CANCELLED;
-          const partial = partialAnswerRef.current.trim();
-          if (cancelled && partial) {
-            setHistory((current) => [
-              ...current,
-              { role: "user", content: question },
-              { role: "assistant", content: partial },
-            ]);
-          }
           updateExchange(requestId, (current) => ({
             ...current,
             status: null,
@@ -267,7 +289,16 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
           }));
         });
     },
-    [ai.provider, ai.binaryPath, history, sendMutation, updateExchange, queryClient],
+    [
+      ai.provider,
+      ai.binaryPath,
+      activeConversationId,
+      messages.length,
+      setActiveConversationId,
+      sendMutation,
+      updateExchange,
+      queryClient,
+    ],
   );
 
   const dismiss = useCallback(() => {
@@ -279,10 +310,67 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
   const resetConversation = useCallback(() => {
     cancel();
     requestIdRef.current += 1;
-    setHistory([]);
+    setActiveConversationId(null);
     setExchange(null);
+    setListOpen(false);
     setCommandOpen(true);
-  }, [cancel]);
+  }, [cancel, setActiveConversationId]);
+
+  const openList = useCallback(() => {
+    setCommandOpen(false);
+    setListOpen(true);
+  }, []);
+
+  /** 저장된 대화를 열어 마지막 질문·답변을 말풍선에 보여 준다. */
+  const selectConversation = useCallback(
+    async (id: string) => {
+      cancel();
+      const requestId = ++requestIdRef.current;
+      setListOpen(false);
+      setActiveConversationId(id);
+      let loaded: AiConversation | null;
+      try {
+        loaded = await queryClient.fetchQuery({
+          queryKey: queryKeys.aiConversation(id),
+          queryFn: () => getAiConversation(id),
+        });
+      } catch {
+        loaded = null;
+      }
+      if (requestId !== requestIdRef.current) return;
+      const stored = loaded?.messages ?? [];
+      const question = stored[stored.length - 2];
+      const answer = stored[stored.length - 1];
+      if (question?.role !== "user" || answer?.role !== "assistant") {
+        setExchange(null);
+        setCommandOpen(true);
+        return;
+      }
+      setExchange({
+        id: requestId,
+        historyCount: stored.length - 2,
+        question: question.content,
+        answer: answer.content,
+        status: null,
+        error: null,
+        pending: false,
+        cancelled: false,
+        approval: null,
+        sudoPrompt: null,
+      });
+    },
+    [cancel, queryClient, setActiveConversationId],
+  );
+
+  const handleConversationDeleted = useCallback(
+    (id: string) => {
+      if (id !== activeConversationId) return;
+      requestIdRef.current += 1;
+      setActiveConversationId(null);
+      setExchange(null);
+    },
+    [activeConversationId, setActiveConversationId],
+  );
 
   useEffect(() => {
     if (!enabled) {
@@ -312,17 +400,27 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
       {children}
       {enabled && ai.provider ? (
         <>
-          {exchange ? (
+          {listOpen ? (
+            <AiConversationList
+              activeId={activeConversationId}
+              onSelect={(id) => void selectConversation(id)}
+              onDeleted={handleConversationDeleted}
+              onNewConversation={resetConversation}
+              onClose={() => setListOpen(false)}
+            />
+          ) : exchange ? (
             <AiSpeechBubble
               key={exchange.id}
               exchange={exchange}
-              canReset={history.length > 0}
+              history={messages.slice(0, exchange.historyCount)}
+              canReset={activeConversationId !== null}
               onCancel={cancel}
               onApprove={() => respondApproval(true)}
               onReject={() => respondApproval(false)}
               onSudoPassword={respondSudoPassword}
               onDismiss={dismiss}
               onReset={resetConversation}
+              onOpenList={openList}
             />
           ) : null}
           <AiChatbotToggle busy={exchange?.pending ?? false} onToggle={toggleCommand} />
@@ -331,11 +429,15 @@ export function AiChatbotProvider({ children }: { children: ReactNode }) {
               provider={ai.provider}
               shortcutLabel={AI_COMMAND_SHORTCUT_LABEL}
               pending={exchange?.pending ?? false}
+              conversationTitle={activeConversationId ? (conversation?.title ?? null) : null}
               onSubmit={(question) => {
+                setListOpen(false);
                 ask(question);
                 closeCommand();
               }}
               onClose={closeCommand}
+              onOpenList={openList}
+              onNewConversation={resetConversation}
             />
           ) : null}
         </>

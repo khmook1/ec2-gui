@@ -1,3 +1,5 @@
+import type { AiProvider } from "@/types/settings";
+
 /** 승인이 필요한 이유: 삭제·되돌릴 수 없음 / 상태 변경 / 비밀정보 노출 조회 / Docker 설치 / 서버 파일 쓰기 */
 export type AiApprovalRisk =
   | "destructive"
@@ -27,9 +29,43 @@ export interface AiCommandApproval {
   commands: AiApprovalCommand[];
 }
 
+export type AiChatRole = "user" | "assistant";
+
+/** 대화 파일에 저장된 메시지 1건 */
+export interface AiStoredMessage {
+  role: AiChatRole;
+  content: string;
+  /** 이 답변을 만들 때 실행한 도구 결과 요약 */
+  toolContext?: string;
+  createdAt: string;
+}
+
+/** 대화 목록에 표시되는 요약 */
+export interface AiConversationSummary {
+  id: string;
+  title: string;
+  provider: AiProvider;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiConversation {
+  id: string;
+  title: string;
+  provider: AiProvider;
+  sessionId: string | null;
+  contextFingerprint: string | null;
+  messages: AiStoredMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** 말풍선에 표시되는 질문 1건과 스트리밍 중인 응답 */
 export interface AiExchange {
   id: number;
+  /** 이 질문 이전에 대화에 쌓여 있던 메시지 수 (말풍선의 이전 대화 표시용) */
+  historyCount: number;
   question: string;
   answer: string;
   /** 응답 본문이 오기 전 진행 상태 (생각 중, 명령 실행 중 등) */

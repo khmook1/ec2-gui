@@ -1,18 +1,49 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   cancelAiChat,
   checkAiCli,
+  deleteAiConversation,
+  getAiConversation,
+  listAiConversations,
   respondAiCommandApproval,
   respondAiSudoPassword,
   sendAiChat,
-  type AiChatMessage,
+  type AiChatInput,
   type AiConnectionInput,
   type AiStreamEvent,
 } from "@/services/tauri/ai";
+import { queryKeys } from "./keys";
 
 export function useCheckAiCliMutation() {
   return useMutation({
     mutationFn: (input: AiConnectionInput) => checkAiCli(input),
+  });
+}
+
+export function useAiConversationsQuery(enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.aiConversations,
+    queryFn: listAiConversations,
+    enabled,
+  });
+}
+
+export function useAiConversationQuery(id: string | null) {
+  return useQuery({
+    queryKey: queryKeys.aiConversation(id ?? ""),
+    queryFn: () => getAiConversation(id ?? ""),
+    enabled: id !== null,
+  });
+}
+
+export function useDeleteAiConversationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteAiConversation(id),
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: queryKeys.aiConversation(id) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.aiConversations });
+    },
   });
 }
 
@@ -23,16 +54,18 @@ export function useSendAiChatMutation() {
       // 승인된 변경은 취소/오류 전에 이미 실행되었을 수도 있다.
       void queryClient.invalidateQueries({ queryKey: ["github"] });
       void queryClient.invalidateQueries({ queryKey: ["fs"] });
+      // 취소돼도 부분 답변이 저장될 수 있다.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.aiConversations });
     },
     mutationFn: ({
       connection,
-      messages,
+      input,
       onEvent,
     }: {
       connection: AiConnectionInput;
-      messages: AiChatMessage[];
+      input: AiChatInput;
       onEvent: (event: AiStreamEvent) => void;
-    }) => sendAiChat(connection, messages, onEvent),
+    }) => sendAiChat(connection, input, onEvent),
   });
 }
 

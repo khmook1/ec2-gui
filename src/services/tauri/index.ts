@@ -2,13 +2,16 @@ export {
   AI_CHAT_CANCELLED,
   cancelAiChat,
   checkAiCli,
+  deleteAiConversation,
+  getAiConversation,
+  listAiConversations,
   respondAiCommandApproval,
   respondAiSudoPassword,
   sendAiChat,
 } from "./ai";
 export type {
-  AiChatMessage,
-  AiChatRole,
+  AiChatInput,
+  AiChatReply,
   AiCliStatus,
   AiConnectionInput,
   AiStreamEvent,
@@ -78,6 +81,11 @@ export {
   setGitHubIssueState,
   setGitHubPullState,
   updateGitHubRepo,
+  generateWeeklyReport,
+  getWeeklyReportStatus,
+  listWeeklyReports,
+  listRecentCommits,
+  getGitHubCommit,
 } from "./github";
 export {
   addRemoteUserGroup,

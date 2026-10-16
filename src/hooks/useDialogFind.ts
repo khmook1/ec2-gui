@@ -418,7 +418,8 @@ export function useDialogFind(
         return;
       }
       const key = event.key.toLowerCase();
-      const withModifier = event.metaKey || event.ctrlKey;
+      // Cmd+Ctrl 조합(macOS 전체 화면 등)은 가로채지 않는다
+      const withModifier = event.metaKey !== event.ctrlKey;
 
       if (key === "f" && withModifier && !event.altKey) {
         event.preventDefault();

@@ -6,28 +6,55 @@
   display: flex;
   flex: 1 1 auto;
   min-height: 360px;
+  overflow: auto;
+}
+
+.code-block__stack {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 100%;
+  min-height: 100%;
+  width: max-content;
+}
+
+.code-block__layer,
+.code-block__editor {
+  grid-area: 1 / 1;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 16px 18px 20px;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: normal;
+  word-spacing: normal;
+}
+
+.code-block__layer {
+  pointer-events: none;
+  overflow: visible !important;
+}
+
+.code-block__plain {
+  color: var(--text);
 }
 
 .code-block__editor {
-  box-sizing: border-box;
   display: block;
   width: 100%;
-  min-height: 360px;
   height: 100%;
-  margin: 0;
-  padding: 16px 18px 20px;
+  min-height: 360px;
   border: none;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   background: transparent;
-  color: var(--text);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
   caret-color: var(--text);
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.78125rem;
-  line-height: 1.55;
   outline: none;
-  white-space: pre;
-  overflow: auto;
+}
+
+.code-block__editor::selection {
+  background: color-mix(in srgb, var(--accent, #3b82f6) 35%, transparent);
 }
 
 .code-block__editor:disabled {

@@ -40,6 +40,25 @@ export function CodeIcon(props: ToolbarIconProps) {
   );
 }
 
+export function CommitIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <circle cx="12" cy="12" r="3.5" />
+      <path d="M3 12h5.5" />
+      <path d="M15.5 12H21" />
+    </ToolbarSvg>
+  );
+}
+
+export function CopyIcon(props: ToolbarIconProps) {
+  return (
+    <ToolbarSvg {...props}>
+      <rect x="9" y="9" width="12" height="12" rx="2" />
+      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+    </ToolbarSvg>
+  );
+}
+
 export function IssueIcon(props: ToolbarIconProps) {
   return (
     <ToolbarSvg {...props}>

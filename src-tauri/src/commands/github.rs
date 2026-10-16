@@ -1,7 +1,7 @@
 use serde_json::{Map, Value};
 
 use crate::services::github::{
-    self, GitHubActiveRuns, GitHubBranch, GitHubComment, GitHubContentEntry, GitHubFile, GitHubIssue, GitHubJob,
+    self, GitHubActiveRuns, GitHubBranch, GitHubComment, GitHubCommitDetail, GitHubContentEntry, GitHubFile, GitHubIssue, GitHubJob,
     GitHubLanguage, GitHubMergeResult, GitHubPage, GitHubPull, GitHubRepoDetail, GitHubRepoPage,
     GitHubRepoQuery, GitHubRepoUpdate, GitHubViewer, GitHubWorkflow, GitHubWorkflowDispatch,
     GitHubWorkflowRun,
@@ -176,6 +176,11 @@ pub async fn list_github_pulls(
 #[tauri::command]
 pub async fn get_github_pull(repo: String, number: u64) -> Result<GitHubPull, String> {
     github::get_github_pull(&repo, number).await
+}
+
+#[tauri::command]
+pub async fn get_github_commit(repo: String, sha: String) -> Result<GitHubCommitDetail, String> {
+    github::get_github_commit(&repo, &sha).await
 }
 
 #[tauri::command]

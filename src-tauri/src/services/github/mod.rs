@@ -1,6 +1,7 @@
 mod actions;
 mod branches;
 mod client;
+mod commits;
 mod issues;
 mod pulls;
 mod repos;
@@ -13,7 +14,11 @@ pub use actions::{
     GitHubWorkflowDispatch, GitHubWorkflowRun,
 };
 pub use branches::{create_github_branch, delete_github_branch, list_github_branches, GitHubBranch};
-pub use client::GitHubPage;
+pub use client::{GitHubClient, GitHubPage};
+pub use commits::{
+    fetch_commit_detail, get_github_commit, get_viewer_login, search_my_commits,
+    GitHubCommitDetail, WeeklyCommit,
+};
 pub use issues::{
     create_github_issue, create_github_issue_comment, get_github_issue, list_github_issue_comments,
     list_github_issues, set_github_issue_state, GitHubComment, GitHubIssue,

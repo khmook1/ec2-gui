@@ -215,6 +215,114 @@
   white-space: inherit;
 }
 
+/* ---------- theme 톤: 앱 라이트/다크 테마 색을 따른다 ---------- */
+/* github-markdown-light가 고정 색을 쓰므로 표·구분선 등은 직접 덮어쓴다 */
+.markdown-body.ai-markdown.ai-markdown--theme {
+  --ai-md-ink: var(--text);
+  --ai-md-strong: var(--text);
+  --ai-md-muted: var(--text-secondary);
+  --ai-md-border: var(--border);
+  --ai-md-accent: var(--accent);
+  --ai-md-highlight: rgba(255, 196, 0, 0.32);
+  --ai-md-inline-code-bg: color-mix(in srgb, var(--accent) 12%, transparent);
+  --ai-md-inline-code-ink: #c2255c;
+  --ai-md-table-head: color-mix(in srgb, var(--text) 6%, var(--surface));
+  --ai-md-table-stripe: color-mix(in srgb, var(--text) 3%, transparent);
+
+  font-size: 0.9rem;
+  line-height: 1.75;
+}
+
+html[data-theme="dark"] .markdown-body.ai-markdown.ai-markdown--theme {
+  --ai-md-highlight: rgba(255, 196, 0, 0.22);
+  --ai-md-inline-code-ink: #ff8fb1;
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme :is(h1, h2) {
+  border-bottom-color: var(--ai-md-border);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme h2 {
+  margin-top: 0;
+  font-size: 1.25em;
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme h3 {
+  margin-top: 1.6em;
+  font-size: 1.08em;
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme h4 {
+  margin-top: 1.4em;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font-size: 0.98em;
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme h6 {
+  color: var(--ai-md-muted);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme :not(pre) > code {
+  border-color: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme blockquote {
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  color: var(--ai-md-muted);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme del {
+  color: var(--ai-md-muted);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme hr {
+  background-color: var(--ai-md-border);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme table {
+  display: table;
+  width: 100%;
+  overflow: hidden;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--ai-md-border);
+  border-radius: 10px;
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme table tr {
+  border-top: none;
+  background-color: transparent;
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme table tr:nth-child(2n) {
+  background-color: var(--ai-md-table-stripe);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme table :is(th, td) {
+  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--ai-md-border);
+  color: var(--ai-md-ink);
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme table tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-body.ai-markdown.ai-markdown--theme table th {
+  background: var(--ai-md-table-head);
+  color: var(--ai-md-strong);
+  text-align: left;
+}
+
+/* 코드 블록은 하이라이트 테마(one-light)에 맞춰 밝은 배경을 유지한다 */
+.markdown-body.ai-markdown.ai-markdown--theme .ai-markdown__code {
+  border-color: var(--ai-md-border);
+  color: #1f2328;
+}
+
 /* 타이핑 중이면 마지막 텍스트 블록 끝에 캐럿을 붙인다 */
 .ai-markdown--typing > :is(p, h1, h2, h3, h4, h5, h6):last-child::after,
 .ai-markdown--typing > :is(ul, ol):last-child > li:last-child::after {

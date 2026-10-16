@@ -1,0 +1,717 @@
+/* 색은 모두 테마 변수(--text, --surface …)만 써서 라이트/다크 모두 대응한다 */
+.github-report {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  color: var(--text);
+}
+
+/* ---------- 사이드바 (생성 기록) ---------- */
+.github-report__sidebar {
+  overflow-y: auto;
+  padding: 12px;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+}
+
+.github-report__sidebar-label {
+  margin: 14px 4px 6px;
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.github-report__history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.github-report__history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.github-report__history-item:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.github-report__history-item--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.github-report__history-item--pinned {
+  border-style: dashed;
+}
+
+.github-report__history-week {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.github-report__badge {
+  padding: 0 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 18px;
+}
+
+.github-report__history-meta,
+.github-report__empty {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.github-report__empty {
+  margin: 8px 4px;
+}
+
+/* ---------- 본문 ---------- */
+.github-report__main {
+  overflow-y: auto;
+  min-width: 0;
+  padding: 20px 24px 32px;
+}
+
+.github-report__view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.github-report__hero {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--accent) 12%, transparent),
+      transparent 60%
+    ),
+    var(--surface);
+}
+
+.github-report__hero-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.github-report__hero-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.github-report__eyebrow {
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.github-report__hero-title h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.github-report__view-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.github-report__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.github-report__stat {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 60%, var(--surface));
+}
+
+.github-report__stat dt {
+  color: var(--text-secondary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+}
+
+.github-report__stat dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.github-report__repos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.github-report__repo {
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.6875rem;
+}
+
+.github-report__paper {
+  padding: 24px 28px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+/* ---------- 생성 진행 상태 ---------- */
+.github-report__progress {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.github-report__spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid color-mix(in srgb, var(--accent) 25%, transparent);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: github-report-spin 0.8s linear infinite;
+}
+
+@keyframes github-report-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .github-report__spinner {
+    animation: none;
+  }
+}
+
+/* ---------- 커밋 목록 (GitHub Commits 페이지 스타일) ---------- */
+.gh-commits {
+  --gh-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  position: relative;
+  padding-left: 22px;
+}
+
+/* 날짜 그룹을 잇는 타임라인 세로선 */
+.gh-commits::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: var(--border);
+}
+
+.gh-commits__day + .gh-commits__day {
+  margin-top: 20px;
+}
+
+.gh-commits__heading {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 0 8px;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.gh-commits__heading-icon {
+  position: absolute;
+  left: -23px;
+  width: 16px;
+  height: 16px;
+  padding: 1px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-secondary);
+}
+
+.gh-commits__box {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.gh-commit + .gh-commit {
+  border-top: 1px solid var(--border);
+}
+
+.gh-commit__row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+}
+
+.gh-commit__row:hover,
+.gh-commit--expanded > .gh-commit__row {
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.gh-commit__main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.gh-commit__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.gh-commit__title {
+  overflow: hidden;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gh-commit__title:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.gh-commit__ellipsis {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: none;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-secondary) 16%, transparent);
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 14px;
+  cursor: pointer;
+}
+
+.gh-commit__ellipsis:hover,
+.gh-commit__ellipsis[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* ---------- 커밋 상세 (변경 파일 + diff) ---------- */
+.gh-commit-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text-secondary) 4%, transparent);
+}
+
+.gh-commit-detail__body {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--gh-mono);
+  font-size: 0.75rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.gh-commit-detail__summary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.gh-stat--add {
+  color: #1a7f37;
+  font-weight: 600;
+}
+
+.gh-stat--del {
+  color: #cf222e;
+  font-weight: 600;
+}
+
+.gh-files {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gh-file {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.gh-file__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  background: color-mix(in srgb, var(--text-secondary) 7%, var(--surface));
+  color: var(--text);
+  font-size: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gh-file__header[aria-expanded="true"] {
+  border-bottom: 1px solid var(--border);
+}
+
+.gh-file__chevron {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.gh-file__chevron--open {
+  transform: rotate(90deg);
+}
+
+.gh-file__status {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  line-height: 18px;
+  background: color-mix(in srgb, var(--text-secondary) 14%, transparent);
+  color: var(--text-secondary);
+}
+
+.gh-file__status--added {
+  background: rgba(26, 127, 55, 0.14);
+  color: #1a7f37;
+}
+
+.gh-file__status--removed {
+  background: rgba(207, 34, 46, 0.12);
+  color: #cf222e;
+}
+
+.gh-file__status--modified,
+.gh-file__status--changed {
+  background: rgba(154, 103, 0, 0.14);
+  color: #9a6700;
+}
+
+.gh-file__status--renamed,
+.gh-file__status--copied {
+  background: rgba(9, 105, 218, 0.12);
+  color: #0969da;
+}
+
+.gh-file__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: var(--gh-mono);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh-file__stat {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
+  font-family: var(--gh-mono);
+}
+
+.gh-file__empty {
+  margin: 0;
+  padding: 12px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+/* GitHub diff 색상: 줄 배경(row)과 줄 번호 칸(num)을 각각 채운다 */
+.gh-diff {
+  --diff-add-bg: #e6ffec;
+  --diff-add-num: #ccffd8;
+  --diff-add-text: #116329;
+  --diff-del-bg: #ffebe9;
+  --diff-del-num: #ffd7d5;
+  --diff-del-text: #82071e;
+  --diff-hunk-bg: #ddf4ff;
+  --diff-hunk-num: #b6e3ff;
+  --diff-hunk-text: #57606a;
+  max-height: 480px;
+  overflow: auto;
+  font-family: var(--gh-mono);
+  font-size: 0.75rem;
+  line-height: 20px;
+}
+
+:root[data-theme="dark"] .gh-diff {
+  --diff-add-bg: rgba(46, 160, 67, 0.15);
+  --diff-add-num: rgba(63, 185, 80, 0.3);
+  --diff-add-text: #aff5b4;
+  --diff-del-bg: rgba(248, 81, 73, 0.1);
+  --diff-del-num: rgba(248, 81, 73, 0.3);
+  --diff-del-text: #ffdcd7;
+  --diff-hunk-bg: rgba(56, 139, 253, 0.1);
+  --diff-hunk-num: rgba(56, 139, 253, 0.25);
+  --diff-hunk-text: #8d96a0;
+}
+
+:root[data-theme="dark"] .gh-stat--add {
+  color: #3fb950;
+}
+
+:root[data-theme="dark"] .gh-stat--del {
+  color: #f85149;
+}
+
+:root[data-theme="dark"] .gh-file__status--added {
+  background: rgba(63, 185, 80, 0.18);
+  color: #3fb950;
+}
+
+:root[data-theme="dark"] .gh-file__status--removed {
+  background: rgba(248, 81, 73, 0.18);
+  color: #f85149;
+}
+
+:root[data-theme="dark"] :is(.gh-file__status--modified, .gh-file__status--changed) {
+  background: rgba(210, 153, 34, 0.18);
+  color: #d29922;
+}
+
+:root[data-theme="dark"] :is(.gh-file__status--renamed, .gh-file__status--copied) {
+  background: rgba(56, 139, 253, 0.18);
+  color: #58a6ff;
+}
+
+.gh-diff__table {
+  width: 100%;
+  min-width: max-content;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.gh-diff__num {
+  width: 1%;
+  min-width: 44px;
+  padding: 0 8px;
+  color: var(--text-secondary);
+  text-align: right;
+  vertical-align: top;
+  white-space: nowrap;
+  user-select: none;
+  opacity: 0.85;
+}
+
+.gh-diff__text {
+  padding: 0 12px 0 4px;
+  color: var(--text);
+  white-space: pre;
+}
+
+.gh-diff__marker {
+  display: inline-block;
+  width: 14px;
+  user-select: none;
+}
+
+.gh-diff__row--add .gh-diff__text {
+  background: var(--diff-add-bg);
+  color: var(--diff-add-text);
+}
+
+.gh-diff__row--add .gh-diff__num {
+  background: var(--diff-add-num);
+}
+
+.gh-diff__row--del .gh-diff__text {
+  background: var(--diff-del-bg);
+  color: var(--diff-del-text);
+}
+
+.gh-diff__row--del .gh-diff__num {
+  background: var(--diff-del-num);
+}
+
+.gh-diff__row--hunk .gh-diff__text {
+  padding: 2px 12px;
+  background: var(--diff-hunk-bg);
+  color: var(--diff-hunk-text);
+}
+
+.gh-diff__row--hunk .gh-diff__num {
+  background: var(--diff-hunk-num);
+}
+
+.gh-commit__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.gh-commit__avatar {
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.gh-commit__author {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.gh-commit__repo {
+  padding: 0 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  line-height: 18px;
+}
+
+.gh-commit__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.gh-commit__btn-group {
+  display: inline-flex;
+}
+
+.gh-commit__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.gh-commit__btn:hover {
+  background: color-mix(in srgb, var(--text-secondary) 10%, var(--surface));
+  color: var(--text);
+}
+
+.gh-commit__btn-group .gh-commit__btn:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.gh-commit__btn-group .gh-commit__btn + .gh-commit__btn {
+  margin-left: -1px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.gh-commit__sha {
+  font-family: var(--gh-mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.gh-commit__icon-btn {
+  width: 32px;
+  padding: 0;
+}
+
+.gh-commit__icon-btn svg {
+  width: 14px;
+  height: 14px;
+}

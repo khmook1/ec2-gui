@@ -1,3 +1,5 @@
+import type { AiProvider } from "@/types/settings";
+
 export interface GitHubViewer {
   login: string;
   name: string | null;
@@ -313,6 +315,70 @@ export interface GitHubWorkflowDispatch {
   /** `on: workflow_dispatch` 트리거가 있어야 수동 실행할 수 있다 */
   dispatchable: boolean;
   inputs: GitHubWorkflowInput[];
+}
+
+export interface WeeklyCommit {
+  /** `owner/name` */
+  repo: string;
+  sha: string;
+  message: string;
+  date: string;
+  url: string;
+  /** 커밋 이메일이 GitHub 계정과 연결되지 않았으면 null */
+  authorLogin: string | null;
+  authorAvatarUrl: string | null;
+}
+
+export type GitHubCommitFileStatus =
+  | "added"
+  | "removed"
+  | "modified"
+  | "renamed"
+  | "copied"
+  | "changed"
+  | "unchanged";
+
+export interface GitHubCommitFile {
+  filename: string;
+  previousFilename: string | null;
+  status: GitHubCommitFileStatus;
+  additions: number;
+  deletions: number;
+  /** 바이너리이거나 diff가 너무 크면 null */
+  patch: string | null;
+}
+
+export interface GitHubCommitDetail {
+  sha: string;
+  additions: number;
+  deletions: number;
+  files: GitHubCommitFile[];
+}
+
+export interface RecentCommits {
+  periodStart: string;
+  periodEnd: string;
+  commits: WeeklyCommit[];
+}
+
+export interface WeeklyReport {
+  /** ISO 주차 (`2026-W42`) */
+  weekKey: string;
+  periodStart: string;
+  periodEnd: string;
+  commitCount: number;
+  repos: string[];
+  content: string;
+  createdAt: string;
+  provider: AiProvider;
+  /** 커밋 목록 저장 이전에 만든 리포트는 비어 있다 */
+  commits: WeeklyCommit[];
+}
+
+export interface WeeklyReportStatus {
+  weekKey: string;
+  /** 이번 주 리포트가 있으면 다시 생성할 때 덮어쓴다 */
+  generated: boolean;
 }
 
 export const GITHUB_RUNS_PER_PAGE = 25;

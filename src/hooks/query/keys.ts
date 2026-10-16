@@ -3,8 +3,13 @@ import type { GitHubRepoQuery } from "@/types/github";
 export const queryKeys = {
   appInfo: ["appInfo"] as const,
   storagePaths: ["settings", "storagePaths"] as const,
+  aiConversations: ["ai", "conversations"] as const,
+  aiConversation: (id: string) => ["ai", "conversations", id] as const,
   githubViewer: ["github", "viewer"] as const,
   githubActiveRuns: ["github", "activeRuns"] as const,
+  githubWeeklyReportStatus: ["github", "weeklyReport", "status"] as const,
+  githubWeeklyReports: ["github", "weeklyReport", "list"] as const,
+  githubRecentCommits: ["github", "recentCommits"] as const,
   githubRepos: (query: GitHubRepoQuery) =>
     [
       "github",
@@ -56,6 +61,8 @@ export const queryKeys = {
     ["github", "repo", repo, "actions", "run", runId] as const,
   githubRunJobs: (repo: string, runId: number) =>
     ["github", "repo", repo, "actions", "run", runId, "jobs"] as const,
+  githubCommit: (repo: string, sha: string) =>
+    ["github", "repo", repo, "commit", sha] as const,
   githubJobLogs: (repo: string, jobId: number) =>
     ["github", "repo", repo, "actions", "logs", jobId] as const,
   githubWorkflowDispatch: (repo: string, path: string, gitRef: string | null) =>

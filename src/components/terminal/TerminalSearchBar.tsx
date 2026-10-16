@@ -91,7 +91,11 @@ export function TerminalSearchBar({
       search(event.shiftKey ? "previous" : "next");
       return;
     }
-    if (event.metaKey && event.key.toLowerCase() === "f") {
+    if (
+      event.metaKey &&
+      !event.ctrlKey &&
+      event.key.toLowerCase() === "f"
+    ) {
       event.preventDefault();
       event.currentTarget.select();
     }

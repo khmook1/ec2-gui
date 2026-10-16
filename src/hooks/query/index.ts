@@ -1,8 +1,11 @@
 export { queryKeys } from "./keys";
 export { useSessionKey } from "./useSessionKey";
 export {
+  useAiConversationQuery,
+  useAiConversationsQuery,
   useCancelAiChatMutation,
   useCheckAiCliMutation,
+  useDeleteAiConversationMutation,
   useRespondAiCommandApprovalMutation,
   useRespondAiSudoPasswordMutation,
   useSendAiChatMutation,
@@ -89,6 +92,10 @@ export {
   useGitHubWorkflowRunQuery,
   useGitHubWorkflowRunsQuery,
   useGitHubWorkflowsQuery,
+  useWeeklyReportStatusQuery,
+  useWeeklyReportsQuery,
+  useRecentCommitsQuery,
+  useGitHubCommitQuery,
 } from "./github";
 export {
   useCreateGitHubBranchMutation,
@@ -102,9 +109,11 @@ export {
   useCancelGitHubWorkflowRunMutation,
   useDispatchGitHubWorkflowMutation,
   useRerunGitHubWorkflowRunMutation,
+  useGenerateWeeklyReportMutation,
 } from "./githubMutations";
 export type {
   DispatchGitHubWorkflowInput,
+  GenerateWeeklyReportInput,
   UpdateGitHubRepoInput,
 } from "./githubMutations";
 export {

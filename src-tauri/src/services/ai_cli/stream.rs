@@ -29,6 +29,8 @@ pub struct StreamState {
     pub final_text: Option<String>,
     pub error: Option<String>,
     pub raw_lines: Vec<String>,
+    /// 이어서 대화할 때 쓰는 CLI 세션 ID (Claude `session_id`, Codex `thread_id`)
+    pub session_id: Option<String>,
     message_has_delta: bool,
 }
 
@@ -64,6 +66,12 @@ impl StreamState {
             self.raw_lines.push(line.to_string());
         }
     }
+
+    fn capture_session(&mut self, value: &Value) {
+        if let Some(id) = value.as_str().map(str::trim).filter(|id| !id.is_empty()) {
+            self.session_id = Some(id.to_string());
+        }
+    }
 }
 
 fn parse_line(line: &str, state: &mut StreamState) -> Option<Value> {
@@ -87,6 +95,7 @@ pub fn handle_claude_line(line: &str, state: &mut StreamState, emit: &dyn Fn(AiS
     };
 
     match value["type"].as_str() {
+        Some("system") => state.capture_session(&value["session_id"]),
         Some("stream_event") => {
             let event = &value["event"];
             match event["type"].as_str() {
@@ -127,6 +136,7 @@ pub fn handle_claude_line(line: &str, state: &mut StreamState, emit: &dyn Fn(AiS
             state.message_has_delta = false;
         }
         Some("result") => {
+            state.capture_session(&value["session_id"]);
             let result = value["result"].as_str().map(str::to_string);
             if value["is_error"].as_bool() == Some(true) {
                 state.error = Some(result.unwrap_or_else(|| {
@@ -156,6 +166,7 @@ pub fn handle_codex_line(line: &str, state: &mut StreamState, emit: &dyn Fn(AiSt
     let item = &value["item"];
 
     match value["type"].as_str() {
+        Some("thread.started") => state.capture_session(&value["thread_id"]),
         Some("item.started") => match item["type"].as_str() {
             Some("command_execution") => {
                 let command = item["command"].as_str().unwrap_or("");
@@ -229,6 +240,22 @@ mod tests {
         assert_eq!(deltas, vec!["첫 번째", "\n\n두 번째"]);
         assert_eq!(state.text, "첫 번째\n\n두 번째");
         assert!(state.error.is_none());
+        assert_eq!(state.session_id.as_deref(), Some("t"));
+    }
+
+    #[test]
+    fn claude_session_id_comes_from_init_and_result() {
+        let (state, _) = collect(
+            &[r#"{"type":"system","subtype":"init","session_id":"s-1"}"#],
+            handle_claude_line,
+        );
+        assert_eq!(state.session_id.as_deref(), Some("s-1"));
+
+        let (state, _) = collect(
+            &[r#"{"type":"result","subtype":"success","is_error":false,"result":"답","session_id":"s-2"}"#],
+            handle_claude_line,
+        );
+        assert_eq!(state.session_id.as_deref(), Some("s-2"));
     }
 
     #[test]

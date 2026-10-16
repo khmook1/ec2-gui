@@ -1,4 +1,3 @@
-import type { ComponentType } from "react";
 import { DEFAULT_ROUTE_ID, ROUTE_ID, type RouteId } from "@/config/Route";
 import { resolveNavigableRouteId } from "@/config/routeUtils";
 import { DashboardPage } from "@/pages/Dashboard";
@@ -13,7 +12,9 @@ import { FileExplorerPage } from "@/pages/FileExplorer";
 import { GitHubPage } from "@/pages/GitHub";
 import { GitHubActiveRunsPage } from "@/pages/GitHubActiveRuns";
 import { GitHubRepoPage } from "@/pages/GitHubRepo";
+import { GitHubWeeklyReportPage } from "@/pages/GitHubWeeklyReport";
 import { AiSettingsPage, GeneralSettingsPage } from "@/pages/settings";
+import type { ComponentType } from "react";
 
 export type RoutePage = ComponentType;
 
@@ -28,6 +29,7 @@ const ROUTE_PAGES: Partial<Record<RouteId, RoutePage>> = {
   [ROUTE_ID.dockerSystem]: DockerSystemPage,
   [ROUTE_ID.githubRepos]: GitHubPage,
   [ROUTE_ID.githubActiveRuns]: GitHubActiveRunsPage,
+  [ROUTE_ID.githubWeeklyReport]: GitHubWeeklyReportPage,
   [ROUTE_ID.githubRepo]: GitHubRepoPage,
   [ROUTE_ID.settingsGeneral]: GeneralSettingsPage,
   [ROUTE_ID.settingsAi]: AiSettingsPage,
